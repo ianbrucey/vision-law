@@ -31,7 +31,12 @@ copy-pasting classes between views, stop — extract.
 ## Tokens
 
 Color palette: professional legal — deep navy ink, warm brass for attention,
-quiet paper background. Light-only v1.
+quiet paper background. Light-only v1 — with ONE scoped exception per
+[003-D01](specs/003-public-site-auth/decisions.md): the marketing landing's
+dark cinematic treatment (tokens `--vl-dark-0` … `--vl-dark-mut`) applies to
+the marketing landing page (nav, hero, trust strip, final CTA, footer) ONLY.
+Everything behind auth stays light-only; the dark hero uses tokens, not
+dark-mode variants, so door 7 stands unchanged.
 
 | Token | Value | Used for |
 | --- | --- | --- |
@@ -44,6 +49,9 @@ quiet paper background. Light-only v1.
 | `--vl-text` / `--vl-mut` | `#1F2A37` / `#5B6B7C` | Body text / secondary text |
 | `--vl-ok` / `--vl-ok-soft` | `#2F7D4F` / `#E6F2E9` | Positive, executed, complete |
 | `--vl-bad` / `--vl-bad-soft` | `#B23B3B` / `#F8E8E8` | Destructive, overdue, denied |
+| `--vl-dark-0` / `--vl-dark-1` | `#04060C` / `#0A1424` | **Marketing only (003-D01):** dark cinematic base / gradient end — landing nav, hero, trust strip, final CTA, footer |
+| `--vl-neon` / `--vl-neon-deep` | `#35A2FF` / `#1B6FD6` | **Marketing only (003-D01):** accent (eyebrow, CTAs, glyphs) / CTA gradient end |
+| `--vl-dark-text` / `--vl-dark-mut` | `#EAF2FA` / `#9DB1C7` | **Marketing only (003-D01):** text / secondary text on dark sections |
 
 Typography: **Georgia (serif) for page titles and card headings only** —
 everything else is system sans. Base 16px; page title 30px (26px on phones).
@@ -173,6 +181,8 @@ with the first UI feature; `tests/Architecture/` does not exist yet):
 6. **`wire:poll` only inside `components/ui/`** — create a component before
    polling anywhere.
 7. **Light-only v1** — no `dark:` variants, no `class="dark"` in any view.
+   (003-D01: the landing's dark treatment uses dedicated `--vl-dark-*` /
+   `--vl-neon*` tokens, not dark-mode variants — this door is unchanged.)
 8. **Leak sentinels** — restricted strings named in a feature's
    `00-brief.md` (client PII, privilege markers, secrets) must never appear
    in rendered views; scans live in the same test file.
