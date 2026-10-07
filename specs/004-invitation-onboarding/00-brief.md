@@ -1,6 +1,6 @@
 # 004 — Invitation onboarding UI — Strategic brief
 
-**Status:** DRAFT (→ IN REVIEW → APPROVED)
+**Status:** APPROVED — Ian Bruce, 2026-10-07
 **Author:** Lotus (orchestrator)
 **Date:** 2026-10-07
 
@@ -65,4 +65,4 @@ Canonical fixtures in `04-fixtures.json`: pending invitation (matter-scoped), pe
 - [ ] Builder has reviewed and added risks to the pre-mortem
 - [ ] Governing [D]/[P]/[O] items linked; [O] stop conditions stated
 - [ ] Security classification complete (actors, data classes, audit events, leak sentinels)
-- [ ] Product owner approved — **approver:** Ian Bruce · **date:** TBD
+- [x] Product owner approved — **approver:** Ian Bruce · **date:** 2026-10-07
