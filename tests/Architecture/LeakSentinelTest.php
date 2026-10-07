@@ -149,10 +149,34 @@ class LeakSentinelTest extends TestCase
 
     public function test_guest_surfaces_render_no_privileged_strings(): void
     {
-        // The invitation landing is authorized by token possession — the
-        // token itself must not be echoed back.
+        // 004-D07 holder exception: the accept page is served to the valid
+        // token holder, so the plaintext token may appear there — but ONLY in
+        // the hidden invitation_token field and the sign-in next-link. Every
+        // other sentinel must still be absent.
         $landing = $this->get("/invitations/{$this->invitationToken}")->assertOk();
-        $this->assertNoSentinels($landing->getContent(), 'GET /invitations/{token}');
+        $landingContent = $landing->getContent();
+
+        $holderSentinels = $this->sentinels;
+        unset($holderSentinels['invitation token']);
+        foreach ($holderSentinels as $label => $sentinel) {
+            $this->assertStringNotContainsString(
+                $sentinel,
+                $landingContent,
+                "Leak: {$label} present in GET /invitations/{token}"
+            );
+        }
+        $this->assertStringContainsString(
+            'name="invitation_token" value="'.$this->invitationToken.'"',
+            $landingContent,
+            'The holder exception covers the hidden accept-form field.'
+        );
+        // Exactly two occurrences: the hidden field and the sign-in next-link
+        // (URL-encoded inside next=). Any further echo would be a leak.
+        $this->assertSame(
+            2,
+            substr_count($landingContent, $this->invitationToken),
+            'The token may appear only in the hidden field and the sign-in next-link.'
+        );
 
         // Failed login: generic body, no hash, no enumeration.
         $failed = $this->postJson('/login', [
@@ -182,5 +206,59 @@ class LeakSentinelTest extends TestCase
         $csv = $export->streamedContent();
         $this->assertStringContainsString('# vision-law audit log export', $csv);
         $this->assertNoSentinels($csv, 'GET /admin/audit-events/export as admin');
+    }
+
+    /**
+     * 004-D07 holder exception: the plaintext invitation token may appear in
+     * exactly one place — the one-time accept-link banner shown to the admin
+     * who created the invitation. It must never appear in the admin table,
+     * in logs, in JSON, or on any later render of the page.
+     */
+    public function test_admin_invitation_token_shows_only_in_one_time_banner(): void
+    {
+        $admin = $this->fixtures->user('user_admin');
+        $this->actingAs($admin);
+
+        // Plain render: no token anywhere — the mailed token from setUp must
+        // not leak into the page either.
+        $plain = $this->get('/admin/invitations', ['Accept' => 'text/html'])->assertOk();
+        $this->assertStringNotContainsString(
+            $this->invitationToken,
+            $plain->getContent(),
+            'Mailed token leaked into the plain admin invitations page.'
+        );
+
+        // The creating admin holds the token once — it renders in the
+        // accept-link banner on the very next page load.
+        $this->post('/admin/invitations', [
+            'email' => 'banner-holder@sterling.test',
+            'role' => 'viewer',
+        ], ['Accept' => 'text/html'])->assertRedirect(route('admin.invitations.index'));
+
+        $url = session('invitation_accept_url');
+        $this->assertIsString($url);
+        $token = basename($url);
+        $this->assertNotSame('', $token);
+
+        $banner = $this->get('/admin/invitations', ['Accept' => 'text/html'])->assertOk();
+        $this->assertStringContainsString($token, $banner->getContent());
+        // The table itself never carries the token — the banner is the only
+        // door for it (004-D07).
+        $bannerContent = $banner->getContent();
+        $bannerOnly = (string) preg_replace(
+            '/<input[^>]*id="accept-link-input"[^>]*>/',
+            '',
+            $bannerContent
+        );
+        $this->assertStringNotContainsString($token, $bannerOnly);
+
+        // One-time: after the flash ages out, the token is gone everywhere.
+        $after = $this->get('/admin/invitations', ['Accept' => 'text/html'])->assertOk();
+        $this->assertStringNotContainsString($token, $after->getContent());
+        $this->assertStringNotContainsString(
+            $this->invitationToken,
+            $after->getContent(),
+            'Mailed token leaked into the admin invitations page after refresh.'
+        );
     }
 }
