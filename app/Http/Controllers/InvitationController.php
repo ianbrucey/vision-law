@@ -59,12 +59,13 @@ class InvitationController extends Controller
             ]);
         }
 
-        // NOTE (T-01): the plaintext token is deliberately NOT passed to the
-        // view — the architecture leak sentinel asserts it never appears in a
-        // response body. Ticket 2/3 (real accept page) must resolve how the
-        // register form and sign-in next-link carry the token without
-        // tripping that door.
+        // 004-D07 (holder exception): the plaintext token IS passed to this
+        // view — the holder already possesses it via the URL, and the accept
+        // form (hidden invitation_token) plus the sign-in next-link need it.
+        // It must never appear in admin surfaces, logs, JSON, or pages served
+        // to non-holders. LeakSentinelTest encodes this exception.
         return view('invitations.show', [
+            'token' => $token,
             'email' => $invitation->email,
             'role' => $invitation->role,
             'organizationName' => (string) $invitation->organization->name,
