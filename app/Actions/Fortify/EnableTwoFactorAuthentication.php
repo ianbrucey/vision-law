@@ -10,7 +10,7 @@ use Laravel\Fortify\RecoveryCode;
 use Laravel\Fortify\TwoFactorAuthenticationProvider;
 
 /**
- * Fortify's 2FA enrollment, generating 10 single-use backup codes (C-06)
+ * Fortify's 2FA enrollment, generating 8 single-use backup codes (C-06)
  * instead of Fortify's default 8. Bound over the Fortify action in
  * FortifyServiceProvider.
  */
@@ -31,7 +31,7 @@ class EnableTwoFactorAuthentication extends FortifyEnableTwoFactorAuthentication
 
             $user->forceFill([
                 'two_factor_secret' => Fortify::currentEncrypter()->encrypt($provider->generateSecretKey($secretLength)),
-                'two_factor_recovery_codes' => Fortify::currentEncrypter()->encrypt(json_encode(Collection::times(10, function () {
+                'two_factor_recovery_codes' => Fortify::currentEncrypter()->encrypt(json_encode(Collection::times(8, function () {
                     return RecoveryCode::generate();
                 })->all())),
             ])->save();

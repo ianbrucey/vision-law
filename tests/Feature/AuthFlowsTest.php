@@ -360,7 +360,7 @@ class AuthFlowsTest extends TestCase
 
     /**
      * C-06: TOTP enrollment is confirmed by a valid code; login challenges
-     * block without one; 10 backup codes; disabling needs password re-auth.
+     * block without one; 8 backup codes; disabling needs password re-auth.
      */
     public function test_mfa_challenge_blocks_login_without_valid_code(): void
     {
@@ -377,12 +377,12 @@ class AuthFlowsTest extends TestCase
         $this->postJson('/user/confirm-password', ['password' => FixtureLoader::DEFAULT_PASSWORD])
             ->assertSuccessful();
 
-        // Enroll: secret set, 10 backup codes, NOT yet confirmed.
+        // Enroll: secret set, 8 backup codes, NOT yet confirmed.
         $enable = $this->postJson('/user/two-factor-authentication')->assertOk();
         $user->refresh();
         $this->assertNotNull($user->two_factor_secret);
         $this->assertNull($user->two_factor_confirmed_at);
-        $this->assertCount(10, $user->recoveryCodes());
+        $this->assertCount(8, $user->recoveryCodes());
 
         // Leak sentinel: the enable response carries no secret.
         $this->assertStringNotContainsString(

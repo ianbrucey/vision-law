@@ -135,7 +135,7 @@ class FixtureLoader
                 $model->forceFill([
                     'two_factor_secret' => encrypt((new Google2FA)->generateSecretKey()),
                     'two_factor_recovery_codes' => encrypt(json_encode(
-                        array_map(fn () => RecoveryCode::generate(), range(1, 10)),
+                        array_map(fn () => RecoveryCode::generate(), range(1, 8)),
                         JSON_THROW_ON_ERROR
                     )),
                     'two_factor_confirmed_at' => now(),

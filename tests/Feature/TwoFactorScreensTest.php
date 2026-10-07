@@ -165,7 +165,7 @@ class TwoFactorScreensTest extends TestCase
         $admin->refresh();
         $this->assertNotNull($admin->two_factor_secret);
         $this->assertNull($admin->two_factor_confirmed_at);
-        $this->assertCount(10, $admin->recoveryCodes());
+        $this->assertCount(8, $admin->recoveryCodes());
 
         // The QR renders for the pending secret.
         $this->get(route('two-factor.qr-code'))->assertOk();
@@ -197,7 +197,7 @@ class TwoFactorScreensTest extends TestCase
 
         // Once-display: the next GET shows the 10 codes …
         $codes = $admin->recoveryCodes();
-        $this->assertCount(10, $codes);
+        $this->assertCount(8, $codes);
         $page = $this->get(route('two-factor.settings'))->assertOk();
         foreach ($codes as $code) {
             $page->assertSee($code, false);
@@ -301,7 +301,7 @@ class TwoFactorScreensTest extends TestCase
         ])->assertRedirect(route('two-factor.login'));
 
         $codes = $admin->refresh()->recoveryCodes();
-        $this->assertCount(10, $codes);
+        $this->assertCount(8, $codes);
 
         $this->post('/two-factor-challenge', ['recovery_code' => $codes[0]])
             ->assertRedirect();
@@ -309,7 +309,7 @@ class TwoFactorScreensTest extends TestCase
 
         // The code is consumed: replaced with a fresh one, not reusable.
         $remaining = $admin->refresh()->recoveryCodes();
-        $this->assertCount(10, $remaining);
+        $this->assertCount(8, $remaining);
         $this->assertNotContains($codes[0], $remaining);
     }
 
@@ -415,7 +415,7 @@ class TwoFactorScreensTest extends TestCase
 
         // Once-display after confirm: the 10 codes render ...
         $codes = $admin->refresh()->recoveryCodes();
-        $this->assertCount(10, $codes);
+        $this->assertCount(8, $codes);
         $page = $this->get(route('two-factor.settings'))->assertOk();
         foreach ($codes as $code) {
             $page->assertSee($code, false);
@@ -644,7 +644,7 @@ class TwoFactorScreensTest extends TestCase
         $encryptedSecret = (string) $admin->two_factor_secret;
         $encryptedCodes = (string) $admin->two_factor_recovery_codes;
         $codes = $admin->recoveryCodes();
-        $this->assertCount(10, $codes);
+        $this->assertCount(8, $codes);
 
         $setupHtml = $this->get(route('two-factor.settings'))->assertOk()->getContent();
 
