@@ -1,6 +1,6 @@
 # 005 — Two-factor authentication screens — Strategic brief
 
-**Status:** DRAFT (→ APPROVED)
+**Status:** APPROVED by Ian Bruce, 2026-10-07 (mockup approved; decisions 005-D01, 005-D02 confirmed)
 **Author:** Lotus (orchestrator)
 **Date:** 2026-10-07
 
