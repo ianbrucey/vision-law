@@ -44,7 +44,7 @@
 - `vendor/bin/pint --test`: 116 files PASS
 - `vendor/bin/phpstan analyse`: no errors
 - `npm run build`: OK
-- Merged: `git merge --no-ff feat/004-invitation-onboarding` → main, pushed;
+- Merged: `git merge --no-ff feat/004-invitation-onboarding` → 262ec85 on main, pushed;
   origin/main matches local HEAD.
 
 ## Carry-forward (matter model)
