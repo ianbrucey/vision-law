@@ -3,7 +3,93 @@
 @source '../../vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php';
 @source '../../storage/framework/views/*.php';
 
+/*
+ * Vision Law design tokens (spec 002, 03-contract.md — values are law).
+ * Defined once here as CSS variables AND Tailwind v4 @theme entries.
+ */
+:root {
+    --vl-ink: #1F2A37;
+    --vl-ink-2: #31404F;
+    --vl-brass: #9A6B23;
+    --vl-brass-soft: #F6EDD9;
+    --vl-paper: #F7F8FA;
+    --vl-card: #FFFFFF;
+    --vl-line: #E3E8EE;
+    --vl-text: #1F2A37;
+    --vl-mut: #5B6B7C;
+    --vl-ok: #2F7D4F;
+    --vl-ok-soft: #E6F2E9;
+    --vl-bad: #B23B3B;
+    --vl-bad-soft: #F8E8E8;
+    --vl-info: #2B5F8A;
+    --vl-info-soft: #E7EFF6;
+}
+
 @theme {
     --font-sans: 'Instrument Sans', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji',
         'Segoe UI Symbol', 'Noto Color Emoji';
+    --font-serif: Georgia, 'Times New Roman', Times, serif;
+
+    --color-vl-ink: #1F2A37;
+    --color-vl-ink-2: #31404F;
+    --color-vl-brass: #9A6B23;
+    --color-vl-brass-soft: #F6EDD9;
+    --color-vl-paper: #F7F8FA;
+    --color-vl-card: #FFFFFF;
+    --color-vl-line: #E3E8EE;
+    --color-vl-text: #1F2A37;
+    --color-vl-mut: #5B6B7C;
+    --color-vl-ok: #2F7D4F;
+    --color-vl-ok-soft: #E6F2E9;
+    --color-vl-bad: #B23B3B;
+    --color-vl-bad-soft: #F8E8E8;
+    --color-vl-info: #2B5F8A;
+    --color-vl-info-soft: #E7EFF6;
+
+    --radius-vl-card: 10px;
+    --radius-vl-control: 8px;
+    --radius-vl-chip: 999px;
+}
+
+@layer base {
+    html {
+        font-size: 16px;
+    }
+
+    body {
+        background-color: var(--vl-paper);
+        color: var(--vl-text);
+    }
+
+    /* Visible focus on every interactive element (UI_Standards: accessibility is not optional). */
+    :focus-visible {
+        outline: 2px solid var(--vl-info);
+        outline-offset: 2px;
+    }
+
+    /* Tap targets >= 44px. Checkboxes/radios/hidden inputs keep their native
+       box; their tap area is provided by the component label padding instead. */
+    button,
+    input:not([type='checkbox']):not([type='radio']):not([type='hidden']),
+    select,
+    textarea {
+        min-height: 44px;
+    }
+
+    /* Georgia serif, scoped to titles and headings only (system sans everywhere else). */
+    .vl-title,
+    h1.vl-page-title,
+    h2.vl-card-title {
+        font-family: var(--font-serif);
+    }
+
+    h1.vl-page-title {
+        font-size: 30px;
+    }
+
+    @media (max-width: 820px) {
+        h1.vl-page-title {
+            font-size: 26px;
+        }
+    }
 }
