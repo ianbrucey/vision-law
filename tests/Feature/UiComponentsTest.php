@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\View\Components\Ui\Status;
 use Illuminate\Support\Facades\Blade;
 use Illuminate\Support\MessageBag;
 use Illuminate\Support\ViewErrorBag;
@@ -204,5 +205,172 @@ class UiComponentsTest extends TestCase
         $store = app('session')->driver();
         $store->put('_old_input', $input);
         app('request')->setLaravelSession($store);
+    }
+
+    // ------------------------------------------------------------------
+    // Ticket 3 — display components
+    // ------------------------------------------------------------------
+
+    /**
+     * C-02 (partial): each of the six T-03 display components renders with
+     * defaults, no exception.
+     */
+    public function test_display_components_render_with_defaults(): void
+    {
+        $this->assertStringContainsString('vl-card', Blade::render('<x-ui.card>Body</x-ui.card>'));
+        $this->assertStringContainsString('<h1', Blade::render('<x-ui.page-header title="Sterling v. Apex Construction" />'));
+        $this->assertStringContainsString('Archived', Blade::render('<x-ui.chip>Archived</x-ui.chip>'));
+        $this->assertStringContainsString('Body', Blade::render('<x-ui.banner tone="info">Body</x-ui.banner>'));
+        $this->assertStringContainsString('<dl', Blade::render('<x-ui.kv :items="$items" />', ['items' => [['label' => 'L', 'value' => 'V']]]));
+        $this->assertStringContainsString('14', Blade::render('<x-ui.stat value="14" label="Open matters" />'));
+        $this->assertStringContainsString('Active', Blade::render('<x-ui.status type="matter" value="active" />'));
+    }
+
+    public function test_page_header_renders_single_h1_with_slots(): void
+    {
+        $html = Blade::render(<<<'BLADE'
+            <x-ui.page-header title="Sterling v. Apex Construction" subtitle="Breach of contract.">
+                <x-slot:crumbs><a href="#">Matters</a> › Sterling</x-slot:crumbs>
+                <x-slot:actions><x-ui.button size="sm">Upload</x-ui.button></x-slot:actions>
+                <x-slot:subnav><nav>tabs</nav></x-slot:subnav>
+            </x-ui.page-header>
+            BLADE);
+
+        $this->assertSame(1, substr_count($html, '<h1'), 'page-header must render exactly one h1');
+        $this->assertStringContainsString('vl-page-title', $html);
+        $this->assertStringContainsString('Sterling v. Apex Construction', $html);
+        $this->assertStringContainsString('Breach of contract.', $html);
+        $this->assertStringContainsString('aria-label="Breadcrumb"', $html);
+        $this->assertStringContainsString('Upload', $html);
+        $this->assertStringContainsString('<nav>tabs</nav>', $html);
+    }
+
+    public function test_card_renders_title_and_header_actions(): void
+    {
+        $html = Blade::render(<<<'BLADE'
+            <x-ui.card title="Matter detail">
+                <x-slot:header-actions><x-ui.chip tone="info">Active</x-ui.chip></x-slot:header-actions>
+                Body content.
+            </x-ui.card>
+            BLADE);
+
+        $this->assertStringContainsString('<h2', $html);
+        $this->assertStringContainsString('Matter detail', $html);
+        $this->assertStringContainsString('Active', $html);
+        $this->assertStringContainsString('Body content.', $html);
+        $this->assertStringContainsString('vl-card-flush', Blade::render('<x-ui.card :padded="false">x</x-ui.card>'));
+    }
+
+    public function test_banner_tones_and_fail_closed(): void
+    {
+        $this->assertStringContainsString('bg-vl-info-soft', Blade::render('<x-ui.banner tone="info">x</x-ui.banner>'));
+        $this->assertStringContainsString('bg-vl-ok-soft', Blade::render('<x-ui.banner tone="success">x</x-ui.banner>'));
+        $this->assertStringContainsString('bg-vl-brass-soft', Blade::render('<x-ui.banner tone="warn" title="Privileged — do not forward">x</x-ui.banner>'));
+        $this->assertStringContainsString('bg-vl-bad-soft', Blade::render('<x-ui.banner tone="danger">x</x-ui.banner>'));
+
+        // Fail-closed: unknown tone renders as info, never throws.
+        $html = Blade::render('<x-ui.banner tone="wat">x</x-ui.banner>');
+        $this->assertStringContainsString('bg-vl-info-soft', $html);
+
+        $html = Blade::render('<x-ui.banner tone="warn" title="Headline">Body</x-ui.banner>');
+        $this->assertStringContainsString('<strong', $html);
+        $this->assertStringContainsString('Headline', $html);
+    }
+
+    public function test_chip_tones_and_fail_closed(): void
+    {
+        $this->assertStringContainsString('bg-vl-ok-soft', Blade::render('<x-ui.chip tone="ok">Executed</x-ui.chip>'));
+        $this->assertStringContainsString('bg-vl-brass-soft', Blade::render('<x-ui.chip tone="warn">Needs review</x-ui.chip>'));
+        $this->assertStringContainsString('bg-vl-bad-soft', Blade::render('<x-ui.chip tone="bad">Overdue</x-ui.chip>'));
+        $this->assertStringContainsString('bg-vl-paper', Blade::render('<x-ui.chip tone="neutral">Archived</x-ui.chip>'));
+        $this->assertStringContainsString('bg-vl-info-soft', Blade::render('<x-ui.chip tone="info">In discovery</x-ui.chip>'));
+
+        // Fail-closed: unknown tone renders neutral, never throws.
+        $html = Blade::render('<x-ui.chip tone="wat">x</x-ui.chip>');
+        $this->assertStringContainsString('bg-vl-paper', $html);
+    }
+
+    public function test_kv_renders_items_escaped(): void
+    {
+        $html = Blade::render('<x-ui.kv :items="$items" />', [
+            'items' => [
+                ['label' => 'Matter number', 'value' => 'MAT-2026-001'],
+                ['label' => 'Client', 'value' => '<b>Bold</b>'],
+            ],
+        ]);
+
+        $this->assertStringContainsString('<dt', $html);
+        $this->assertStringContainsString('MAT-2026-001', $html);
+        $this->assertStringNotContainsString('<b>Bold</b>', $html);
+        $this->assertStringContainsString('&lt;b&gt;Bold&lt;/b&gt;', $html);
+    }
+
+    /**
+     * C-09: every row of the canonical Status map renders its label in the
+     * right chip tone; unknown values render a neutral "Unknown" chip —
+     * never raw enum text, never an exception.
+     */
+    public function test_status_component_maps_known_statuses_and_fails_closed(): void
+    {
+        $toneClasses = [
+            'ok' => 'bg-vl-ok-soft',
+            'warn' => 'bg-vl-brass-soft',
+            'bad' => 'bg-vl-bad-soft',
+            'neutral' => 'bg-vl-paper',
+            'info' => 'bg-vl-info-soft',
+        ];
+
+        foreach (Status::MAP as $type => $rows) {
+            foreach ($rows as $value => $row) {
+                // Unit-level: the class holds the canonical map.
+                $component = new Status($type, $value);
+                $this->assertSame($row['label'], $component->label, "label for {$type}/{$value}");
+                $this->assertSame($row['tone'], $component->tone, "tone for {$type}/{$value}");
+
+                // Render-level: label inside the right chip tone.
+                $html = Blade::render('<x-ui.status type="'.$type.'" value="'.$value.'" />');
+                $this->assertStringContainsString($row['label'], $html, "rendered label for {$type}/{$value}");
+                $this->assertStringContainsString($toneClasses[$row['tone']], $html, "rendered tone for {$type}/{$value}");
+
+                // Never raw enum text when the label differs from the value.
+                if ($row['label'] !== $value) {
+                    $this->assertStringNotContainsString('>'.$value.'<', $html, "raw enum text leaked for {$type}/{$value}");
+                }
+            }
+        }
+
+        // Fail-closed: unknown values render a neutral "Unknown" chip.
+        foreach (['matter', 'document', 'draft'] as $type) {
+            $html = Blade::render('<x-ui.status type="'.$type.'" value="not_a_real_status" />');
+            $this->assertStringContainsString('Unknown', $html);
+            $this->assertStringContainsString('bg-vl-paper', $html);
+            $this->assertStringNotContainsString('not_a_real_status', $html);
+        }
+
+        // Unknown type also fails closed.
+        $html = Blade::render('<x-ui.status type="wat" value="nope" />');
+        $this->assertStringContainsString('Unknown', $html);
+        $this->assertStringContainsString('bg-vl-paper', $html);
+    }
+
+    /**
+     * Display components with required props fail loud on missing input.
+     */
+    public function test_display_components_fail_loud_on_missing_required_props(): void
+    {
+        foreach ([
+            '<x-ui.page-header />' => 'requires a "title"',
+            '<x-ui.banner>Body</x-ui.banner>' => 'requires a "tone"',
+            '<x-ui.kv />' => 'requires "items"',
+            '<x-ui.stat label="L" />' => 'requires "value" and "label"',
+        ] as $template => $message) {
+            try {
+                Blade::render($template);
+                $this->fail("Expected an exception for: {$template}");
+            } catch (ViewException $e) {
+                $this->assertInstanceOf(InvalidArgumentException::class, $this->rootCause($e));
+                $this->assertStringContainsString($message, $e->getMessage());
+            }
+        }
     }
 }

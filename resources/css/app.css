@@ -92,4 +92,17 @@
             font-size: 26px;
         }
     }
+    /* Card shell (spec 002). Shadow uses the ink token as rgba so views stay hex-free. */
+    .vl-card {
+        background-color: var(--vl-card);
+        border: 1px solid var(--vl-line);
+        border-radius: var(--radius-vl-card);
+        box-shadow: 0 1px 2px rgba(31, 42, 55, 0.06), 0 4px 16px rgba(31, 42, 55, 0.06);
+        padding: 22px;
+        margin-bottom: 16px;
+    }
+
+    .vl-card.vl-card-flush {
+        padding: 0;
+    }
 }
