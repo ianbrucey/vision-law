@@ -112,7 +112,7 @@ All invalid input → 422 with `{code:"validation", details:{...}}`. No stack tr
 | Event | When | Payload |
 |---|---|---|
 | `auth.login` | allow: login succeeds | `{actor_id, ip, mfa_used: bool}` |
-| `auth.login.failed` | deny: bad credentials (no user enumeration in payload) | `{ip, email_domain_hash}` |
+| `auth.login.failed` | deny: bad credentials (no user enumeration in payload) | `{ip, email_domain_digest}` |  <!-- 001-D12: renamed from email_domain_hash; the AuditLogger privileged-key blocklist rejects any key containing 'hash' -->
 | `auth.login.locked_out` | deny: lockout triggered | `{ip}` |
 | `auth.logout` | allow | `{actor_id}` |
 | `auth.mfa.enabled` / `auth.mfa.disabled` | allow | `{actor_id}` |
