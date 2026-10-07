@@ -4,8 +4,6 @@ namespace Tests\Feature;
 
 use App\Models\AuditEvent;
 use App\Models\Invitation;
-use App\Models\MatterGrant;
-use Illuminate\Support\Str;
 use App\Models\Organization;
 use App\Models\User;
 use Illuminate\Auth\Notifications\ResetPassword;
@@ -16,6 +14,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\URL;
+use Illuminate\Support\Str;
 use PragmaRX\Google2FA\Google2FA;
 use Tests\Helpers\FixtureLoader;
 use Tests\TestCase;
