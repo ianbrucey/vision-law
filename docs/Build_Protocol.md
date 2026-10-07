@@ -1,15 +1,13 @@
-# Legal application build protocol
+# Vision Law build protocol
 
-**Status:** Proposed for approval  
-**Extracted from:** Haven repository, `main` at commit `edd83fc`  
-**Repository state inspected:** Clean working tree on October 6, 2026  
-**Purpose:** Carry Haven’s agent-first build discipline into the new legal application without copying Haven’s foster-care domain rules.
+**Status:** [D] Decided 2026-10-06 — the standing build protocol for Vision Law.  
+**Purpose:** Agent-first build discipline for Vision Law: requirements become approved, testable, conflict-resistant work.
 
 ## Decision summary
 
-The Haven repository is accessible on the shared development server, and its build protocol is mature enough to reuse. The reusable part is not Haven’s data model or feature list; it is the way requirements become approved, testable, conflict-resistant work.
+This protocol defines how requirements become approved, testable, conflict-resistant work in Vision Law.
 
-The legal application should adopt this sequence:
+Vision Law adopts this sequence:
 
 > system decisions → approved feature brief → repository archaeology → schema/contract/fixtures/UI artifacts → atomic tickets → isolated execution → independent review → green CI → dev deployment → freeze and record lessons
 
@@ -19,7 +17,7 @@ This document is a proposed protocol, not approval to start every feature. The d
 
 ---
 
-## 1. What to copy from Haven
+## 1. Protocol foundations
 
 ### Adopt unchanged
 
@@ -37,7 +35,7 @@ This document is a proposed protocol, not approval to start every feature. The d
 
 ### Adapt for the legal domain
 
-Replace Haven’s disclosure tiers and referral states with legal-specific controls:
+Authorization and data governance use legal-specific controls:
 
 - organization and tenant boundaries;
 - matter membership and ethical walls;
@@ -50,10 +48,10 @@ Replace Haven’s disclosure tiers and referral states with legal-specific contr
 
 ### Do not copy
 
-- Haven’s entities, roles, fixtures, UI branding, disclosure rules, or roadmap;
+- entities, roles, fixtures, UI branding, or roadmaps from other projects;
 - assumptions that self-registration is allowed;
-- a package or pattern merely because Haven uses it;
-- any feature-specific decision without confirming it against the legal application’s RFI and architecture decisions.
+- a package or pattern merely because another project uses it;
+- any feature-specific decision without confirming it against Vision Law’s RFI matrix and architecture decisions.
 
 ---
 
@@ -71,7 +69,7 @@ docs/
   SECURITY_AND_TENANCY.md
   DRAFTING_ARCHITECTURE.md
   AI_GOVERNANCE.md
-  UI_STANDARDS.md
+  UI_Standards.md
   TESTING_STRATEGY.md
   PLANNING_PROTOCOL.md
   DEV_WORKFLOW.md
@@ -222,7 +220,7 @@ Agents do not receive vague assignments such as “build document management.”
 At Freeze:
 
 - accepted schema changes move into `DOMAIN_MODEL.md`;
-- new UI primitives move into `UI_STANDARDS.md`;
+- new UI primitives move into `UI_Standards.md`;
 - new security rules become architecture or matrix tests;
 - decisions made during execution go into `decisions.md`;
 - complex lessons go into the dev journal;
@@ -237,7 +235,7 @@ One fact must have one canonical home. Freeze should link rather than duplicate.
 
 ### Security matrix
 
-The legal application’s equivalent of Haven’s disclosure matrix should be a dataset-driven test over:
+Authorization coverage is a dataset-driven test over:
 
 > actor role × tenant × matter relationship × data class × matter state × action
 
@@ -530,7 +528,7 @@ Implement only after identity, documents, matters, and audit are proven because 
 
 ## 10. Development journal
 
-Use the Haven journal structure:
+Use this journal structure:
 
 ```text
 dev-journal/
@@ -564,7 +562,7 @@ The following should be approved before the first feature swarm begins:
 
 ## 12. Immediate next artifacts
 
-To start building without recreating Haven wholesale, produce these in order:
+To start building, produce these in order:
 
 1. `docs/PRODUCT_BLUEPRINT.md`
 2. `docs/RFI_REQUIREMENTS_MATRIX.md`
@@ -582,18 +580,4 @@ The first two briefs may be planned together. Execution should begin with reposi
 
 ## Source record
 
-This protocol was derived from the following files in the Haven repository on the shared development server:
-
-- `/opt/haven/AGENT_GUIDE.md`
-- `/opt/haven/app/AGENTS.md`
-- `/opt/haven/app/docs/Planning_Protocol.md`
-- `/opt/haven/app/docs/Dev_Workflow.md`
-- `/opt/haven/app/docs/Testing_Strategy.md`
-- `/opt/haven/app/docs/UI_Standards.md`
-- `/opt/haven/app/docs/Walking_Skeleton_Spec.md`
-- `/opt/haven/app/docs/Roadmap.md`
-- `/opt/haven/app/dev-journal/README.md`
-- `/opt/haven/app/specs/006-thread-notifications/`
-- `/opt/haven/app/.github/workflows/tests.yml`
-
-The repository inspection confirmed a clean `main` branch at commit `edd83fc`. Haven’s protocol was extracted and translated; Haven’s domain rules were not imported into this legal application protocol.
+Adapted from a proven Laravel agent-workflow protocol (October 2026) and translated for Vision Law. No domain rules from other projects were imported.

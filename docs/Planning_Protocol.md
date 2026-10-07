@@ -1,7 +1,7 @@
 # Vision Law — Planning Protocol (per-feature)
 
-**Status:** [D] Decided — adapted from the Haven repository's planning protocol,
-translated for the legal domain per `docs/Build_Protocol.md`.
+**Status:** [D] Decided 2026-10-06 — the per-feature planning protocol for Vision Law,
+complementary to `docs/Build_Protocol.md`.
 **Applies to:** every feature that adds **a route, a migration, or a screen**.
 Small fixes (copy tweak, one-line bug, styling nudge) run in lightweight mode:
 brief + tickets + verdicts, nothing else.
@@ -66,11 +66,11 @@ cleaning baseline debt is in scope; if not, do not fix it mid-feature.
 
 | Artifact | File | Content |
 | --- | --- | --- |
-| Schema delta | `02-schema-delta.md` | Migrations/fields against `DOMAIN_MODEL.md`. Every tenant-owned table names its tenant key. Accepted deltas fold back into the domain model at Freeze. |
+| Schema delta | `02-schema-delta.md` | Migrations/fields against `DOMAIN_MODEL.md`. Every matter-owned table names its matter key (plus the owning organization key). Accepted deltas fold back into the domain model at Freeze. |
 | Contract | `03-contract.md` | Routes + requests + component properties/actions/events. **Every operation names its authorization rule and its audit event (allow and deny).** Every service method lists inputs and the validation error for each bad input. Views may request only what the contract exposes. |
-| Fixtures | `04-fixtures.json` | Real-data fixtures **before any logic**: normal case plus adversarial cases — cross-tenant users, unauthorized matter users, restricted documents, stale versions, malformed inputs. **One definition only:** either the JSON is loaded by test helpers/seeders, or the helper is canonical and the spec points to it. Never both hand-written. |
+| Fixtures | `04-fixtures.json` | Real-data fixtures **before any logic**: normal case plus adversarial cases — users from another organization, users with no matter relationship, restricted documents, stale versions, malformed inputs. **One definition only:** either the JSON is loaded by test helpers/seeders, or the helper is canonical and the spec points to it. Never both hand-written. |
 | UI mockup | `05-ui-mockup.html` | Required for any feature adding or changing a screen. One self-contained static HTML file: every permitted role's view, every state (empty, loading, validation error, denied, conflict, success), realistic data volume, destructive-action confirmation, desktop and 390px layouts. Synthetic legal data only. |
-| UI spec | `05-ui.md` | Maps mockup screens to Blade/Livewire components, plus deviations. New patterns go into `UI_STANDARDS.md` first. |
+| UI spec | `05-ui.md` | Maps mockup screens to Blade/Livewire components, plus deviations. New patterns go into `UI_Standards.md` first. |
 
 **Mockup approval gate:** the product owner approves the mockup (DRAFT → APPROVED,
 recorded in `05-ui.md`) **before** `06-plan.md` is written. After approval the
@@ -78,7 +78,7 @@ mockup is frozen: a UI change during build means editing the mockup and getting
 re-approval first.
 
 **Conflict check before leaving this state:** the UI asks nothing the contract
-doesn't provide · every restricted field has an authorization rule and audit event
+doesn't provide · every restricted field has a matter-scoped authorization rule and an audit event (allow and deny)
 · new security rules are written as matrix cells for the testing strategy.
 
 ### State 4 — Plan (`06-plan.md`)
@@ -101,7 +101,7 @@ injects what they need.
 ### State 6 — Freeze
 
 **One home per fact.** Fold accepted schema deltas into the domain model ·
-add new components to `UI_STANDARDS.md` · add new security rules as matrix or
+add new components to `UI_Standards.md` · add new security rules as matrix or
 architecture tests · record build decisions in `decisions.md` · add
 `dev-journal/domain-knowledge/` entries · leave a `dev-journal/progress/` entry.
 
