@@ -1,96 +1,89 @@
 # Vision Law — Deployment
 
-## Push-to-deploy
+## Webhook push-to-deploy (proprietary)
 
-Every push to `main` runs CI (Pint → PHPStan → Pest on Postgres). When CI
-passes, the `deploy` job SSHes to the dev server and runs the deploy script.
+No GitHub Actions deploy job, no SSH keys in CI secrets. GitHub sends a
+signed webhook on every push; a small listener on the dev server verifies
+the signature, waits for CI to go green, then deploys.
 
 ```
 git push origin main
-  → GitHub Actions: ci job (tests)
-  → GitHub Actions: deploy job (needs: ci, concurrency: deploy-visionlaw)
-      → ssh root@172.235.37.44  (forced-command key)
-      → /opt/vision-law/deploy.sh
-          git pull --ff-only
-          composer install --no-dev --optimize-autoloader
-          npm ci && npm run build
-          php artisan migrate --force
-          php artisan optimize
-          systemctl restart visionlaw-web
-      → smoke check: curl http://172.235.37.44:3100/up
+  → GitHub Actions: ci job (Pint → PHPStan → Pest on Postgres)
+  → GitHub webhook: POST http://172.235.37.44:3120/deploy
+        (push event, HMAC-SHA256 signed)
+  → visionlaw-webhook.service (/opt/vision-law/webhook/server.py, stdlib only)
+      1. verify X-Hub-Signature-256 (constant-time compare) → 401 on mismatch
+      2. accept only push events on refs/heads/main → 202 ignored otherwise
+      3. poll the public GitHub check-runs API for the head SHA
+         (every 20s, up to 15 min) until every check run is completed
+      4. deploy ONLY if every check run concluded `success`
+      5. run /opt/vision-law/deploy.sh (serialized — deploys never overlap):
+             git pull --ff-only
+             composer install --no-dev --optimize-autoloader
+             npm ci && npm run build
+             php artisan migrate --force
+             php artisan optimize
+             systemctl restart visionlaw-web
 ```
 
-`concurrency: deploy-visionlaw` serializes deploys — a second push waits for
-the first deploy to finish instead of racing it.
+### Why this design
 
-## The forced-command key
+- **No secret-paste fragility.** The previous approach needed a multiline
+  SSH private key pasted into a GitHub Actions secret; it failed 3 times
+  (SSH died in ~1s before any server contact, CI green every time). The
+  webhook uses a single-line token (paste-safe) as the HMAC secret.
+- **Zero Actions minutes for deploys.** CI still runs on Actions (cheap);
+  the deploy step itself costs nothing.
+- **CI gate preserved.** The listener polls the public check-runs API for
+  the pushed SHA and deploys only when every check run is green — the same
+  guarantee `needs: ci` gave, enforced server-side.
 
-The deploy key in GitHub **cannot open a shell**. On the server,
-`/root/.ssh/authorized_keys` pins it to a single command:
+### Webhook setup (GitHub)
 
-```
-command="/opt/vision-law/deploy.sh",no-port-forwarding,no-X11-forwarding,no-agent-forwarding,no-pty <key>
-```
+Repo → Settings → Webhooks → Add webhook:
 
-Any SSH session authenticating with this key runs `deploy.sh` and nothing
-else — even if the CI job were compromised, the key cannot be used to run
-arbitrary commands, open tunnels, or read other apps' data.
+- **Payload URL:** `http://172.235.37.44:3120/deploy`
+- **Content type:** `application/json`
+- **Secret:** the token (single line, no whitespace)
+- **Which events:** "Just the push event"
+- **Active:** checked
 
-The keypair lives at `/root/.ssh/id_visionlaw_deploy` (`visionlaw-deploy`
-label). The public half is in `authorized_keys`; the private half must be
-stored as the GitHub secret below.
+No Actions secrets are needed for deploys. The old `VISIONLAW_DEPLOY_KEY`
+secret can be deleted.
 
-## GitHub secret (required — added by Ian)
+### Components
 
-The `deploy` job reads **`VISIONLAW_DEPLOY_KEY`**. Until it exists, pushes to
-`main` will show CI green and the deploy job failing on the missing secret —
-that failure is harmless and expected.
+| Path | What |
+|---|---|
+| `/opt/vision-law/webhook/server.py` | The listener (Python 3, stdlib only: `http.server`, `hmac`, `urllib`) |
+| `/opt/vision-law/.webhook-secret` | Shared HMAC token (mode 600, root-only, gitignored) |
+| `/etc/systemd/system/visionlaw-webhook.service` | systemd unit (`Restart=always`) |
+| `/opt/vision-law/deploy.sh` | The deploy script (unchanged from the Actions era) |
 
-Add it at: GitHub → ianbrucey/vision-law → **Settings → Secrets and
-variables → Actions → New repository secret**
-
-- Name: `VISIONLAW_DEPLOY_KEY`
-- Value: the full contents of the private key (including the
-  `-----BEGIN/END OPENSSH PRIVATE KEY-----` lines)
-
-## Manual deploy
-
-On the dev server, as root:
+### Manual deploy
 
 ```bash
 /opt/vision-law/deploy.sh
 ```
 
-This is exactly what CI runs. Useful for deploys you want to watch, or for
-recovering a box without involving GitHub.
-
-## Service layout
-
-| Piece | Location |
-|---|---|
-| App | `/opt/vision-law` |
-| Deploy script | `/opt/vision-law/deploy.sh` |
-| Systemd unit (live) | `/etc/systemd/system/visionlaw-web.service` |
-| Systemd unit (repo copy) | `deploy/visionlaw-web.service` |
-| Web | `php artisan serve` on `0.0.0.0:3100` |
-| Database | `visionlaw-pg` container, Postgres 18 + pgvector, `127.0.0.1:5435` |
-
-Edit the unit via the repo copy, then copy it to `/etc/systemd/system/`
-and `systemctl daemon-reload` — `/etc` is the live copy, the repo is the
-record.
-
-## Logs and status
+### Logs
 
 ```bash
-systemctl status visionlaw-web
-journalctl -u visionlaw-web -f        # live logs
-journalctl -u visionlaw-web --since today
+journalctl -u visionlaw-webhook -f   # decisions: received / ignored / CI wait / deploy rc
+journalctl -u visionlaw-web -f       # app logs
 ```
 
-## Upgrade path (later, when traffic warrants)
+### Troubleshooting
 
-- **Caddy + domain**: add a site block reverse-proxying `127.0.0.1:3100`
-  (same pattern as the other apps on this box) instead of raw-port access.
-- **Octane / FrankenPHP**: replace `php artisan serve` with a long-lived
-  worker when request volume or latency demands it. The systemd unit is the
-  only piece that changes; `deploy.sh` stays the same.
+- **Push didn't deploy** → check the webhook log first:
+  `journalctl -u visionlaw-webhook --since "30 min ago"`.
+  - `202 ignored` → event wasn't a main-branch push (PRs, other branches).
+  - `401 signature mismatch` → the webhook secret on GitHub doesn't match
+    `/opt/vision-law/.webhook-secret`.
+  - `NOT GREEN` → CI failed; fix CI, the next green push deploys.
+  - `TIMEOUT` → CI took longer than 15 min; rerun or push again.
+- **Endpoint self-test** (never triggers a deploy):
+  wrong signature → expect `401`; valid signature + non-push event → `202 ignored`.
+- The listener binds `0.0.0.0:3120` with no TLS. The HMAC signature is the
+  authentication — never expose the token. GitHub signs every delivery;
+  anything unsigned gets a 401.
