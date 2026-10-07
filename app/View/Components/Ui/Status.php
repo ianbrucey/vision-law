@@ -42,6 +42,12 @@ class Status extends Component
             'approved' => ['label' => 'Approved', 'tone' => 'ok'],
             'filed' => ['label' => 'Filed', 'tone' => 'ok'],
         ],
+        'invitation' => [
+            'pending' => ['label' => 'Pending', 'tone' => 'info'],
+            'accepted' => ['label' => 'Accepted', 'tone' => 'ok'],
+            'revoked' => ['label' => 'Revoked', 'tone' => 'neutral'],
+            'expired' => ['label' => 'Expired', 'tone' => 'warn'],
+        ],
     ];
 
     public string $label;
