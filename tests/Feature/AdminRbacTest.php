@@ -685,12 +685,15 @@ class AdminRbacTest extends TestCase
         $token = $loader->invitationToken();
         $this->assertNotNull($token);
 
-        $this->get("/invitations/{$token}")
+        // 004-D01: this test asserts the JSON contract, so it declares
+        // itself an API client explicitly — a headerless GET is now a web
+        // request and receives the Blade view instead.
+        $this->getJson("/invitations/{$token}")
             ->assertOk()
             ->assertJsonPath('data.email', 'new@sterling.test')
             ->assertJsonPath('data.role', 'viewer');
 
-        $this->get('/invitations/'.Str::random(64))
+        $this->getJson('/invitations/'.Str::random(64))
             ->assertStatus(404)
             ->assertJson(['code' => 'not_found']);
     }

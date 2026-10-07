@@ -2,15 +2,21 @@
 
 namespace App\Http\Controllers;
 
+use App\Exceptions\InvitationInvalidException;
 use App\Models\User;
 use App\Services\InvitationService;
 use Carbon\CarbonInterface;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\View\View;
 
 /**
  * Invitation landing + accept (03-contract.md §Routes).
- * Backend only — no Blade per 001-D06; JSON responses.
+ *
+ * Dual response (spec 004 004-D01): web requests (Accept: text/html) receive
+ * Blade views / redirects; API clients ($request->wantsJson()) receive the
+ * existing JSON shapes unchanged.
  */
 class InvitationController extends Controller
 {
@@ -19,52 +25,95 @@ class InvitationController extends Controller
     ) {}
 
     /**
-     * Guest: inspect a valid invitation token. Invalid/expired/revoked/
-     * accepted tokens → 404 (no enumeration of which check failed).
+     * Inspect a valid invitation token — reachable by guests and signed-in
+     * users alike (004-D08: the token is the credential, so a signed-in
+     * holder lands back here after the ?next= sign-in round-trip). Invalid/
+     * expired/revoked/accepted tokens → identical 404 in all four states
+     * (no enumeration).
      */
-    public function show(string $token): JsonResponse
+    public function show(string $token, Request $request): JsonResponse|View
     {
         $invitation = $this->invitations->findValid($token);
 
         if ($invitation === null) {
-            return response()->json(['code' => 'not_found'], 404);
+            if ($request->wantsJson()) {
+                return response()->json(['code' => 'not_found'], 404);
+            }
+
+            // Identical generic 404 page in every failure state — the token
+            // is the credential, and nothing about it is revealed.
+            abort(404);
         }
 
         /** @var CarbonInterface $expiresAt */
         $expiresAt = $invitation->expires_at;
 
-        return response()->json([
-            'data' => [
-                'email' => $invitation->email,
-                'role' => $invitation->role,
-                'organization' => [
-                    'id' => (string) $invitation->org_id,
-                    'name' => $invitation->organization->name,
+        if ($request->wantsJson()) {
+            return response()->json([
+                'data' => [
+                    'email' => $invitation->email,
+                    'role' => $invitation->role,
+                    'organization' => [
+                        'id' => (string) $invitation->org_id,
+                        'name' => $invitation->organization->name,
+                    ],
+                    'expires_at' => $expiresAt->toIso8601String(),
                 ],
-                'expires_at' => $expiresAt->toIso8601String(),
-            ],
+            ]);
+        }
+
+        // 004-D07 (holder exception): the plaintext token IS passed to this
+        // view — the holder already possesses it via the URL, and the accept
+        // form (hidden invitation_token) plus the sign-in next-link need it.
+        // It must never appear in admin surfaces, logs, JSON, or pages served
+        // to non-holders. LeakSentinelTest encodes this exception.
+        return view('invitations.show', [
+            'token' => $token,
+            'email' => $invitation->email,
+            'role' => $invitation->role,
+            'organizationName' => (string) $invitation->organization->name,
+            'matterName' => $invitation->matter?->title,
+            'expiresAt' => $expiresAt->toIso8601String(),
         ]);
     }
 
     /**
      * Auth: accept the invitation as the signed-in user. The token is bound
      * to the invitee email — a different signed-in user is rejected with the
-     * generic 422 {code: "invitation_invalid"} (C-05, no enumeration).
+     * generic 422 {code: "invitation_invalid"} (C-05, no enumeration); on
+     * web that renders as a page-level banner on the accept page.
      */
-    public function accept(Request $request, string $token): JsonResponse
+    public function accept(Request $request, string $token): JsonResponse|RedirectResponse
     {
         $user = $request->user();
         abort_unless($user instanceof User, 401);
 
         /** @var User $user */
-        $accepted = $this->invitations->accept($token, $user);
+        if ($request->wantsJson()) {
+            $accepted = $this->invitations->accept($token, $user);
 
-        return response()->json([
-            'data' => [
-                'user_id' => (string) $accepted->getKey(),
-                'org_id' => (string) $accepted->org_id,
-                'email' => $accepted->email,
-            ],
+            return response()->json([
+                'data' => [
+                    'user_id' => (string) $accepted->getKey(),
+                    'org_id' => (string) $accepted->org_id,
+                    'email' => $accepted->email,
+                ],
+            ]);
+        }
+
+        try {
+            $this->invitations->accept($token, $user);
+        } catch (InvitationInvalidException) {
+            // Generic invitation_invalid as a page-level banner on the accept
+            // page — no detail about which check failed (no enumeration).
+            return redirect()
+                ->route('invitations.show', ['token' => $token])
+                ->with('invitation_error', 'invitation_invalid');
+        }
+
+        return redirect('/')->with('toast', [
+            'message' => 'Welcome — your invitation has been accepted.',
+            'tone' => 'ok',
         ]);
     }
 }

@@ -50,6 +50,27 @@ class InvitationService
         ?Matter $matter,
         User $invitedBy
     ): Invitation {
+        return $this->inviteWithToken($org, $email, $role, $matter, $invitedBy)->invitation;
+    }
+
+    /**
+     * 004-D01 narrow addition: behaviorally identical to invite() — same
+     * validation, same stored state, same audit event, same queued mail —
+     * but also returns the one-time plaintext token so the admin controller
+     * can display the accept link exactly once.
+     *
+     * The token is never logged and never persisted beyond the hashed
+     * column; the DTO is request-scoped and never serialized.
+     *
+     * @throws ValidationException on bad role/email/matter/org
+     */
+    public function inviteWithToken(
+        Organization $org,
+        string $email,
+        string $role,
+        ?Matter $matter,
+        User $invitedBy
+    ): InvitationWithToken {
         // 001-D13: the system org must never accept user assignment —
         // invitations mint users, so it can never be their target.
         if ((string) $org->getKey() === Organization::SYSTEM_ID) {
@@ -78,9 +99,9 @@ class InvitationService
             ]);
         }
 
-        return DB::transaction(function () use ($org, $email, $role, $matter, $invitedBy): Invitation {
-            $token = $this->generateUniqueToken();
+        $token = $this->generateUniqueToken();
 
+        $invitation = DB::transaction(function () use ($org, $email, $role, $matter, $invitedBy, $token): Invitation {
             $invitation = Invitation::create([
                 'org_id' => $org->getKey(),
                 'email' => $email,
@@ -109,6 +130,8 @@ class InvitationService
 
             return $invitation;
         });
+
+        return new InvitationWithToken($invitation, $token);
     }
 
     /**

@@ -9,15 +9,22 @@ use App\Models\User;
 use App\Services\InvitationService;
 use Carbon\CarbonInterface;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\Validation\Rule;
+use Illuminate\View\View;
 
 /**
  * Admin invitation management (03-contract.md §Routes, admin section).
- * Backend only — no Blade per 001-D06; JSON responses.
  *
- * The token hash is NEVER serialized (leak sentinels, 00-brief.md).
+ * Dual response (spec 004 004-D01): web requests (Accept: text/html) receive
+ * Blade views / redirects; API clients ($request->wantsJson()) receive the
+ * existing JSON shapes unchanged.
+ *
+ * The token hash is NEVER serialized (leak sentinels, 00-brief.md). The
+ * plaintext token is flashed to the session exactly once on web create —
+ * shown once, never logged, never persisted.
  */
 class InvitationController extends Controller
 {
@@ -64,22 +71,50 @@ class InvitationController extends Controller
         ];
     }
 
-    public function index(Request $request): JsonResponse
+    public function index(Request $request): JsonResponse|View
     {
-        $invitations = Invitation::where('org_id', $this->admin($request)->org_id)
+        $admin = $this->admin($request);
+
+        $invitations = Invitation::where('org_id', $admin->org_id)
             ->orderByDesc('created_at')
             ->get();
 
-        return response()->json([
-            'data' => $invitations->map(fn (Invitation $invitation) => $this->invitationPayload($invitation)),
+        $payloads = $invitations->map(fn (Invitation $invitation) => $this->invitationPayload($invitation));
+
+        if ($request->wantsJson()) {
+            return response()->json(['data' => $payloads]);
+        }
+
+        // The admin's org matters — for the matter-scope select and for
+        // resolving matter titles in the table. The payload carries no
+        // token_hash (leak sentinels) — safe for Blade.
+        $matters = Matter::where('org_id', $admin->org_id)
+            ->orderBy('title')
+            ->get(['id', 'title']);
+
+        /** @var array<string, string> $matterTitles */
+        $matterTitles = $matters
+            ->mapWithKeys(fn (Matter $matter) => [(string) $matter->getKey() => $matter->title])
+            ->all();
+
+        /** @var array<string, string> $roleOptions */
+        $roleOptions = array_combine(InvitationService::validRoles(), InvitationService::validRoles());
+
+        return view('admin.invitations.index', [
+            'invitations' => $payloads,
+            'roleOptions' => $roleOptions,
+            'matterOptions' => ['' => 'Whole organization — no matter restriction'] + $matterTitles,
+            'matterTitles' => $matterTitles,
+            'orgName' => (string) $admin->organization->name,
         ]);
     }
 
     /**
      * Invite (email + role + optional matter scope). The plaintext token is
-     * mailed to the invitee; only its hash is stored.
+     * mailed to the invitee; only its hash is stored. On web the one-time
+     * accept link is flashed to the session (004-D01).
      */
-    public function store(Request $request): JsonResponse
+    public function store(Request $request): JsonResponse|RedirectResponse
     {
         $admin = $this->admin($request);
 
@@ -96,7 +131,7 @@ class InvitationController extends Controller
             $matter = Matter::where('org_id', $admin->org_id)->findOrFail($validated['matter_id']);
         }
 
-        $invitation = $this->invitations->invite(
+        $issued = $this->invitations->inviteWithToken(
             $admin->organization,
             $validated['email'],
             $validated['role'],
@@ -104,14 +139,26 @@ class InvitationController extends Controller
             $admin,
         );
 
-        return response()->json(['data' => $this->invitationPayload($invitation)], 201);
+        if ($request->wantsJson()) {
+            return response()->json(['data' => $this->invitationPayload($issued->invitation)], 201);
+        }
+
+        // 004-D01: the one-time accept link — flashed to the session, shown
+        // once on the index page, never logged, never persisted.
+        return redirect()
+            ->route('admin.invitations.index')
+            ->with('invitation_accept_url', route('invitations.show', ['token' => $issued->token]))
+            ->with('toast', [
+                'message' => "Invitation created for {$validated['email']}.",
+                'tone' => 'ok',
+            ]);
     }
 
     /**
      * Revoke a pending invitation. Idempotent; accepted invitations cannot
      * be revoked.
      */
-    public function destroy(Request $request, string $invitation): Response
+    public function destroy(Request $request, string $invitation): Response|RedirectResponse
     {
         $admin = $this->admin($request);
 
@@ -119,6 +166,14 @@ class InvitationController extends Controller
 
         $this->invitations->revoke($model, $admin);
 
-        return response()->noContent();
+        if ($request->wantsJson()) {
+            return response()->noContent();
+        }
+
+        // 03-contract.md C-03: toast confirming the revocation.
+        return redirect()->back()->with('toast', [
+            'message' => "Invitation for {$model->email} revoked.",
+            'tone' => 'ok',
+        ]);
     }
 }
