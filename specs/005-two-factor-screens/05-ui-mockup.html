@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Vision Law — spec 005 mockup · Two-factor authentication screens</title>
+<style>
+:root{
+  --vl-ink:#1F2A37; --vl-ink-2:#31404F; --vl-brass:#9A6823; --vl-brass-soft:#F6EED9;
+  --vl-paper:#F7F8FA; --vl-card:#FFFFFF; --vl-line:#E3E8EE; --vl-mut:#5B687C;
+  --vl-ok:#2F7D4F; --vl-ok-soft:#E6F2E9; --vl-bad:#B23B3B; --vl-bad-soft:#FBE8E8;
+  --vl-info:#285F8A; --vl-info-soft:#E7EFF6;
+  --r-card:10px; --r-in:8px;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--vl-paper);color:var(--vl-ink);
+  font:16px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
+h1,h2,h3,.serif{font-family:Georgia,"Times New Roman",serif;font-weight:600}
+.mocknav{position:sticky;top:0;z-index:50;background:var(--vl-ink);color:#fff;
+  padding:10px 20px;display:flex;gap:18px;align-items:center;font-size:14px;flex-wrap:wrap}
+.mocknav a{color:#cfe0f4;text-decoration:none;border-bottom:2px solid transparent;padding:2px 0}
+.mocknav a:hover{border-color:var(--vl-brass)}
+.mocknav .tag{margin-left:auto;font-size:12px;color:#9fb3c8;border:1px solid #3a4a5c;border-radius:999px;padding:2px 10px}
+section.screen{max-width:1120px;margin:0 auto;padding:36px 20px 8px}
+.eyebrow{font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--vl-brass);font-weight:700;margin:0 0 6px}
+.screen h2{font-size:30px;margin:0 0 6px}
+.screen .lede{color:var(--vl-mut);max-width:660px;margin:0 0 20px}
+.card{background:var(--vl-card);border:1px solid var(--vl-line);border-radius:var(--r-card);
+  padding:20px 24px;margin:0 0 20px}
+.card h3{margin:0 0 12px;font-size:19px}
+.narrow{max-width:560px;margin:0 auto}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;border-radius:var(--r-in);
+  padding:10px 18px;font-size:15px;font-weight:600;cursor:pointer;border:1px solid transparent;text-decoration:none}
+.btn-primary{background:var(--vl-ink);color:#fff}
+.btn-primary:hover{background:var(--vl-ink-2)}
+.btn-secondary{background:#fff;color:var(--vl-ink);border-color:var(--vl-line)}
+.btn-danger{background:var(--vl-bad);color:#fff}
+.btn-sm{padding:6px 12px;font-size:13px}
+.field{margin:0 0 14px}
+.field label{display:block;font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--vl-mut);
+  font-weight:700;margin:0 0 6px}
+.field input{width:100%;padding:10px 12px;font-size:15px;border:1px solid var(--vl-line);
+  border-radius:var(--r-in);background:#fff;color:var(--vl-ink)}
+.field input:focus{outline:2px solid var(--vl-info);outline-offset:1px;border-color:var(--vl-info)}
+.field .hint{font-size:13px;color:var(--vl-mut);margin-top:5px}
+.field .err{font-size:13px;color:var(--vl-bad);margin-top:5px;font-weight:600}
+.field input[aria-invalid="true"]{border-color:var(--vl-bad)}
+.code-input{font-family:ui-monospace,Menlo,monospace;font-size:22px !important;letter-spacing:.35em;text-align:center}
+.banner{border-radius:var(--r-card);padding:14px 18px;margin:0 0 20px;font-size:14px;border:1px solid}
+.banner strong{display:block;margin-bottom:2px}
+.banner.info{background:var(--vl-info-soft);border-color:#c3d6e6;color:var(--vl-ink)}
+.banner.brass{background:var(--vl-brass-soft);border-color:#e2cf9e;color:var(--vl-ink)}
+.banner.ok{background:var(--vl-ok-soft);border-color:#bfe0c9;color:var(--vl-ink)}
+.steps{display:flex;gap:0;margin:0 0 20px;flex-wrap:wrap}
+.step{flex:1;min-width:140px;padding:12px 14px;border:1px solid var(--vl-line);background:#fff;font-size:13px}
+.step:first-child{border-radius:var(--r-in) 0 0 var(--r-in)}
+.step:last-child{border-radius:0 var(--r-in) var(--r-in) 0}
+.step.done{background:var(--vl-ok-soft);border-color:#bfe0c9}
+.step.now{background:var(--vl-brass-soft);border-color:#e2cf9e;font-weight:700}
+.step .n{display:block;font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--vl-mut);margin-bottom:2px}
+.qrbox{width:200px;height:200px;border:1px solid var(--vl-line);border-radius:var(--r-in);
+  display:flex;align-items:center;justify-content:center;background:
+  repeating-conic-gradient(#dfe6ee 0 25%, #fff 0 50%) 0 0/20px 20px;color:var(--vl-mut);font-size:12px;margin:0 0 12px}
+.codes{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:12px 0}
+.codes code{font-family:ui-monospace,Menlo,monospace;font-size:14px;background:var(--vl-paper);
+  border:1px solid var(--vl-line);border-radius:6px;padding:8px 10px;text-align:center}
+.note{font-size:13px;color:var(--vl-mut);background:var(--vl-paper);border:1px solid var(--vl-line);
+  border-radius:var(--r-in);padding:10px 14px;margin:14px 0 0}
+.divider{display:flex;align-items:center;gap:12px;color:var(--vl-mut);font-size:13px;margin:18px 0}
+.divider::before,.divider::after{content:"";flex:1;height:1px;background:var(--vl-line)}
+.statusrow{display:flex;align-items:center;gap:10px;margin:0 0 6px;flex-wrap:wrap}
+.dot{width:10px;height:10px;border-radius:50%;background:var(--vl-ok)}
+.dot.off{background:#c3ccd6}
+footer{max-width:1120px;margin:40px auto;padding:0 20px 40px;color:var(--vl-mut);font-size:12px}
+@media(max-width:640px){
+  .screen h2{font-size:24px}
+  .btn{width:100%}
+  .codes{grid-template-columns:1fr}
+}
+</style>
+</head>
+<body>
+
+<nav class="mocknav" aria-label="Mockup sections">
+  <strong>spec 005 mockup</strong>
+  <a href="#s-enroll-fresh">Enroll · fresh</a>
+  <a href="#s-enroll-setup">Enroll · setup mode</a>
+  <a href="#s-enroll-done">Enroll · active</a>
+  <a href="#s-codes">Recovery codes</a>
+  <a href="#s-challenge">Challenge</a>
+  <span class="tag">SYNTHETIC DATA ONLY</span>
+</nav>
+
+<!-- ══════════════════ 1 · ENROLL · FRESH ══════════════════ -->
+<section class="screen" id="s-enroll-fresh">
+  <p class="eyebrow">01 · Authenticated · no 2FA yet</p>
+  <h2>Set up two-factor authentication</h2>
+  <p class="lede">Three steps. Your authenticator app (Google Authenticator, Authy, 1Password) generates a 6-digit code each time you sign in.</p>
+
+  <div class="steps">
+    <div class="step done"><span class="n">Step 1</span>Start setup</div>
+    <div class="step now"><span class="n">Step 2</span>Scan the code</div>
+    <div class="step"><span class="n">Step 3</span>Confirm</div>
+  </div>
+
+  <div class="card narrow">
+    <h3>Scan with your authenticator app</h3>
+    <div class="qrbox">[ QR code image ]</div>
+    <p class="note" style="margin-top:0">Can't scan? Enter this key manually: <strong style="font-family:ui-monospace,Menlo,monospace">JBSW Y3DP EHPK 3PXP</strong></p>
+    <form style="margin-top:16px">
+      <div class="field">
+        <label for="f-code">6-digit code</label>
+        <input id="f-code" class="code-input" inputmode="numeric" maxlength="6" placeholder="······" autocomplete="one-time-code">
+        <div class="hint">Enter the current code from your app to confirm setup.</div>
+      </div>
+      <button class="btn btn-primary" type="button" style="width:100%">Confirm and activate</button>
+    </form>
+  </div>
+
+  <div class="card narrow">
+    <h3>Code didn't work? (state)</h3>
+    <div class="field" style="margin-bottom:0">
+      <label for="f-code-err">6-digit code</label>
+      <input id="f-code-err" class="code-input" inputmode="numeric" maxlength="6" value="123456" aria-invalid="true" aria-describedby="e-code">
+      <div class="err" id="e-code">That code didn't work. Check your phone's clock and try the current code.</div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════ 2 · ENROLL · SETUP MODE ══════════════════ -->
+<section class="screen" id="s-enroll-setup">
+  <p class="eyebrow">02 · Org admin · restricted session</p>
+  <h2>One more step before you can continue</h2>
+  <p class="lede">Organization admins are required to use two-factor authentication. Your session is limited to this page until setup is complete — nothing else in the app is reachable right now.</p>
+
+  <div class="banner brass">
+    <strong>Restricted session</strong>
+    You're signed in, but only this page is available until two-factor authentication is active. This is deliberate — it's the policy doing its job.
+  </div>
+
+  <div class="card narrow">
+    <h3>Scan with your authenticator app</h3>
+    <div class="qrbox">[ QR code image ]</div>
+    <form style="margin-top:16px">
+      <div class="field">
+        <label for="f-code2">6-digit code</label>
+        <input id="f-code2" class="code-input" inputmode="numeric" maxlength="6" placeholder="······" autocomplete="one-time-code">
+      </div>
+      <button class="btn btn-primary" type="button" style="width:100%">Confirm and continue</button>
+    </form>
+    <p class="note">Once confirmed, your full session unlocks immediately — no need to sign in again.</p>
+  </div>
+</section>
+
+<!-- ══════════════════ 3 · ENROLL · ACTIVE ══════════════════ -->
+<section class="screen" id="s-enroll-done">
+  <p class="eyebrow">03 · Authenticated · 2FA active</p>
+  <h2>Two-factor authentication</h2>
+  <p class="lede">Manage the second factor on your account.</p>
+
+  <div class="card narrow">
+    <div class="statusrow"><span class="dot"></span><strong>Active</strong><span style="color:var(--vl-mut);font-size:13px">— confirmed Oct 7, 2026</span></div>
+    <p style="color:var(--vl-mut);font-size:14px">Your authenticator app generates the code at each sign-in. Keep your recovery codes somewhere safe — they're the way back in if you lose your phone.</p>
+    <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:14px">
+      <button class="btn btn-secondary btn-sm" type="button">Regenerate recovery codes</button>
+      <button class="btn btn-secondary btn-sm" type="button">Turn off two-factor</button>
+    </div>
+    <p class="note">Turning off requires re-entering your password. Regenerating codes invalidates the old set immediately.</p>
+  </div>
+</section>
+
+<!-- ══════════════════ 4 · RECOVERY CODES (ONCE) ══════════════════ -->
+<section class="screen" id="s-codes">
+  <p class="eyebrow">04 · Shown once after confirmation</p>
+  <h2>Save your recovery codes</h2>
+  <p class="lede">Each code works once, if you ever lose access to your authenticator app.</p>
+
+  <div class="banner brass">
+    <strong>Shown once — store them now</strong>
+    This is the only time these codes are displayed in full. If you close this page, you'll need to regenerate a new set.
+  </div>
+
+  <div class="card narrow">
+    <div class="codes">
+      <code>7h2k-9qpd</code><code>3m8x-2vbn</code>
+      <code>q5rt-8wyz</code><code>k9pl-4mno</code>
+      <code>2abc-7def</code><code>8ghi-3jkl</code>
+      <code>6mno-1pqr</code><code>4stu-9vwx</code>
+      <code>1yza-5bcd</code><code>0efg-6hij</code>
+    </div>
+    <button class="btn btn-primary" type="button" style="width:100%">I've saved them — continue</button>
+  </div>
+</section>
+
+<!-- ══════════════════ 5 · CHALLENGE ══════════════════ -->
+<section class="screen" id="s-challenge">
+  <p class="eyebrow">05 · Guest · after the password step</p>
+  <h2>Check your authenticator app</h2>
+  <p class="lede">Enter the 6-digit code for <strong>ian.b@justicequest.pro</strong>.</p>
+
+  <div class="card narrow">
+    <form>
+      <div class="field">
+        <label for="c-code">6-digit code</label>
+        <input id="c-code" class="code-input" inputmode="numeric" maxlength="6" placeholder="······" autocomplete="one-time-code">
+      </div>
+      <button class="btn btn-primary" type="button" style="width:100%">Verify and sign in</button>
+    </form>
+    <div class="divider">or</div>
+    <form>
+      <div class="field">
+        <label for="c-rec">Recovery code</label>
+        <input id="c-rec" class="code-input" style="font-size:16px;letter-spacing:.1em" placeholder="xxxx-xxxx">
+        <div class="hint">Lost your phone? A recovery code works once, then it's gone.</div>
+      </div>
+      <button class="btn btn-secondary" type="button" style="width:100%">Use recovery code</button>
+    </form>
+  </div>
+
+  <div class="card narrow">
+    <h3>Wrong code (state)</h3>
+    <div class="field" style="margin-bottom:0">
+      <label for="c-code-err">6-digit code</label>
+      <input id="c-code-err" class="code-input" inputmode="numeric" maxlength="6" value="000000" aria-invalid="true" aria-describedby="ec-code">
+      <div class="err" id="ec-code">That code didn't work. Try the current code from your app.</div>
+    </div>
+    <p class="note">One message for every failure — wrong code, wrong recovery code, used recovery code. Nothing to probe.</p>
+  </div>
+</section>
+
+<footer>
+  Vision Law · spec 005 mockup · synthetic data only · no real client information ·
+  The QR placeholder stands in for the live <code>two-factor.qr-code</code> route — the secret never appears in page source.
+</footer>
+
+</body>
+</html>
