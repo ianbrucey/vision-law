@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\View\Components\Ui\Status;
+use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\Blade;
 use Illuminate\Support\MessageBag;
 use Illuminate\Support\ViewErrorBag;
@@ -11,8 +12,10 @@ use InvalidArgumentException;
 use Tests\TestCase;
 
 /**
- * Spec 002 — UI foundation, tickets T-02 (primitive form components) and T-03
- * (display components). Verdicts C-02/C-03/C-04/C-06 (partial) and C-09 live here.
+ * Spec 002 — UI foundation, tickets T-02 (primitive form components), T-03
+ * (display components), T-04 (composite components) and T-05 (app shell +
+ * patterns catalogue). Verdicts C-02 (complete)/C-03/C-04/C-06 (partial),
+ * C-07, C-08, C-09 and C-10 live here.
  */
 class UiComponentsTest extends TestCase
 {
@@ -363,6 +366,113 @@ class UiComponentsTest extends TestCase
             '<x-ui.banner>Body</x-ui.banner>' => 'requires a "tone"',
             '<x-ui.kv />' => 'requires "items"',
             '<x-ui.stat label="L" />' => 'requires "value" and "label"',
+        ] as $template => $message) {
+            try {
+                Blade::render($template);
+                $this->fail("Expected an exception for: {$template}");
+            } catch (ViewException $e) {
+                $this->assertInstanceOf(InvalidArgumentException::class, $this->rootCause($e));
+                $this->assertStringContainsString($message, $e->getMessage());
+            }
+        }
+    }
+
+    // ------------------------------------------------------------------
+    // Ticket 4 — composite components
+    // ------------------------------------------------------------------
+
+    /**
+     * C-02 (COMPLETE): the full T-04 inventory renders with defaults,
+     * no exception.
+     */
+    public function test_composite_components_render_with_defaults(): void
+    {
+        $table = Blade::render(
+            '<x-ui.table><x-slot:head><th>Document</th><th>Status</th></x-slot:head>'
+            .'<x-slot:body><tr><td>Fee agreement</td><td>Final</td></tr></x-slot:body></x-ui.table>'
+        );
+        $this->assertStringContainsString('<table', $table);
+        $this->assertStringContainsString('vl-table', $table);
+        $this->assertStringContainsString('<th>Document</th>', $table);
+        $this->assertStringContainsString('overflow-x-auto', $table);
+
+        $modal = Blade::render(
+            '<x-ui.modal id="demo-modal" title="Delete draft versions?">'
+            .'Body copy.<x-slot:footer><x-ui.button variant="danger" size="sm">Delete</x-ui.button></x-slot:footer></x-ui.modal>'
+        );
+        $this->assertStringContainsString('role="dialog"', $modal);
+        $this->assertStringContainsString('aria-modal="true"', $modal);
+        $this->assertStringContainsString('vl-open-modal', $modal);
+        $this->assertStringContainsString('vl-close-modal', $modal);
+        $this->assertStringContainsString('x-trap', $modal);
+        $this->assertStringContainsString('x-cloak', $modal);
+        $this->assertStringContainsString('demo-modal-title', $modal);
+        $this->assertStringContainsString('Delete draft versions?', $modal);
+
+        // Toast with no flash renders nothing (fail-closed, never an empty box).
+        $this->assertSame('', trim(Blade::render('<x-ui.toast />')));
+
+        $empty = Blade::render(
+            '<x-ui.empty title="No documents yet" actionHref="/upload" actionLabel="Upload your first document">'
+            .'Uploaded files and generated drafts will appear here.</x-ui.empty>'
+        );
+        $this->assertStringContainsString('No documents yet', $empty);
+        $this->assertStringContainsString('border-dashed', $empty);
+        $this->assertStringContainsString('href="/upload"', $empty);
+        $this->assertStringContainsString('Upload your first document', $empty);
+
+        $subNav = Blade::render('<x-ui.sub-nav :items="$items" />', [
+            'items' => [
+                ['label' => 'Overview', 'href' => '#overview', 'active' => true],
+                ['label' => 'Documents', 'href' => '#documents', 'active' => false],
+            ],
+        ]);
+        $this->assertStringContainsString('aria-label="Sections"', $subNav);
+        $this->assertStringContainsString('aria-current="page"', $subNav);
+        $this->assertStringContainsString('border-vl-brass', $subNav);
+
+        $paginator = new LengthAwarePaginator(range(1, 30), 30, 15, 1, ['path' => '/docs']);
+        $pagination = Blade::render('<x-ui.pagination :paginator="$paginator" />', ['paginator' => $paginator]);
+        $this->assertStringContainsString('aria-label="Pagination"', $pagination);
+        $this->assertStringContainsString('aria-current="page"', $pagination);
+        $this->assertStringContainsString('page=2', $pagination);
+
+        // A single page renders nothing.
+        $single = new LengthAwarePaginator(range(1, 5), 5, 15, 1, ['path' => '/docs']);
+        $this->assertSame('', trim(Blade::render('<x-ui.pagination :paginator="$paginator" />', ['paginator' => $single])));
+    }
+
+    /**
+     * C-10: toast renders from session flash — tone styling, escaped message,
+     * fail-closed on unknown tone.
+     */
+    public function test_toast_renders_from_session_flash(): void
+    {
+        session()->flash('toast', ['tone' => 'ok', 'message' => 'Draft exported — PDF saved.']);
+        $html = Blade::render('<x-ui.toast />');
+        $this->assertStringContainsString('role="status"', $html);
+        $this->assertStringContainsString('Draft exported', $html);
+        $this->assertStringContainsString('bg-vl-ok-soft', $html);
+
+        // Unknown tone fails closed to info; the message is escaped, never raw HTML.
+        session()->flash('toast', ['tone' => 'wat', 'message' => '<script>alert(1)</script>']);
+        $html = Blade::render('<x-ui.toast />');
+        $this->assertStringContainsString('bg-vl-info-soft', $html);
+        $this->assertStringNotContainsString('<script>', $html);
+        $this->assertStringContainsString('&lt;script&gt;', $html);
+    }
+
+    /**
+     * Composite components with required props fail loud on missing input.
+     */
+    public function test_composite_components_fail_loud_on_missing_required_props(): void
+    {
+        foreach ([
+            '<x-ui.modal title="T">Body</x-ui.modal>' => 'requires an "id"',
+            '<x-ui.modal id="m">Body</x-ui.modal>' => 'requires a "title"',
+            '<x-ui.empty>Body</x-ui.empty>' => 'requires a "title"',
+            '<x-ui.sub-nav />' => 'requires "items"',
+            '<x-ui.pagination />' => 'requires a "paginator"',
         ] as $template => $message) {
             try {
                 Blade::render($template);
