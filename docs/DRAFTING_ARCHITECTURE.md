@@ -142,7 +142,18 @@ structured draft → HTML (paginated, styled) → PDF via headless Chromium → 
 
 ## 9. Approval gate
 
-No drafting feature brief may be written — and no drafting tickets planned — until this document is approved by the product owner. Approval of this document requires decisions on O-D1, O-D2, and O-D3; O-D4 (provider choice) may trail if the gateway interface is fixed first.
+No drafting feature brief may be written — and no drafting tickets planned — until this document is approved by the product owner.
+
+### Decision record — 2026-10-06 · Decided by Ian Bruce
+
+**All drafting architecture open items (O-D1–O-D4) are DEFERRED until the drafting phase.**
+
+- **Rationale:** these decisions cannot be made well in the abstract. The serialization format (O-D1), the merge/coauthoring UX (O-D2), the agent-loop home (O-D3), and the provider choice (O-D4) all need to be *seen and played with* before they are locked.
+- **Plan:** when the drafting phase arrives (roadmap Phase 8), build a **mock / clickable interface** of the drafting flow first — template → draft instance → agent-fill → HTML preview → section-level edit → approve — and use it to play with the concepts. O-D1–O-D4 are decided *against the mock*, not against prose.
+- **Stop gate stays in force:** no drafting implementation until (a) the mock interface is built and reviewed by the product owner, (b) O-D1, O-D2, and O-D3 are decided, and (c) this document is approved. O-D4 (provider choice) may trail if the AI gateway interface is fixed first.
+- P-D1–P-D3 remain proposed; they are taken up during or after the mock review as their dependencies dictate.
+
+This supersedes the earlier approval-gate wording (which required O-D1–O-D3 decisions up front). The requirement for decisions stands — the *timing* moves to the mock review, and the mock is the decision instrument.
 
 ## 10. Source map
 
