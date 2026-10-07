@@ -17,6 +17,7 @@ use App\Http\Middleware\RequireOrgAdmin;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\Route;
 use Laravel\Fortify\Features;
+use Laravel\Fortify\Http\Requests\TwoFactorLoginRequest;
 
 // ── Spec 003 T-05: public site + auth views ──
 // Fortify is headless (config/fortify.php: views => false), so it registers
@@ -65,6 +66,23 @@ Route::post('/forgot-password', [PasswordResetLinkController::class, 'store'])
 Route::post('/two-factor-challenge', [TwoFactorChallengeController::class, 'store'])
     ->middleware(['guest:'.config('fortify.guard'), 'throttle:10,1'])
     ->name('two-factor.login.store');
+
+// ── Spec 005 T-02: 2FA challenge page (005-D02) ──
+// GET two-factor-challenge, named two-factor.login — the name Fortify's
+// post-password redirect targets. The guard is Fortify's own rule: only
+// with a live challenged-user session ($request->hasChallengedUser());
+// otherwise redirect to login (U-2FA-05). Deliberately no guest
+// middleware: a signed-in user without a challenged session must land
+// on login, not the authenticated home.
+Route::get('/two-factor-challenge', function (TwoFactorLoginRequest $request) {
+    if (! $request->hasChallengedUser()) {
+        return redirect()->route('login');
+    }
+
+    return view('auth.two-factor-challenge', [
+        'email' => $request->challengedUser()->email,
+    ]);
+})->name('two-factor.login');
 
 // ── Spec 005 T-01: 2FA enrollment page (005-D02) ──
 // GET user/two-factor, named two-factor.settings. Fortify is headless

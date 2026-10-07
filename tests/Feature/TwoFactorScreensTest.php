@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Http\Middleware\RestrictToTwoFactorSetup;
+use App\Http\Responses\FailedTwoFactorLoginResponse;
 use App\Models\Role;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -240,5 +241,133 @@ class TwoFactorScreensTest extends TestCase
         $page = $this->get(route('two-factor.settings'))->assertOk();
         $page->assertSee('Set up two-factor authentication', false);
         $page->assertDontSee('Restricted session', false);
+    }
+
+    /**
+     * C-03: password step → challenge page renders → valid TOTP →
+     * authenticated (org admin with confirmed 2FA, U-2FA-02); the
+     * recovery-code path consumes the code.
+     */
+    public function test_challenge_accepts_totp_and_recovery_code(): void
+    {
+        $loader = FixtureLoader::load();
+        $admin = $loader->user('user_admin');
+        $google2fa = new Google2FA;
+
+        // Password step → Fortify redirects to the challenge page (005-D02).
+        $this->post('/login', [
+            'email' => (string) $admin->email,
+            'password' => FixtureLoader::DEFAULT_PASSWORD,
+        ])->assertRedirect(route('two-factor.login'));
+        $this->assertGuest();
+        $this->assertTrue(session()->has('login.id'));
+
+        // The challenge page renders: email shown (not editable), both
+        // forms present.
+        $page = $this->get(route('two-factor.login'))->assertOk();
+        $page->assertSee('Check your authenticator app', false);
+        $page->assertSee((string) $admin->email, false);
+        $page->assertSee('Verify and sign in', false);
+        $page->assertSee('Use recovery code', false);
+
+        // Valid TOTP → authenticated. The code comes from the real
+        // generated secret (T-01 lesson: never swap it); the next 30s
+        // window keeps it replay-safe.
+        $secret = decrypt($admin->two_factor_secret);
+        $otp = $google2fa->oathTotp($secret, (int) (time() / 30) + 1);
+        $this->post('/two-factor-challenge', ['code' => $otp])
+            ->assertRedirect();
+        $this->assertAuthenticatedAs($admin);
+        $this->assertFalse(session()->has('login.id'));
+
+        // Recovery-code path: fresh challenged session, one unused code.
+        $this->post(route('logout'))->assertRedirect('/');
+        $this->post('/login', [
+            'email' => (string) $admin->email,
+            'password' => FixtureLoader::DEFAULT_PASSWORD,
+        ])->assertRedirect(route('two-factor.login'));
+
+        $codes = $admin->refresh()->recoveryCodes();
+        $this->assertCount(10, $codes);
+
+        $this->post('/two-factor-challenge', ['recovery_code' => $codes[0]])
+            ->assertRedirect();
+        $this->assertAuthenticatedAs($admin);
+
+        // The code is consumed: replaced with a fresh one, not reusable.
+        $remaining = $admin->refresh()->recoveryCodes();
+        $this->assertCount(10, $remaining);
+        $this->assertNotContains($codes[0], $remaining);
+    }
+
+    /**
+     * C-03: a bad TOTP code, a bad recovery code, and a consumed recovery
+     * code all fail with the same generic, non-enumerating message
+     * (005-D05) — same key, same text, still a guest.
+     */
+    public function test_challenge_rejects_invalid_code_generically(): void
+    {
+        $loader = FixtureLoader::load();
+        $admin = $loader->user('user_admin');
+        $email = (string) $admin->email;
+        $message = FailedTwoFactorLoginResponse::MESSAGE;
+
+        $startChallenge = function () use ($email): void {
+            $this->post('/login', [
+                'email' => $email,
+                'password' => FixtureLoader::DEFAULT_PASSWORD,
+            ])->assertRedirect(route('two-factor.login'));
+        };
+
+        // Bad TOTP → generic error, still a guest, challenge session intact.
+        $startChallenge();
+        $this->post('/two-factor-challenge', ['code' => '000000'])
+            ->assertRedirect(route('two-factor.login'))
+            ->assertSessionHasErrors(['code' => $message]);
+        $this->assertGuest();
+        $this->assertTrue(session()->has('login.id'));
+
+        // Bad recovery code → the SAME key and message (no enumeration).
+        $this->post('/two-factor-challenge', ['recovery_code' => 'nope-nope'])
+            ->assertRedirect(route('two-factor.login'))
+            ->assertSessionHasErrors(['code' => $message]);
+        $this->assertGuest();
+
+        // A consumed recovery code fails identically: use one, then replay it.
+        $codes = $admin->refresh()->recoveryCodes();
+        $this->post('/two-factor-challenge', ['recovery_code' => $codes[0]])
+            ->assertRedirect();
+        $this->assertAuthenticatedAs($admin);
+
+        $this->post(route('logout'))->assertRedirect('/');
+        $startChallenge();
+        $this->post('/two-factor-challenge', ['recovery_code' => $codes[0]])
+            ->assertRedirect(route('two-factor.login'))
+            ->assertSessionHasErrors(['code' => $message]);
+        $this->assertGuest();
+        // The rendered page shows the single generic message
+        // (HTML-escaped). A fresh failure feeds the flash directly into
+        // the GET: reading the session via assertSessionHasErrors ages
+        // flash data, so the render check needs its own request pair.
+        $this->post('/two-factor-challenge', ['code' => '000000'])
+            ->assertRedirect(route('two-factor.login'));
+        $this->get(route('two-factor.login'))->assertOk()
+            ->assertSee('That code didn&#039;t work. Try the current code from your app.', false);
+    }
+
+    /**
+     * U-2FA-05: the challenge page is unreachable without a live
+     * challenged-user session — guests and signed-in users alike land on
+     * login (no challenge surface without the session).
+     */
+    public function test_challenge_without_challenged_session_redirects_to_login(): void
+    {
+        $this->get(route('two-factor.login'))->assertRedirect(route('login'));
+
+        $loader = FixtureLoader::load();
+        $viewer = $loader->user('user_viewer');
+        $this->actingAs($viewer);
+        $this->assertFalse(session()->has('login.id'));
+        $this->get(route('two-factor.login'))->assertRedirect(route('login'));
     }
 }
