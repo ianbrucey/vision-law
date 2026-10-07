@@ -129,30 +129,7 @@ class InvitationService
 
         /** @var Invitation $invitation */
         return DB::transaction(function () use ($invitation, $user): User {
-            // Existing org member accepting a matter-scoped invitation: add
-            // the grant (evaluation of grants is T-06's AccessControl; this
-            // is row creation only).
-            if ($invitation->matter_id !== null) {
-                MatterGrant::firstOrCreate(
-                    [
-                        'matter_id' => $invitation->matter_id,
-                        'user_id' => $user->getKey(),
-                    ],
-                    [
-                        'org_id' => $invitation->org_id,
-                        'role' => $this->matterRoleFor((string) $invitation->role),
-                        'granted_by' => $invitation->invited_by,
-                    ]
-                );
-
-                AuditLogger::log('matter.grant.created', $user, [
-                    'actor_id' => (string) $user->getKey(),
-                    'matter_id' => (string) $invitation->matter_id,
-                    'subject' => ['type' => 'user', 'id' => (string) $user->getKey()],
-                    'role' => $this->matterRoleFor((string) $invitation->role),
-                    'granted_by' => (string) $invitation->invited_by,
-                ]);
-            }
+            $this->grantMatterScope($invitation, $user);
 
             $invitation->forceFill(['accepted_at' => now()])->save();
 
@@ -297,5 +274,38 @@ class InvitationService
         return in_array($orgRole, ['matter_owner', 'matter_admin', 'editor', 'viewer'], true)
             ? $orgRole
             : 'viewer';
+    }
+
+    /**
+     * Create the matter-scoped grant for an invitation acceptance (row
+     * creation only — evaluation of grants is T-06's AccessControl).
+     * Idempotent: safe to call for both new-user registration (CreateNewUser,
+     * T-04) and existing-user accept() (this service).
+     */
+    public function grantMatterScope(Invitation $invitation, User $user): void
+    {
+        if ($invitation->matter_id === null) {
+            return;
+        }
+
+        MatterGrant::firstOrCreate(
+            [
+                'matter_id' => $invitation->matter_id,
+                'user_id' => $user->getKey(),
+            ],
+            [
+                'org_id' => $invitation->org_id,
+                'role' => $this->matterRoleFor((string) $invitation->role),
+                'granted_by' => $invitation->invited_by,
+            ]
+        );
+
+        AuditLogger::log('matter.grant.created', $user, [
+            'actor_id' => (string) $user->getKey(),
+            'matter_id' => (string) $invitation->matter_id,
+            'subject' => ['type' => 'user', 'id' => (string) $user->getKey()],
+            'role' => $this->matterRoleFor((string) $invitation->role),
+            'granted_by' => (string) $invitation->invited_by,
+        ]);
     }
 }

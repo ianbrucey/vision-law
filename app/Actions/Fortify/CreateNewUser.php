@@ -7,6 +7,7 @@ use App\Models\Organization;
 use App\Models\Role;
 use App\Models\User;
 use App\Services\AuditLogger;
+use App\Services\InvitationService;
 use Carbon\CarbonInterface;
 use Illuminate\Http\Exceptions\HttpResponseException;
 use Illuminate\Support\Facades\DB;
@@ -77,6 +78,10 @@ class CreateNewUser implements CreatesNewUsers
                     'role' => $role,
                     'invited_by' => (string) $invitation->invited_by,
                 ]);
+
+                // Matter-scoped invitation: the new user gets the grant here.
+                // (T-05 follow-up: accept() only covers existing users.)
+                app(InvitationService::class)->grantMatterScope($invitation, $user);
             }
 
             AuditLogger::log('user.created', $user, [

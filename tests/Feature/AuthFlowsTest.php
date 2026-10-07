@@ -3,6 +3,9 @@
 namespace Tests\Feature;
 
 use App\Models\AuditEvent;
+use App\Models\Invitation;
+use App\Models\MatterGrant;
+use Illuminate\Support\Str;
 use App\Models\Organization;
 use App\Models\User;
 use Illuminate\Auth\Notifications\ResetPassword;
@@ -617,5 +620,49 @@ class AuthFlowsTest extends TestCase
         }
         $this->assertArrayNotHasKey('email', $payload);
         $this->assertArrayHasKey('email_domain_digest', $payload);
+    }
+
+    /**
+     * A new user registering with a matter-scoped invitation token gets the
+     * matter grant at registration (T-05 follow-up: accept() only covered
+     * existing users).
+     */
+    public function test_invited_new_user_registration_creates_matter_grant(): void
+    {
+        $fixtures = FixtureLoader::load();
+        $this->fakeHibp();
+        Notification::fake();
+
+        $org = $fixtures->org('org_sterling');
+        $admin = $fixtures->user('user_admin');
+        $matter = $fixtures->matter('matter_001');
+
+        $token = Str::random(64);
+        Invitation::create([
+            'org_id' => $org->getKey(),
+            'email' => 'grant.invitee@sterling.test',
+            'token_hash' => hash('sha256', $token),
+            'role' => 'viewer',
+            'matter_id' => $matter->getKey(),
+            'invited_by' => $admin->getKey(),
+            'expires_at' => now()->addDays(7),
+        ]);
+
+        $this->postJson('/register', [
+            'name' => 'Grant Invitee',
+            'email' => 'grant.invitee@sterling.test',
+            'password' => 'Correct-Horse-99-Battery',
+            'invitation_token' => $token,
+        ])->assertCreated();
+
+        $user = User::where('email', 'grant.invitee@sterling.test')->firstOrFail();
+        $this->assertDatabaseHas('matter_grants', [
+            'matter_id' => (string) $matter->getKey(),
+            'user_id' => (string) $user->getKey(),
+        ]);
+        $this->assertDatabaseHas('audit_events', [
+            'event' => 'matter.grant.created',
+            'org_id' => (string) $org->getKey(),
+        ]);
     }
 }
