@@ -1,0 +1,14 @@
+[Unit]
+Description=Vision Law web (php artisan serve :3100)
+After=network.target
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/opt/vision-law
+ExecStart=/usr/bin/php /opt/vision-law/artisan serve --host=0.0.0.0 --port=3100
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

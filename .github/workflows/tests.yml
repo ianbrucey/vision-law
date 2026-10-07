@@ -35,7 +35,7 @@ jobs:
       DB_PORT: 5432
       DB_DATABASE: vision_law_test
       DB_USERNAME: postgres
-      DB_PASSWORD: ""
+      DB_PASSWORD: postgres
 
     steps:
       - name: Checkout code
@@ -72,7 +72,23 @@ jobs:
       - name: Tests (PostgreSQL)
         run: php artisan test
 
-# Deploy job intentionally omitted: no server wiring yet.
-# When the dev-server deploy is set up, add a deploy job here that runs only on
-# push to main after ci passes — see the Haven repo's tests.yml for the pattern
-# (SSH deploy key secret, remote deploy.sh, post-deploy smoke check).
+  deploy:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: ci
+    runs-on: ubuntu-latest
+    concurrency: deploy-visionlaw
+    steps:
+      - name: Deploy to dev server
+        env:
+          DEPLOY_KEY: ${{ secrets.VISIONLAW_DEPLOY_KEY }}
+        run: |
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "$DEPLOY_KEY" > ~/.ssh/id_deploy
+          chmod 600 ~/.ssh/id_deploy
+          ssh-keyscan -t ed25519 172.235.37.44 >> ~/.ssh/known_hosts 2>/dev/null
+          # The server-side key is forced-command: any remote command runs /opt/vision-law/deploy.sh
+          ssh -i ~/.ssh/id_deploy -o IdentitiesOnly=yes -o StrictHostKeyChecking=yes root@172.235.37.44 true
+          rm -f ~/.ssh/id_deploy
+
+      - name: Smoke check
+        run: curl -fsS --retry 10 --retry-delay 3 --retry-all-errors -o /dev/null http://172.235.37.44:3100/up
