@@ -118,9 +118,15 @@ class FixtureLoader
                     'name' => $user['name'],
                     // The 'hashed' cast hashes this on set.
                     'password' => self::DEFAULT_PASSWORD,
-                    'email_verified_at' => now(),
                 ]
             );
+
+            // T-04: email_verified_at is deliberately NOT fillable on the
+            // User model, so firstOrCreate() would silently drop it — fixture
+            // users must be verified for the login flows under test.
+            if ($model->email_verified_at === null) {
+                $model->forceFill(['email_verified_at' => now()])->save();
+            }
 
             if (! empty($user['mfa'])) {
                 // Fixture-only MFA enrollment. Fortify encrypts these columns
