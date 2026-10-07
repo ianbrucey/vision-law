@@ -33,18 +33,18 @@ class AuditLogger
      * @param  array<mixed>  $payload
      *
      * @throws InvalidPayloadException when the payload contains privileged keys
-     * @throws \InvalidArgumentException when neither actor nor matter resolves a tenant
+     * @throws \InvalidArgumentException when neither actor, matter, nor explicit orgId resolves a tenant
      */
-    public static function log(string $event, ?User $actor, array $payload, ?Matter $matter = null): AuditEvent
+    public static function log(string $event, ?User $actor, array $payload, ?Matter $matter = null, ?string $explicitOrgId = null): AuditEvent
     {
         self::assertNoPrivilegedKeys($payload);
 
         // ?? already treats a null $actor as "not set" — no nullsafe needed.
-        $orgId = $actor->org_id ?? $matter?->org_id;
+        $orgId = $explicitOrgId ?? $actor->org_id ?? $matter?->org_id;
 
         if ($orgId === null) {
             throw new \InvalidArgumentException(
-                'AuditLogger::log() requires an actor or a matter to resolve the tenant org_id.'
+                'AuditLogger::log() requires an actor, a matter, or an explicit orgId to resolve the tenant org_id.'
             );
         }
 

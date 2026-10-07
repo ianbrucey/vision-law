@@ -596,4 +596,26 @@ class AuthFlowsTest extends TestCase
             }
         }
     }
+
+    /**
+     * Unknown-email login failures are audited against the system org
+     * (001-D13): never skipped, never misattributed, no enumeration.
+     */
+    public function test_unknown_email_login_failure_audited_under_system_org(): void
+    {
+        $this->postJson('/login', ['email' => 'nobody@nowhere.test', 'password' => 'wrong-password-1'])
+            ->assertStatus(422)
+            ->assertJson(['code' => 'invalid_credentials']);
+
+        $event = AuditEvent::query()->where('event', 'auth.login.failed')->sole();
+        $this->assertSame(Organization::SYSTEM_ID, (string) $event->org_id);
+        $this->assertNull($event->actor_id);
+
+        $payload = $event->payload;
+        if (is_string($payload)) {
+            $payload = json_decode($payload, true);
+        }
+        $this->assertArrayNotHasKey('email', $payload);
+        $this->assertArrayHasKey('email_domain_digest', $payload);
+    }
 }

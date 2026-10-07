@@ -2,6 +2,7 @@
 
 namespace App\Actions\Fortify;
 
+use App\Models\Organization;
 use App\Models\User;
 use App\Services\AuditLogger;
 use App\Services\LoginAttemptService;
@@ -77,19 +78,17 @@ class AttemptLogin
         $outcome = $this->attempts->recordFailure($email, $request->ip());
 
         // The payload carries no user identifier (no enumeration); the tenant
-        // resolves from the matched user. Unknown emails have no tenant —
-        // the event is skipped, never misattributed.
-        if ($user instanceof User) {
-            AuditLogger::log('auth.login.failed', $user, [
-                'ip' => $request->ip(),
-                'email_domain_digest' => LoginAttemptService::emailDomainDigest($email),
-            ]);
-        }
+        // resolves from the matched user. Unknown emails have no user tenant —
+        // the event is attributed to the system org (001-D13): never skipped,
+        // never misattributed to a real org.
+        $auditOrgId = $user instanceof User ? $user->org_id : Organization::system()->getKey();
+        AuditLogger::log('auth.login.failed', $user, [
+            'ip' => $request->ip(),
+            'email_domain_digest' => LoginAttemptService::emailDomainDigest($email),
+        ], explicitOrgId: $auditOrgId);
 
         if ($outcome->isLockedOut()) {
-            if ($user instanceof User) {
-                AuditLogger::log('auth.login.locked_out', $user, ['ip' => $request->ip()]);
-            }
+            AuditLogger::log('auth.login.locked_out', $user, ['ip' => $request->ip()], explicitOrgId: $auditOrgId);
 
             throw new HttpResponseException(
                 response()->json([

@@ -30,6 +30,31 @@ class Organization extends Model
     }
 
     /**
+     * Well-known UUID of the system organization (001-D13): the tenant that
+     * owns audit events no real org can be attributed to (e.g. login failures
+     * for unknown emails). Never listed, never assignable to users.
+     */
+    public const SYSTEM_ID = '00000000-0000-0000-0000-000000000000';
+
+    /**
+     * The system organization, created on first use.
+     */
+    public static function system(): self
+    {
+        // NOTE: 'id' is intentionally NOT in $fillable, so firstOrCreate()
+        // would silently drop the explicit UUID and HasUuids would generate a
+        // v7 instead. Direct assignment bypasses mass-assignment guards here.
+        $org = static::query()->where('id', static::SYSTEM_ID)->first();
+        if ($org === null) {
+            $org = new static(['name' => 'System', 'slug' => 'system']);
+            $org->id = static::SYSTEM_ID;
+            $org->save();
+        }
+
+        return $org;
+    }
+
+    /**
      * @return HasMany<User, $this>
      */
     public function users(): HasMany
