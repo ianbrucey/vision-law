@@ -124,4 +124,50 @@ class AdminInvitationsUiTest extends TestCase
         $html->assertSee('Revoked');
         $html->assertDontSee('revoke-'.$invitation->getKey());
     }
+
+    /**
+     * C-04: the authorization matrix for the admin invitation routes —
+     * attorney, viewer, and anonymous actors are denied on GET, POST, and
+     * DELETE /admin/invitations. Existing RequireOrgAdmin semantics hold:
+     * 403 for signed-in non-admins, and the auth gate bounces anonymous
+     * users to the sign-in page.
+     */
+    public function test_non_admin_cannot_access_invitation_admin_ui(): void
+    {
+        $admin = $this->fixtures->user('user_admin')->fresh();
+
+        $invitation = app(InvitationService::class)->inviteWithToken(
+            $admin->organization,
+            'matrix-denied@sterling.test',
+            'viewer',
+            null,
+            $admin,
+        )->invitation;
+
+        $deleteUrl = '/admin/invitations/'.$invitation->getKey();
+
+        // Anonymous first (actingAs persists across requests, so the guest
+        // block must run before any signed-in actor): the auth gate bounces
+        // to the sign-in page.
+        $this->get('/admin/invitations', ['Accept' => 'text/html'])->assertRedirect('/login');
+        $this->post('/admin/invitations', [
+            'email' => 'x@sterling.test',
+            'role' => 'viewer',
+        ], ['Accept' => 'text/html'])->assertRedirect('/login');
+        $this->delete($deleteUrl, [], ['Accept' => 'text/html'])->assertRedirect('/login');
+
+        foreach (['user_attorney_nogrant', 'user_viewer'] as $userKey) {
+            $this->actingAs($this->fixtures->user($userKey));
+
+            $this->get('/admin/invitations', ['Accept' => 'text/html'])->assertForbidden();
+            $this->post('/admin/invitations', [
+                'email' => 'x@sterling.test',
+                'role' => 'viewer',
+            ], ['Accept' => 'text/html'])->assertForbidden();
+            $this->delete($deleteUrl, [], ['Accept' => 'text/html'])->assertForbidden();
+        }
+
+        // And the denied create attempt minted nothing.
+        $this->assertFalse(Invitation::where('email', 'x@sterling.test')->exists());
+    }
 }

@@ -25,8 +25,11 @@ class InvitationController extends Controller
     ) {}
 
     /**
-     * Guest: inspect a valid invitation token. Invalid/expired/revoked/
-     * accepted tokens → identical 404 in all four states (no enumeration).
+     * Inspect a valid invitation token — reachable by guests and signed-in
+     * users alike (004-D08: the token is the credential, so a signed-in
+     * holder lands back here after the ?next= sign-in round-trip). Invalid/
+     * expired/revoked/accepted tokens → identical 404 in all four states
+     * (no enumeration).
      */
     public function show(string $token, Request $request): JsonResponse|View
     {

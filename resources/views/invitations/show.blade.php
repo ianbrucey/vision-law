@@ -1,16 +1,20 @@
 {{--
     invitations/show.blade.php — Invitation accept page (spec 004, ticket 3).
 
-    Guest-only (guest middleware): a valid token holder sees the invitation
-    summary and the "Create your account" form, which posts name + password
-    (+ locked email and the hidden invitation_token) to the existing
-    register.store route. Existing users take the "Sign in" link, which
-    carries ?next= back to this token URL.
+    Reachable by guests and signed-in users alike (004-D08): the token is
+    the credential. A valid token holder sees the invitation summary and —
+    if signed in — an "Accept invitation" button posting to the existing
+    invitations.accept endpoint; if a guest, the "Create your account" form
+    (posting name + password + locked email + hidden invitation_token to
+    the existing register.store) and the "Sign in" link, which carries
+    ?next= back to this token URL so the holder lands here after login.
+    Acceptance still enforces the email/org match rule in the service.
 
     004-D07 holder exception: the plaintext $token appears ONLY here — in
-    the hidden invitation_token field and the sign-in next-link — because
-    the holder already possesses it via the URL. It never appears in admin
-    surfaces, logs, JSON, or pages served to non-holders.
+    the hidden invitation_token field and the sign-in next-link for guests
+    (the accept form posts to the token URL for signed-in holders) —
+    because the holder already possesses it via the URL. It never appears
+    in admin surfaces, logs, JSON, or pages served to non-holders.
 
     Invalid/expired/revoked/accepted tokens never reach this view: the
     controller aborts with the identical framework 404 in all four states
@@ -44,49 +48,66 @@
         </x-ui.card>
 
         <x-ui.card class="max-w-[520px] mx-auto">
-            <h2 class="text-[19px] text-vl-ink font-semibold mb-1.5">Create your account</h2>
+            @auth
+                {{-- 004-D08: signed-in holder — accept directly via the existing
+                    endpoint (the email/org match rule is enforced there). --}}
+                <h2 class="text-[19px] text-vl-ink font-semibold mb-1.5">Accept this invitation</h2>
 
-            <form method="POST" action="{{ route('register.store') }}">
-                @csrf
-                <input type="hidden" name="invitation_token" value="{{ $token }}">
+                <p class="text-sm text-vl-mut mb-3">
+                    Signed in as <strong class="text-vl-ink">{{ auth()->user()->email }}</strong>.<br>
+                    This invitation is for <strong class="text-vl-ink">{{ $email }}</strong> —
+                    the signed-in email must match to accept.
+                </p>
 
-                <x-ui.field
-                    name="email"
-                    label="Email"
-                    type="email"
-                    :value="$email"
-                    disabled
-                    autocomplete="email"
-                    help="Locked to the invitation — the signed-in email must match."
-                />
-                {{-- Disabled inputs don't submit; the hidden twin carries the locked value. --}}
-                <input type="hidden" name="email" value="{{ $email }}">
+                <form method="POST" action="{{ route('invitations.accept', ['token' => $token]) }}">
+                    @csrf
+                    <x-ui.button variant="primary" type="submit" class="w-full">Accept invitation</x-ui.button>
+                </form>
+            @else
+                <h2 class="text-[19px] text-vl-ink font-semibold mb-1.5">Create your account</h2>
 
-                <x-ui.field name="name" label="Full name" required autocomplete="name" placeholder="Jordan Ellis" />
-                <x-ui.field
-                    name="password"
-                    label="Password"
-                    type="password"
-                    required
-                    autocomplete="new-password"
-                    placeholder="Minimum 12 characters"
-                    help="Minimum 12 characters."
-                />
+                <form method="POST" action="{{ route('register.store') }}">
+                    @csrf
+                    <input type="hidden" name="invitation_token" value="{{ $token }}">
 
-                <x-ui.button variant="primary" type="submit" class="w-full mt-2">Create account &amp; accept</x-ui.button>
-            </form>
+                    <x-ui.field
+                        name="email"
+                        label="Email"
+                        type="email"
+                        :value="$email"
+                        disabled
+                        autocomplete="email"
+                        help="Locked to the invitation — the signed-in email must match."
+                    />
+                    {{-- Disabled inputs don't submit; the hidden twin carries the locked value. --}}
+                    <input type="hidden" name="email" value="{{ $email }}">
 
-            <div class="flex items-center gap-3 my-6" aria-hidden="true">
-                <div class="flex-1 border-t border-vl-line"></div>
-                <span class="text-[13px] text-vl-mut">or</span>
-                <div class="flex-1 border-t border-vl-line"></div>
-            </div>
+                    <x-ui.field name="name" label="Full name" required autocomplete="name" placeholder="Jordan Ellis" />
+                    <x-ui.field
+                        name="password"
+                        label="Password"
+                        type="password"
+                        required
+                        autocomplete="new-password"
+                        placeholder="Minimum 12 characters"
+                        help="Minimum 12 characters."
+                    />
 
-            <p class="text-center text-sm text-vl-mut mb-0">
-                Already have an account?
-                <a href="{{ route('login', ['next' => route('invitations.show', ['token' => $token])]) }}" class="text-vl-info font-semibold no-underline">Sign in</a>
-                with this email, then accept.
-            </p>
+                    <x-ui.button variant="primary" type="submit" class="w-full mt-2">Create account &amp; accept</x-ui.button>
+                </form>
+
+                <div class="flex items-center gap-3 my-6" aria-hidden="true">
+                    <div class="flex-1 border-t border-vl-line"></div>
+                    <span class="text-[13px] text-vl-mut">or</span>
+                    <div class="flex-1 border-t border-vl-line"></div>
+                </div>
+
+                <p class="text-center text-sm text-vl-mut mb-0">
+                    Already have an account?
+                    <a href="{{ route('login', ['next' => route('invitations.show', ['token' => $token])]) }}" class="text-vl-info font-semibold no-underline">Sign in</a>
+                    with this email, then accept.
+                </p>
+            @endauth
         </x-ui.card>
     </div>
 </x-layouts.public>

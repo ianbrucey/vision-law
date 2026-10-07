@@ -166,4 +166,53 @@ class InvitationAcceptUiTest extends TestCase
         }
         $this->assertStringNotContainsString($expired->token, (string) end($bodies));
     }
+
+    /**
+     * 004-D08 round-trip: the accept page is reachable by signed-in users
+     * (not guest-only). Guest opens the token URL → clicks Sign in → logs
+     * in → lands back on the accept page → accepts → success.
+     */
+    public function test_existing_user_round_trip_sign_in_then_accept(): void
+    {
+        $admin = $this->fixtures->user('user_admin')->fresh();
+
+        $issued = app(InvitationService::class)->inviteWithToken(
+            $admin->organization,
+            'nina@sterling.test',
+            'viewer',
+            null,
+            $admin,
+        );
+
+        $tokenUrl = '/invitations/'.$issued->token;
+
+        // Guest opens the token URL and sees the sign-in path.
+        $this->get($tokenUrl, ['Accept' => 'text/html'])->assertOk();
+
+        // Clicks "Sign in": the login view honors ?next= as the intended URL.
+        $this->get(route('login', ['next' => $tokenUrl]), ['Accept' => 'text/html'])
+            ->assertOk();
+
+        // Logs in → redirected straight back to the token URL (not /home).
+        $this->post('/login', [
+            'email' => 'nina@sterling.test',
+            'password' => FixtureLoader::DEFAULT_PASSWORD,
+        ])->assertRedirect($tokenUrl);
+
+        // Lands back on the accept page — now with the "Accept invitation"
+        // button posting to the existing accept endpoint.
+        $page = $this->get($tokenUrl, ['Accept' => 'text/html'])
+            ->assertOk()
+            ->assertViewIs('invitations.show');
+        $page->assertSee('Accept invitation', false);
+        $page->assertSee(route('invitations.accept', ['token' => $issued->token]), false);
+        $page->assertDontSee('Create your account');
+
+        // Accepts through the existing endpoint → success.
+        $this->post($tokenUrl.'/accept', [], ['Accept' => 'text/html'])
+            ->assertRedirect('/')
+            ->assertSessionHas('toast');
+
+        $this->assertNotNull($issued->invitation->fresh()->accepted_at);
+    }
 }

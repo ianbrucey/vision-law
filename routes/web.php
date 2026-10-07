@@ -74,10 +74,13 @@ Route::get('/reset-password/{token}', function () {
 // ── Ticket 5: RBAC admin, invitations, session management (backend only,
 // no Blade per 001-D06) ──
 
-// Invitation landing (guest) + accept (auth). Token is email-bound:
-// a different signed-in user is rejected generically (C-05).
+// Invitation landing + accept (auth). The token is the credential, so the
+// landing page is reachable by guests and signed-in users alike (004-D08):
+// after signing in via the ?next= link, an existing invitee lands back on
+// the accept page instead of being bounced to /home by guest middleware.
+// A different signed-in user is rejected generically (C-05); acceptance
+// still enforces the email/org match rule.
 Route::get('/invitations/{token}', [InvitationController::class, 'show'])
-    ->middleware(['guest:'.config('fortify.guard')])
     ->name('invitations.show');
 Route::post('/invitations/{token}/accept', [InvitationController::class, 'accept'])
     ->middleware(['auth:'.config('fortify.guard')])

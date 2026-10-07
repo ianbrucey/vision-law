@@ -3,6 +3,8 @@
 namespace Tests\Architecture;
 
 use App\Mail\InvitationMail;
+use App\Models\Role;
+use App\Models\User;
 use App\Services\InvitationService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Mail;
@@ -260,5 +262,107 @@ class LeakSentinelTest extends TestCase
             $after->getContent(),
             'Mailed token leaked into the admin invitations page after refresh.'
         );
+    }
+
+    /**
+     * C-07 (token_hash): the token hash must never render in any UI
+     * surface — not in the admin table HTML, not in the JSON payloads, not
+     * on the accept page (guest or signed-in holder), and not on the
+     * generic not-found page. The plaintext token is covered separately by
+     * the 004-D07 holder-exception tests above.
+     */
+    public function test_token_hash_never_leaks_in_ui(): void
+    {
+        $admin = $this->fixtures->user('user_admin');
+        $this->actingAs($admin);
+
+        $issued = app(InvitationService::class)->inviteWithToken(
+            $admin->organization,
+            'hash-sentinel@sterling.test',
+            'viewer',
+            null,
+            $admin,
+        );
+        $hash = (string) $issued->invitation->token_hash;
+        $this->assertNotSame('', $hash);
+
+        // Admin table HTML and its JSON twin.
+        $table = $this->get('/admin/invitations', ['Accept' => 'text/html'])->assertOk()->getContent();
+        $this->assertStringNotContainsString($hash, $table, 'token_hash in admin table HTML');
+        $json = $this->getJson('/admin/invitations')->assertOk()->getContent();
+        $this->assertStringNotContainsString($hash, $json, 'token_hash in admin JSON');
+
+        // The accept page for the valid holder — guest first, then a
+        // signed-in holder (the holder exception covers the plaintext
+        // token, never the hash).
+        $token = $issued->token;
+        $guestPage = $this->get("/invitations/{$token}", ['Accept' => 'text/html'])->assertOk()->getContent();
+        $this->assertStringNotContainsString($hash, $guestPage, 'token_hash on guest accept page');
+
+        $this->actingAs(User::where('email', 'nina@sterling.test')->firstOrFail());
+        $authedPage = $this->get("/invitations/{$token}", ['Accept' => 'text/html'])->assertOk()->getContent();
+        $this->assertStringNotContainsString($hash, $authedPage, 'token_hash on signed-in accept page');
+
+        // The generic not-found page.
+        $notFound = $this->get('/invitations/not-a-real-token!!!', ['Accept' => 'text/html'])
+            ->assertNotFound()
+            ->getContent();
+        $this->assertStringNotContainsString($hash, $notFound, 'token_hash on 404 page');
+    }
+
+    /**
+     * C-07 (INV-06): invitee emails never render outside their org. A
+     * pending invitation living in the rival org never appears on the
+     * Sterling admin table, on the generic not-found page, or on a
+     * Sterling invitee's own accept page.
+     */
+    public function test_invitee_emails_never_render_outside_their_org(): void
+    {
+        $rivalOrg = $this->fixtures->org('org_rival');
+        $rivalAdmin = User::factory()->create([
+            'org_id' => $rivalOrg->getKey(),
+            'email' => 'cross-org-boss@rival.test',
+        ]);
+        $rivalAdmin->assignRole(
+            Role::where('org_id', $rivalOrg->getKey())->where('name', 'org_admin')->firstOrFail()
+        );
+
+        // INV-06: a pending invitation living in the rival org.
+        app(InvitationService::class)->inviteWithToken(
+            $rivalOrg,
+            'spy@rival.example',
+            'attorney',
+            null,
+            $rivalAdmin,
+        );
+
+        // Sterling's admin table: nothing from the rival org.
+        $this->actingAs($this->fixtures->user('user_admin'));
+        $table = $this->get('/admin/invitations', ['Accept' => 'text/html'])
+            ->assertOk()
+            ->getContent();
+        $this->assertStringNotContainsString('spy@rival.example', $table);
+
+        // The generic not-found page reveals nothing about it.
+        $notFound = $this->get('/invitations/definitely-not-a-token', ['Accept' => 'text/html'])
+            ->assertNotFound()
+            ->getContent();
+        $this->assertStringNotContainsString('spy@rival.example', $notFound);
+
+        // A Sterling invitee's own accept page (valid token) carries only
+        // their own email — nothing from the rival org.
+        $sterlingAdmin = $this->fixtures->user('user_admin')->fresh();
+        $own = app(InvitationService::class)->inviteWithToken(
+            $sterlingAdmin->organization,
+            'own@sterling.test',
+            'viewer',
+            null,
+            $sterlingAdmin,
+        );
+        $ownPage = $this->get('/invitations/'.$own->token, ['Accept' => 'text/html'])
+            ->assertOk()
+            ->getContent();
+        $this->assertStringNotContainsString('spy@rival.example', $ownPage);
+        $this->assertStringContainsString('own@sterling.test', $ownPage);
     }
 }
