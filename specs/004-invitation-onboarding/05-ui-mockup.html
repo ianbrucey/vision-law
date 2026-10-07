@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Vision Law — spec 004 mockup · Invitation onboarding UI</title>
+<style>
+:root{
+  --vl-ink:#1F2A37; --vl-ink-2:#31404F; --vl-brass:#9A6823; --vl-brass-soft:#F6EED9;
+  --vl-paper:#F7F8FA; --vl-card:#FFFFFF; --vl-line:#E3E8EE; --vl-mut:#5B687C;
+  --vl-ok:#2F7D4F; --vl-ok-soft:#E6F2E9; --vl-bad:#B23B3B; --vl-bad-soft:#FBE8E8;
+  --vl-info:#285F8A; --vl-info-soft:#E7EFF6;
+  --r-card:10px; --r-in:8px;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--vl-paper);color:var(--vl-ink);
+  font:16px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
+h1,h2,h3,.serif{font-family:Georgia,"Times New Roman",serif;font-weight:600}
+.mocknav{position:sticky;top:0;z-index:50;background:var(--vl-ink);color:#fff;
+  padding:10px 20px;display:flex;gap:18px;align-items:center;font-size:14px;flex-wrap:wrap}
+.mocknav a{color:#cfe0f4;text-decoration:none;border-bottom:2px solid transparent;padding:2px 0}
+.mocknav a:hover{border-color:var(--vl-brass)}
+.mocknav .tag{margin-left:auto;font-size:12px;color:#9fb3c8;border:1px solid #3a4a5c;border-radius:999px;padding:2px 10px}
+section.screen{max-width:1120px;margin:0 auto;padding:36px 20px 8px}
+.eyebrow{font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--vl-brass);font-weight:700;margin:0 0 6px}
+.screen h2{font-size:30px;margin:0 0 6px}
+.screen .lede{color:var(--vl-mut);max-width:640px;margin:0 0 20px}
+.card{background:var(--vl-card);border:1px solid var(--vl-line);border-radius:var(--r-card);
+  padding:20px 24px;margin:0 0 20px}
+.card h3{margin:0 0 12px;font-size:19px}
+/* page header */
+.ph{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;margin:0 0 20px;flex-wrap:wrap}
+.ph h1{font-size:30px;margin:0}
+.ph p{color:var(--vl-mut);margin:4px 0 0;max-width:560px}
+/* buttons */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;border-radius:var(--r-in);
+  padding:10px 18px;font-size:15px;font-weight:600;cursor:pointer;border:1px solid transparent;text-decoration:none}
+.btn-primary{background:var(--vl-ink);color:#fff}
+.btn-primary:hover{background:var(--vl-ink-2)}
+.btn-secondary{background:#fff;color:var(--vl-ink);border-color:var(--vl-line)}
+.btn-danger{background:var(--vl-bad);color:#fff}
+.btn-sm{padding:6px 12px;font-size:13px}
+.btn:disabled{opacity:.55;cursor:default}
+/* fields */
+.field{margin:0 0 14px}
+.field label{display:block;font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--vl-mut);
+  font-weight:700;margin:0 0 6px}
+.field input,.field select{width:100%;padding:10px 12px;font-size:15px;border:1px solid var(--vl-line);
+  border-radius:var(--r-in);background:#fff;color:var(--vl-ink)}
+.field input:focus,.field select:focus{outline:2px solid var(--vl-info);outline-offset:1px;border-color:var(--vl-info)}
+.field .hint{font-size:13px;color:var(--vl-mut);margin-top:5px}
+.field .err{font-size:13px;color:var(--vl-bad);margin-top:5px;font-weight:600}
+.field input[aria-invalid="true"]{border-color:var(--vl-bad)}
+.field input:disabled{background:var(--vl-paper);color:var(--vl-mut)}
+.frow{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.frow .full{grid-column:1/-1}
+/* banners */
+.banner{border-radius:var(--r-card);padding:14px 18px;margin:0 0 20px;font-size:14px;border:1px solid}
+.banner strong{display:block;margin-bottom:2px}
+.banner.info{background:var(--vl-info-soft);border-color:#c3d6e6;color:var(--vl-ink)}
+.banner.brass{background:var(--vl-brass-soft);border-color:#e2cf9e;color:var(--vl-ink)}
+.banner.ok{background:var(--vl-ok-soft);border-color:#bfe0c9;color:var(--vl-ink)}
+/* table */
+.tblwrap{overflow-x:auto;border:1px solid var(--vl-line);border-radius:var(--r-card);background:#fff}
+table{width:100%;border-collapse:collapse;font-size:14px;min-width:760px}
+thead th{font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--vl-mut);text-align:left;
+  padding:10px 14px;background:var(--vl-paper);border-bottom:1px solid var(--vl-line)}
+tbody td{padding:12px 14px;border-bottom:1px solid var(--vl-line);vertical-align:middle}
+tbody tr:last-child td{border-bottom:none}
+.mut{color:var(--vl-mut)}
+/* chips + status */
+.chip{display:inline-block;font-size:12px;font-weight:600;border-radius:999px;padding:3px 10px;
+  background:var(--vl-paper);border:1px solid var(--vl-line);color:var(--vl-ink-2)}
+.st{display:inline-block;font-size:12px;font-weight:700;border-radius:999px;padding:3px 10px}
+.st-pending{background:var(--vl-brass-soft);color:var(--vl-brass)}
+.st-accepted{background:var(--vl-ok-soft);color:var(--vl-ok)}
+.st-revoked{background:var(--vl-paper);color:var(--vl-mut);border:1px solid var(--vl-line)}
+.st-expired{background:var(--vl-bad-soft);color:var(--vl-bad)}
+/* modal */
+.mback{position:fixed;inset:0;background:rgba(31,42,55,.55);display:flex;align-items:center;justify-content:center;padding:20px;z-index:100}
+.modal{background:#fff;border-radius:12px;max-width:460px;width:100%;padding:24px}
+.modal h3{margin:0 0 8px;font-size:20px}
+.modal p{color:var(--vl-mut);font-size:14px;margin:0 0 18px}
+.modal .row{display:flex;gap:10px;justify-content:flex-end}
+/* empty */
+.empty{border:1px dashed var(--vl-line);border-radius:var(--r-card);background:#fff;padding:36px 20px;text-align:center}
+.empty h3{margin:0 0 6px}
+.empty p{color:var(--vl-mut);font-size:14px;margin:0 0 16px}
+/* accept page */
+.accept{max-width:520px;margin:0 auto}
+.accept .orgline{display:flex;align-items:center;gap:10px;margin:0 0 4px;flex-wrap:wrap}
+.accept h1{font-size:26px;margin:0 0 4px}
+.accept .sub{color:var(--vl-mut);margin:0 0 18px;font-size:14px}
+.divider{display:flex;align-items:center;gap:12px;color:var(--vl-mut);font-size:13px;margin:18px 0}
+.divider::before,.divider::after{content:"";flex:1;height:1px;background:var(--vl-line)}
+.linkrow{display:flex;gap:8px}
+.linkrow input{flex:1;font-family:ui-monospace,Menlo,monospace;font-size:13px}
+.note{font-size:13px;color:var(--vl-mut);background:var(--vl-paper);border:1px solid var(--vl-line);
+  border-radius:var(--r-in);padding:10px 14px;margin:14px 0 0}
+footer{max-width:1120px;margin:40px auto;padding:0 20px 40px;color:var(--vl-mut);font-size:12px}
+@media(max-width:640px){
+  .frow{grid-template-columns:1fr}
+  .screen h2{font-size:24px}
+  .ph h1{font-size:24px}
+  .btn{width:100%}
+  .ph .btn{width:auto}
+  .modal .row .btn{width:auto}
+}
+</style>
+</head>
+<body>
+
+<nav class="mocknav" aria-label="Mockup sections">
+  <strong>spec 004 mockup</strong>
+  <a href="#s-admin">Admin · invitations</a>
+  <a href="#s-accept-ok">Accept · valid token</a>
+  <a href="#s-accept-bad">Accept · invalid token</a>
+  <span class="tag">SYNTHETIC DATA ONLY</span>
+</nav>
+
+<!-- ══════════════════ 1 · ADMIN INVITATIONS ══════════════════ -->
+<section class="screen" id="s-admin">
+  <p class="eyebrow">01 · Admin · org_admin only</p>
+  <div class="ph">
+    <div>
+      <h1>Team invitations</h1>
+      <p>Invite people to Sterling &amp; Associates LLP. Invitations expire after 7 days and are single-use.</p>
+    </div>
+    <a class="btn btn-primary" href="#invite-form">Invite someone</a>
+  </div>
+
+  <div class="banner info">
+    <strong>Email delivery is not configured</strong>
+    After you create an invitation, copy the accept link below and share it yourself. Email sending is a deferred item, not part of this feature.
+  </div>
+
+  <div class="banner ok" id="accept-link">
+    <strong>Invitation created — share this link</strong>
+    <div class="linkrow" style="margin-top:8px">
+      <input type="text" readonly value="https://app.visionlaw.example/invitations/9f2c…a41d" aria-label="Accept link">
+      <button class="btn btn-secondary btn-sm" type="button">Copy</button>
+    </div>
+    <div class="note" style="margin-top:10px">Shown once, to you only. The token is never stored in readable form and never appears anywhere else.</div>
+  </div>
+
+  <div class="card" id="invite-form">
+    <h3>Invite someone</h3>
+    <form>
+      <div class="frow">
+        <div class="field">
+          <label for="f-email">Email</label>
+          <input id="f-email" type="email" placeholder="colleague@firm.com" value="m.chen@outsidecounsel.example">
+        </div>
+        <div class="field">
+          <label for="f-role">Role</label>
+          <select id="f-role">
+            <option>attorney</option>
+            <option selected>outside_counsel</option>
+            <option>paralegal</option>
+            <option>viewer</option>
+            <option>org_admin</option>
+          </select>
+          <div class="hint">Outside counsel gets no matter access without an explicit grant — add a matter scope below.</div>
+        </div>
+        <div class="field full">
+          <label for="f-matter">Matter scope <span style="text-transform:none;letter-spacing:0;font-weight:400">(optional)</span></label>
+          <select id="f-matter">
+            <option value="">Whole organization — no matter restriction</option>
+            <option selected>Sterling v. Apex Construction</option>
+            <option>Harborview lease dispute</option>
+          </select>
+        </div>
+      </div>
+      <button class="btn btn-primary" type="button">Send invitation</button>
+      <span class="mut" style="font-size:13px;margin-left:10px">Expires in 7 days · single use</span>
+    </form>
+  </div>
+
+  <div class="card">
+    <h3>Invitation with a validation error (state)</h3>
+    <div class="field" style="max-width:420px">
+      <label for="f-email-err">Email</label>
+      <input id="f-email-err" type="email" value="not-an-email" aria-invalid="true" aria-describedby="e-email">
+      <div class="err" id="e-email">The email address is invalid.</div>
+    </div>
+  </div>
+
+  <div class="tblwrap" role="region" aria-label="Invitations" tabindex="0">
+    <table>
+      <thead><tr>
+        <th>Email</th><th>Role</th><th>Matter scope</th><th>Status</th><th>Expires</th><th>Invited</th><th><span style="visibility:hidden">Actions</span></th>
+      </tr></thead>
+      <tbody>
+        <tr>
+          <td><strong>r.rivera@examplefirm.com</strong></td>
+          <td><span class="chip">attorney</span></td>
+          <td class="mut">—</td>
+          <td><span class="st st-pending">Pending</span></td>
+          <td>Oct 13, 2026</td><td class="mut">Oct 7, 2026</td>
+          <td><a class="btn btn-secondary btn-sm" href="#revoke-modal">Revoke</a></td>
+        </tr>
+        <tr>
+          <td><strong>m.chen@outsidecounsel.example</strong></td>
+          <td><span class="chip">outside_counsel</span></td>
+          <td>Sterling v. Apex Construction</td>
+          <td><span class="st st-pending">Pending</span></td>
+          <td>Oct 13, 2026</td><td class="mut">Oct 7, 2026</td>
+          <td><a class="btn btn-secondary btn-sm" href="#revoke-modal">Revoke</a></td>
+        </tr>
+        <tr>
+          <td><strong>p.paralegal@examplefirm.com</strong></td>
+          <td><span class="chip">paralegal</span></td>
+          <td class="mut">—</td>
+          <td><span class="st st-accepted">Accepted</span></td>
+          <td class="mut">—</td><td class="mut">Oct 2, 2026</td>
+          <td class="mut">—</td>
+        </tr>
+        <tr>
+          <td><strong>t.temp@examplefirm.com</strong></td>
+          <td><span class="chip">viewer</span></td>
+          <td class="mut">—</td>
+          <td><span class="st st-revoked">Revoked</span></td>
+          <td class="mut">—</td><td class="mut">Sep 28, 2026</td>
+          <td class="mut">—</td>
+        </tr>
+        <tr>
+          <td><strong>s.stale@examplefirm.com</strong></td>
+          <td><span class="chip">viewer</span></td>
+          <td class="mut">—</td>
+          <td><span class="st st-expired">Expired</span></td>
+          <td class="mut">Sep 30, 2026</td><td class="mut">Sep 23, 2026</td>
+          <td class="mut">—</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+  <p class="lede" style="margin-top:12px">Only pending invitations can be revoked — the action is absent on accepted, revoked, and expired rows. A cross-org invitation never appears here (adversarial fixture INV-06).</p>
+
+  <div class="empty" style="margin-top:20px">
+    <h3 class="serif">No invitations yet</h3>
+    <p>Invite your first team member to get them into Sterling &amp; Associates LLP.</p>
+    <a class="btn btn-primary" href="#invite-form">Invite someone</a>
+  </div>
+</section>
+
+<!-- revoke modal (static render) -->
+<div class="mback" id="revoke-modal">
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="rm-t">
+    <h3 id="rm-t">Revoke this invitation?</h3>
+    <p>Revoking cancels the accept link for <strong>m.chen@outsidecounsel.example</strong> immediately. They will not be able to join. This cannot be undone — to invite them again, create a new invitation.</p>
+    <div class="row">
+      <a class="btn btn-secondary" href="#s-admin">Cancel</a>
+      <button class="btn btn-danger" type="button">Revoke invitation</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════ 2 · ACCEPT · VALID ══════════════════ -->
+<section class="screen" id="s-accept-ok">
+  <p class="eyebrow">02 · Accept · guest with a valid token</p>
+  <h2>You've been invited</h2>
+  <p class="lede">This is what the invitee sees when they open the accept link.</p>
+
+  <div class="accept">
+    <div class="card">
+      <div class="orgline">
+        <h1 class="serif" style="font-size:22px">Sterling &amp; Associates LLP</h1>
+      </div>
+      <p class="sub">invites you to join as</p>
+      <p style="margin:0 0 4px"><span class="chip">outside_counsel</span></p>
+      <p class="sub" style="margin-top:10px">Matter scope: <strong style="color:var(--vl-ink)">Sterling v. Apex Construction</strong><br>
+      You will see only this matter — nothing else in the organization.</p>
+      <p class="note">This invitation expires Oct 13, 2026 and can be used once.</p>
+    </div>
+
+    <div class="card">
+      <h3>Create your account</h3>
+      <form>
+        <div class="field">
+          <label for="a-email">Email</label>
+          <input id="a-email" type="email" value="m.chen@outsidecounsel.example" disabled>
+          <div class="hint">Locked to the invitation — the signed-in email must match.</div>
+        </div>
+        <div class="field">
+          <label for="a-name">Full name</label>
+          <input id="a-name" type="text" placeholder="Jordan Ellis" autocomplete="name">
+        </div>
+        <div class="field">
+          <label for="a-pw">Password</label>
+          <input id="a-pw" type="password" placeholder="Minimum 12 characters" autocomplete="new-password">
+        </div>
+        <button class="btn btn-primary" type="button" style="width:100%">Create account &amp; accept</button>
+      </form>
+      <div class="divider">or</div>
+      <p style="text-align:center;font-size:14px;margin:0">Already have an account?
+        <a href="#" style="color:var(--vl-info);font-weight:600">Sign in</a> with this email, then accept.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════ 3 · ACCEPT · INVALID ══════════════════ -->
+<section class="screen" id="s-accept-bad">
+  <p class="eyebrow">03 · Accept · invalid / expired / revoked / used token</p>
+  <h2>One page for every bad token</h2>
+  <p class="lede">Unknown, expired, revoked, and already-accepted tokens all render this identical page — no distinguishing detail, no enumeration.</p>
+
+  <div class="accept">
+    <div class="empty">
+      <h3 class="serif">This invitation link doesn't work</h3>
+      <p>It may have expired, been revoked, or already been used. Ask the person who invited you for a new link.</p>
+      <a class="btn btn-secondary" href="#">Back to sign in</a>
+    </div>
+  </div>
+</section>
+
+<footer>
+  Vision Law · spec 004 mockup · synthetic data only · no real client information ·
+  Statuses pair color with text labels (never color-only). All timestamps absolute; timezone is the viewer's.
+</footer>
+
+</body>
+</html>
