@@ -26,3 +26,4 @@
 ## Open items
 
 None. All load-bearing questions for this feature are decided. (SSO is a separate feature, not an open item of this one.)
+| 2026-10-06 | 001-D09 | Self-registration is **ALLOWED**; a config flag is retained (default open) so it can be disabled per-environment | Ian’s brief approval; PLT-01 describes self-registration | Invite-only default (the brief’s original recommendation) | Registration flow must honor the flag; the flag-off path gets its own verdict test | [D] |

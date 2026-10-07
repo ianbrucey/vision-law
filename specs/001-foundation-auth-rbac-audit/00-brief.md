@@ -1,12 +1,10 @@
 # 001 — Foundation: authentication, RBAC, and audit logging — Strategic brief
 
-**Status:** DRAFT (→ IN REVIEW → APPROVED)
+**Status:** APPROVED (2026-10-06, by Ian)
 **Author:** Lotus (orchestrator)
 **Date:** 2026-10-06
 
-> This brief is DRAFT. No implementation work begins until it is APPROVED by
-> Ian (product owner). The executing agent never writes its own verdicts —
-> these verdicts are the acceptance bar.
+> APPROVED by Ian on 2026-10-06 with decision 001-D09: self-registration is ALLOWED (config flag retained, default open). The executing agent never writes its own verdicts — these verdicts are the acceptance bar.
 
 ---
 
