@@ -11,9 +11,11 @@
     - active: confirmed 2FA — regenerate / disable (#s-enroll-done).
 
     Leak hygiene (005-D04): the TOTP secret never appears in page source.
-    The QR renders via <img src="…two-factor.qr-code">; the manual key is
-    fetched on demand from the two-factor.secret-key endpoint (Alpine),
-    never inlined.
+    The QR renders via <img src="…two-factor.qr-image"> — Fortify's
+    two-factor.qr-code returns JSON {svg, url}, not an image, so an <img>
+    cannot point at it (T-03 follow-up). The image endpoint serves
+    Fortify's QR SVG bytes as image/svg+xml; the manual key is fetched on
+    demand from the two-factor.secret-key endpoint (Alpine), never inlined.
 --}}
 @php
     $confirmError = $errors->getBag('confirmTwoFactorAuthentication')->first('code');
@@ -78,7 +80,7 @@
         @if ($hasPendingSecret)
             <x-ui.card class="max-w-[560px] mx-auto" title="Scan with your authenticator app">
                 <img
-                    src="{{ route('two-factor.qr-code') }}"
+                    src="{{ route('two-factor.qr-image') }}"
                     alt="QR code to scan with your authenticator app"
                     class="w-[200px] h-[200px] border border-vl-line rounded-[8px] bg-vl-card mb-3"
                 >

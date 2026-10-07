@@ -8,6 +8,7 @@ use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\Auth\PasswordResetLinkController;
 use App\Http\Controllers\Auth\RegisteredUserController;
 use App\Http\Controllers\Auth\TwoFactorChallengeController;
+use App\Http\Controllers\Auth\TwoFactorQrCodeImageController;
 use App\Http\Controllers\Auth\TwoFactorSettingsController;
 use App\Http\Controllers\InvitationController;
 use App\Http\Controllers\MatterController;
@@ -17,6 +18,7 @@ use App\Http\Middleware\RequireOrgAdmin;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\Route;
 use Laravel\Fortify\Features;
+use Laravel\Fortify\Http\Controllers\ConfirmablePasswordController;
 use Laravel\Fortify\Http\Requests\TwoFactorLoginRequest;
 
 // ── Spec 003 T-05: public site + auth views ──
@@ -92,6 +94,26 @@ Route::get('/two-factor-challenge', function (TwoFactorLoginRequest $request) {
 Route::get('user/two-factor', [TwoFactorSettingsController::class, 'index'])
     ->middleware(['auth:'.config('fortify.guard')])
     ->name('two-factor.settings');
+
+// --- Spec 005 T-03: QR-as-image + confirm-password view ---
+// two-factor.qr-image: Fortify's two-factor.qr-code returns JSON {svg, url},
+// not an image, so 005-D04's <img> points here instead (an <img> cannot
+// render JSON). Serves Fortify's QR SVG bytes as image/svg+xml -- the
+// secret/otpauth bytes travel in this image response only, never in the
+// enrollment page's HTML source. Middleware mirrors Fortify's own QR route.
+// password.confirm: Fortify skips the GET view route in headless mode
+// (views => false); the password.confirm gate (2FA disable/regenerate and
+// friends) needs it to be completable via UI. No new auth logic --
+// ConfirmablePasswordController and the ConfirmPasswordViewResponse
+// contract are Fortify's; the view is registered via
+// Fortify::confirmPasswordView() in FortifyServiceProvider.
+Route::get('user/two-factor-qr-code.svg', [TwoFactorQrCodeImageController::class, 'show'])
+    ->middleware(['auth:'.config('fortify.guard'), 'password.confirm'])
+    ->name('two-factor.qr-image');
+
+Route::get('user/confirm-password', [ConfirmablePasswordController::class, 'show'])
+    ->middleware(['auth:'.config('fortify.guard')])
+    ->name('password.confirm');
 
 Route::get('/reset-password/{token}', function () {
     return response()->json([

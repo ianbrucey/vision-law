@@ -80,5 +80,12 @@ class FortifyServiceProvider extends ServiceProvider
 
         // C-03/C-06: audit + brute-force bookkeeping for Fortify auth events.
         Event::subscribe(AuthEventSubscriber::class);
+
+        // Spec 005 T-03: the confirm-password GET view (Fortify's sanctioned
+        // hook). Fortify skips registering the GET user/confirm-password
+        // route in headless mode (views => false); the route itself is
+        // registered in routes/web.php. No auth logic changes -- the POST
+        // backend stays Fortify's.
+        Fortify::confirmPasswordView('auth.confirm-password');
     }
 }
