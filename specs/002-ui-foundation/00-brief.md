@@ -1,6 +1,6 @@
 # 002 — UI foundation — Strategic brief
 
-**Status:** DRAFT (→ IN REVIEW → APPROVED)
+**Status:** APPROVED — 2026-10-07 by Ian
 **Author:** Lotus (orchestrator)
 **Date:** 2026-10-07
 
@@ -78,7 +78,7 @@ dataset index. No real client data anywhere.
 
 ## Approval gate
 
-- [ ] Orchestrator verdicts written (claims table complete)
+- [x] Orchestrator verdicts written (claims table complete)
 - [ ] Builder has reviewed and added risks to the pre-mortem
 - [ ] Governing [D]/[P]/[O] items linked; [O] stop conditions stated (none load-bearing)
 - [ ] Security classification complete

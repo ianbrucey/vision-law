@@ -1,6 +1,6 @@
 # Vision Law — UI & UX Standards
 
-**Status:** [P] Proposed — October 6, 2026
+**Status:** [D] Decided — October 7, 2026 (approved by Ian with spec 002 brief; navy/brass/paper direction confirmed via mockup)
 **Source:** distilled from proven Laravel UI-standards practice, written for Vision Law,
 a legal/contract-management application.
 were intentionally left behind; what was kept is the *mechanics*: single-source
