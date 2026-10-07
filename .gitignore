@@ -28,3 +28,4 @@ Thumbs.db
 .webhook-secret
 /webhook/.poller-etag
 /webhook/.poller-last-sha
+__pycache__/
