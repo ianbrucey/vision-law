@@ -16,10 +16,11 @@ use Tests\TestCase;
  * real tree is never polluted: temp dirs are deleted after each negative test.
  *
  * Deliberate scope notes:
- * - resources/views/welcome.blade.php is EXEMPT from the hex (door 1),
- *   page-title (door 4) and light-only (door 7) scans: it is the Laravel
- *   scaffold page, explicitly left alone per 01-archaeology.md
- *   ("Do not restyle it in this feature"; "not a product screen").
+ * - 003 freeze (T-07): resources/views/welcome.blade.php was DELETED in 003
+ *   T-02 — its 002-D08 exemptions (doors 1/4/7) died with it. The new
+ *   door-4 exemption is resources/views/public/*: the landing is a fixed
+ *   marketing layout whose hero h1 is the page's single heading per the
+ *   approved mockup (06-plan.md T-02/T-07).
  * - layouts/app.blade.php is the sanctioned home of the nav drawer (door 5):
  *   the drawer is layout infrastructure required by the mobile standards —
  *   keyboard-operable, Escape-closes, focus-trapped — not an ad-hoc dialog.
@@ -29,9 +30,6 @@ use Tests\TestCase;
  */
 class VisionUiTest extends TestCase
 {
-    /** Scaffold page: not a product screen, left alone per 01-archaeology.md. */
-    private const WELCOME = 'welcome.blade.php';
-
     private string $viewsRoot;
 
     protected function setUp(): void
@@ -81,13 +79,12 @@ class VisionUiTest extends TestCase
         return $offenders;
     }
 
-    /** Door 1 — no raw hex in Blade views (tokens only; welcome exempt). */
+    /** Door 1 — no raw hex in Blade views (tokens only). */
     private function door1Hex(string $root): array
     {
         return $this->scan(
             $root,
-            fn (string $relative, string $line): bool => $relative !== self::WELCOME
-                && (bool) preg_match('/#[0-9a-fA-F]{6}\b/', $line)
+            fn (string $relative, string $line): bool => (bool) preg_match('/#[0-9a-fA-F]{6}\b/', $line)
         );
     }
 
@@ -128,13 +125,21 @@ class VisionUiTest extends TestCase
         });
     }
 
-    /** Door 4 — page titles only via <x-ui.page-header> (auth + welcome exempt). */
+    /**
+     * Door 4 — page titles only via <x-ui.page-header> (auth views and the
+     * public/ marketing landing exempt).
+     *
+     * Spec 003 T-02/T-07: the landing is a fixed marketing layout — its hero
+     * h1 is the page's single heading per the approved mockup (exemption
+     * recorded per 06-plan.md T-02/T-07; supersedes welcome.blade.php's
+     * deleted 002-D08 door-4 exemption).
+     */
     private function door4Titles(string $root): array
     {
         return $this->scan($root, function (string $relative, string $line): bool {
             if (str_starts_with($relative, 'components/ui/')
                 || str_starts_with($relative, 'auth/')
-                || $relative === self::WELCOME) {
+                || str_starts_with($relative, 'public/')) {
                 return false;
             }
 
@@ -167,14 +172,10 @@ class VisionUiTest extends TestCase
         );
     }
 
-    /** Door 7 — light-only: no dark: variants, no class="dark" (welcome exempt). */
+    /** Door 7 — light-only: no dark: variants, no class="dark". */
     private function door7LightOnly(string $root): array
     {
         return $this->scan($root, function (string $relative, string $line): bool {
-            if ($relative === self::WELCOME) {
-                return false;
-            }
-
             return (bool) preg_match('/\bdark:/', $line)
                 || (bool) preg_match('/class=["\']dark["\']/', $line);
         });
@@ -300,6 +301,20 @@ class VisionUiTest extends TestCase
             $offenders = $this->door4Titles($tmp);
             $this->assertNotEmpty($offenders, 'Door 4 did not trip on injected raw <h1>.');
             $this->assertStringContainsString('patterns.blade.php', $offenders[0]);
+        } finally {
+            $this->removeDir($tmp);
+        }
+    }
+
+    /**
+     * Spec 003 T-07 freeze: the public/ marketing exemption is exercised —
+     * an h1 inside a public/ view must NOT trip door 4.
+     */
+    public function test_door_4_public_views_exempt_from_h1_rule(): void
+    {
+        $tmp = $this->treeWithViolation('public/landing.blade.php', '<h1>Hero headline</h1>');
+        try {
+            $this->assertSame([], $this->door4Titles($tmp));
         } finally {
             $this->removeDir($tmp);
         }

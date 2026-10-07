@@ -4,6 +4,7 @@ use App\Http\Controllers\Admin\AuditEventController as AdminAuditEventController
 use App\Http\Controllers\Admin\InvitationController as AdminInvitationController;
 use App\Http\Controllers\Admin\TeamController as AdminTeamController;
 use App\Http\Controllers\Admin\UserController as AdminUserController;
+use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\Auth\PasswordResetLinkController;
 use App\Http\Controllers\Auth\RegisteredUserController;
 use App\Http\Controllers\Auth\TwoFactorChallengeController;
@@ -16,9 +17,25 @@ use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\Route;
 use Laravel\Fortify\Features;
 
+// ── Spec 003 T-05: public site + auth views ──
+// Fortify is headless (config/fortify.php: views => false), so it registers
+// no GET view routes -- these are app-level. The POST backends stay
+// Fortify's, untouched (see the auth block below).
 Route::get('/', function () {
-    return view('welcome');
+    return view('public.landing');
 });
+
+Route::get('/login', [LoginController::class, 'create'])
+    ->middleware(['guest:'.config('fortify.guard')])
+    ->name('login');
+
+// Same FORTIFY_REGISTRATION flag gate as the POST route below (001-D09):
+// with the flag off, neither the view nor the endpoint is registered (404).
+if (Features::enabled(Features::registration())) {
+    Route::get('/register', [RegisteredUserController::class, 'create'])
+        ->middleware(['guest:'.config('fortify.guard')])
+        ->name('register');
+}
 
 // ── Auth (Fortify headless backend; 03-contract.md §Routes guest list) ──
 // Fortify registers its auth POST/PUT/DELETE routes itself — headless mode

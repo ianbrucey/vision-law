@@ -1,0 +1,32 @@
+
+   PASS  Tests\Feature\PublicSiteAuthTest
+  ✓ landing renders with all mockup sections                             0.48s  
+  ✓ login page renders for guests                                        0.03s  
+  ✓ login with valid credentials authenticates                           0.31s  
+  ✓ register page renders for guests                                     0.03s  
+  ✓ register creates user without auto login                             0.28s  
+  ✓ public pages have no user data                                       0.27s  
+  ✓ authenticated users redirected off guest pages                       0.27s  
+  ✓ logo assets served                                                   0.03s  
+  ✓ guest routes registered without collision                            0.02s  
+
+   PASS  Tests\Architecture\VisionUiTest
+  ✓ door 1 no raw hex in views                                           0.02s  
+  ✓ door 1 trips on raw hex fixture                                      0.02s  
+  ✓ door 2 buttons only via x ui button                                  0.01s  
+  ✓ door 2 trips on raw button fixture                                   0.02s  
+  ✓ door 3 form controls only via wrappers                               0.02s  
+  ✓ door 3 trips on raw input fixture                                    0.02s  
+  ✓ door 4 page titles only via x ui page header                         0.02s  
+  ✓ door 4 trips on raw h1 fixture                                       0.02s  
+  ✓ door 4 public views exempt from h1 rule                              0.02s  
+  ✓ door 5 dialogs only via x ui modal                                   0.01s  
+  ✓ door 5 trips on hand rolled dialog fixture                           0.02s  
+  ✓ door 6 wire poll only inside components ui                           0.01s  
+  ✓ door 6 trips on wire poll fixture                                    0.02s  
+  ✓ door 7 light only no dark variants                                   0.02s  
+  ✓ door 7 trips on dark variant fixture                                 0.02s  
+
+  Tests:    24 passed (117 assertions)
+  Duration: 2.12s
+

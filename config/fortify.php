@@ -132,15 +132,18 @@ return [
     | Redirects
     |--------------------------------------------------------------------------
     |
-    | Null defers to Fortify's defaults.
+    | Spec 003 decision 003-D02 [P]: until the app home ships in its own
+    | spec, logins and logouts land on the public landing page ('/'), and
+    | registrations land on the sign-in page (the verification toast is
+    | flashed by the RegisterResponse binding in AppServiceProvider).
     |
     */
 
     'redirects' => [
-        'login' => null,
-        'logout' => null,
+        'login' => '/',
+        'logout' => '/',
         'password-confirmation' => null,
-        'register' => null,
+        'register' => '/login',
         'email-verification' => null,
         'password-reset' => null,
     ],

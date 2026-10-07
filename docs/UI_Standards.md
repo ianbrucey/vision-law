@@ -31,7 +31,12 @@ copy-pasting classes between views, stop — extract.
 ## Tokens
 
 Color palette: professional legal — deep navy ink, warm brass for attention,
-quiet paper background. Light-only v1.
+quiet paper background. Light-only v1 — with ONE scoped exception per
+[003-D01](specs/003-public-site-auth/decisions.md): the marketing landing's
+dark cinematic treatment (tokens `--vl-dark-0` … `--vl-dark-mut`) applies to
+the marketing landing page (nav, hero, trust strip, final CTA, footer) ONLY.
+Everything behind auth stays light-only; the dark hero uses tokens, not
+dark-mode variants, so door 7 stands unchanged.
 
 | Token | Value | Used for |
 | --- | --- | --- |
@@ -44,6 +49,9 @@ quiet paper background. Light-only v1.
 | `--vl-text` / `--vl-mut` | `#1F2A37` / `#5B6B7C` | Body text / secondary text |
 | `--vl-ok` / `--vl-ok-soft` | `#2F7D4F` / `#E6F2E9` | Positive, executed, complete |
 | `--vl-bad` / `--vl-bad-soft` | `#B23B3B` / `#F8E8E8` | Destructive, overdue, denied |
+| `--vl-dark-0` / `--vl-dark-1` | `#04060C` / `#0A1424` | **Marketing only (003-D01):** dark cinematic base / gradient end — landing nav, hero, trust strip, final CTA, footer |
+| `--vl-neon` / `--vl-neon-deep` | `#35A2FF` / `#1B6FD6` | **Marketing only (003-D01):** accent (eyebrow, CTAs, glyphs) / CTA gradient end |
+| `--vl-dark-text` / `--vl-dark-mut` | `#EAF2FA` / `#9DB1C7` | **Marketing only (003-D01):** text / secondary text on dark sections |
 
 Typography: **Georgia (serif) for page titles and card headings only** —
 everything else is system sans. Base 16px; page title 30px (26px on phones).
@@ -168,20 +176,25 @@ with the first UI feature; `tests/Architecture/` does not exist yet):
    `type="hidden"`), `<select>`, `<textarea>`, or kit controls fail outside
    `components/ui/`.
 4. **Page titles only via `<x-ui.page-header>`** — raw `<h1>` fails outside
-   `components/ui/`, auth, and welcome views.
+   `components/ui/`, auth views, and `public/` marketing views.
 5. **Modals only via `<x-ui.modal>`** — hand-rolled dialogs fail.
 6. **`wire:poll` only inside `components/ui/`** — create a component before
    polling anywhere.
 7. **Light-only v1** — no `dark:` variants, no `class="dark"` in any view.
+   (003-D01: the landing's dark treatment uses dedicated `--vl-dark-*` /
+   `--vl-neon*` tokens, not dark-mode variants — this door is unchanged.)
 8. **Leak sentinels** — restricted strings named in a feature's
    `00-brief.md` (client PII, privilege markers, secrets) must never appear
    in rendered views; scans live in the same test file.
 
-### Door exemptions (recorded 2026-10-07, spec 002 Freeze)
+### Door exemptions (recorded 2026-10-07, spec 002 Freeze; reconciled 2026-10-07, spec 003 T-07)
 
-- `resources/views/welcome.blade.php` is exempt from doors 1 (raw hex), 4
-  (page titles) and 7 (light-only): it is the Laravel scaffold page, not a
-  product screen — explicitly left alone per the spec's archaeology.
+- ~~`resources/views/welcome.blade.php` was exempt from doors 1 (raw hex), 4
+  (page titles) and 7 (light-only) per 002-D08~~ — DELETED in 003 T-02;
+  its exemptions died with it.
+- `resources/views/public/*` (marketing landing, spec 003) is exempt from
+  door 4 (page titles): the landing is a fixed marketing layout whose hero
+  h1 is the page's single heading per the approved mockup (003-D01).
 - `resources/views/layouts/app.blade.php` is the sanctioned home of the nav
   drawer (door 5): the drawer is layout infrastructure required by the mobile
   standards — keyboard-operable, Escape-closes, focus-trapped — not an

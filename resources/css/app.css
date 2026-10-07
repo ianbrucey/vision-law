@@ -23,6 +23,14 @@
     --vl-bad-soft: #F8E8E8;
     --vl-info: #2B5F8A;
     --vl-info-soft: #E7EFF6;
+    /* Dark cinematic marketing palette (spec 003, 003-D01 — scoped exception
+       to the light-only door; used ONLY on the marketing landing page). */
+    --vl-dark-0: #04060C;
+    --vl-dark-1: #0A1424;
+    --vl-neon: #35A2FF;
+    --vl-neon-deep: #1B6FD6;
+    --vl-dark-text: #EAF2FA;
+    --vl-dark-mut: #9DB1C7;
 }
 
 @theme {
@@ -45,6 +53,14 @@
     --color-vl-bad-soft: #F8E8E8;
     --color-vl-info: #2B5F8A;
     --color-vl-info-soft: #E7EFF6;
+    /* Dark cinematic marketing palette (spec 003, 003-D01 — scoped exception
+       to the light-only door; used ONLY on the marketing landing page). */
+    --color-vl-dark-0: #04060C;
+    --color-vl-dark-1: #0A1424;
+    --color-vl-neon: #35A2FF;
+    --color-vl-neon-deep: #1B6FD6;
+    --color-vl-dark-text: #EAF2FA;
+    --color-vl-dark-mut: #9DB1C7;
 
     --radius-vl-card: 10px;
     --radius-vl-control: 8px;
