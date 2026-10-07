@@ -53,6 +53,7 @@ class RestrictToTwoFactorSetup
         'two-factor.disable', // DELETE user/two-factor-authentication
         'two-factor.regenerate-recovery-codes', // POST user/two-factor-recovery-codes
         'two-factor.qr-code', // GET user/two-factor-qr-code
+        'two-factor.qr-image', // GET user/two-factor-qr-code.svg (T-03: the <img>-able QR)
         'two-factor.secret-key', // GET user/two-factor-secret-key (manual-key fallback)
         'logout', // POST /logout
     ];
