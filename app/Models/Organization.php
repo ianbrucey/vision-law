@@ -46,7 +46,7 @@ class Organization extends Model
         // v7 instead. Direct assignment bypasses mass-assignment guards here.
         $org = static::query()->where('id', static::SYSTEM_ID)->first();
         if ($org === null) {
-            $org = new static(['name' => 'System', 'slug' => 'system']);
+            $org = new self(['name' => 'System', 'slug' => 'system']);
             $org->id = static::SYSTEM_ID;
             $org->save();
         }
