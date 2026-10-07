@@ -128,12 +128,20 @@ class VisionUiTest extends TestCase
         });
     }
 
-    /** Door 4 — page titles only via <x-ui.page-header> (auth + welcome exempt). */
+    /**
+     * Door 4 — page titles only via <x-ui.page-header> (auth, welcome, and
+     * the public/ marketing landing exempt).
+     *
+     * Spec 003 T-02: the landing is a fixed marketing layout — its hero h1 is
+     * the page's single heading per the approved mockup (the welcome-exemption
+     * precedent; 06-plan.md T-02/T-07).
+     */
     private function door4Titles(string $root): array
     {
         return $this->scan($root, function (string $relative, string $line): bool {
             if (str_starts_with($relative, 'components/ui/')
                 || str_starts_with($relative, 'auth/')
+                || str_starts_with($relative, 'public/')
                 || $relative === self::WELCOME) {
                 return false;
             }
