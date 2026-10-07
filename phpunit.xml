@@ -8,6 +8,9 @@
         <testsuite name="Unit">
             <directory>tests/Unit</directory>
         </testsuite>
+        <testsuite name="Architecture">
+            <directory>tests/Architecture</directory>
+        </testsuite>
         <testsuite name="Feature">
             <directory>tests/Feature</directory>
         </testsuite>
@@ -20,15 +23,34 @@
     <php>
         <env name="APP_ENV" value="testing"/>
         <env name="APP_MAINTENANCE_DRIVER" value="file"/>
-        <env name="BCRYPT_ROUNDS" value="4"/>
+        <!--
+            Decision 001-D08: Argon2id parameters for the test environment are
+            deliberately WEAKER than the production PLT-02 parameters
+            (64 MiB memory / 3 iterations / 1 thread, see config/hashing.php)
+            so the suite stays fast. These values are test-only and are NOT
+            the application's security posture — a dedicated test asserts the
+            production hashing configuration.
+        -->
+        <env name="ARGON2ID_MEMORY" value="8192"/>
+        <env name="ARGON2ID_TIME" value="1"/>
+        <env name="ARGON2ID_THREADS" value="1"/>
         <env name="BROADCAST_CONNECTION" value="null"/>
         <env name="CACHE_STORE" value="array"/>
-        <env name="DB_CONNECTION" value="sqlite"/>
-        <env name="DB_DATABASE" value=":memory:"/>
+        <!--
+            Tests run against Postgres (vision_law_test), not sqlite :memory:.
+            This feature needs pgcrypto UUIDs, REVOKE, and advisory locks,
+            none of which sqlite provides.
+        -->
+        <env name="DB_CONNECTION" value="pgsql"/>
+        <env name="DB_HOST" value="127.0.0.1"/>
+        <env name="DB_PORT" value="5435"/>
+        <env name="DB_DATABASE" value="vision_law_test"/>
+        <env name="DB_USERNAME" value="vision_law"/>
+        <env name="DB_PASSWORD" value="b854d5191cf15d69213ba928257379a35ac4edc40e4f044e"/>
         <env name="DB_URL" value=""/>
         <env name="MAIL_MAILER" value="array"/>
         <env name="QUEUE_CONNECTION" value="sync"/>
-        <env name="SESSION_DRIVER" value="array"/>
+        <env name="SESSION_DRIVER" value="database"/>
         <env name="PULSE_ENABLED" value="false"/>
         <env name="TELESCOPE_ENABLED" value="false"/>
         <env name="NIGHTWATCH_ENABLED" value="false"/>

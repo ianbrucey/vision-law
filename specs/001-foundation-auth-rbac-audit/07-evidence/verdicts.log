@@ -1,0 +1,27 @@
+
+   PASS  Tests\Feature\AdminRbacTest
+  ✓ invitation token rejected for different signed in user               0.68s  
+  ✓ session revoke and concurrent session limit                          0.28s  
+  ✓ outside counsel cannot list org users                                0.22s  
+
+   PASS  Tests\Feature\AuditLogTest
+  ✓ audit log rejects update and delete                                  0.21s  
+
+   PASS  Tests\Feature\AuditViewerTest
+  ✓ audit viewer forbidden for non admin                                 0.26s  
+
+   PASS  Tests\Feature\AuthFlowsTest
+  ✓ registration requires email verification before login                0.32s  
+  ✓ weak and breached passwords rejected                                 0.53s  
+  ✓ brute force lockout after five failures                              1.50s  
+  ✓ password reset revokes sessions and uses generic responses           1.37s  
+  ✓ mfa challenge blocks login without valid code                        0.57s  
+
+   PASS  Tests\Feature\MatterGrantsTest
+  ✓ cross org matter access returns 404                                  0.26s  
+  ✓ expired matter grant denies access                                   0.23s  
+  ✓ team grant gives matter access                                       0.25s  
+
+  Tests:    13 passed (192 assertions)
+  Duration: 6.82s
+
