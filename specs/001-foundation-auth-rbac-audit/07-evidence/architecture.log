@@ -1,0 +1,20 @@
+
+   PASS  Tests\Architecture\AuditWritesTest
+  ✓ audit events inserts happen only inside audit logger                 0.12s  
+
+   PASS  Tests\Architecture\AuthenticatedByDefaultTest
+  ✓ every route except the explicit guest list requires authentication   0.03s  
+
+   PASS  Tests\Architecture\LeakSentinelTest
+  ✓ denied attorney sees no privileged strings                           0.63s  
+  ✓ denied outside counsel sees no privileged strings                    0.26s  
+  ✓ cross org actor sees no privileged strings                           0.24s  
+  ✓ guest surfaces render no privileged strings                          0.23s  
+  ✓ allowed admin surfaces render no privileged strings                  0.26s  
+
+   PASS  Tests\Architecture\StorageFacadeTest
+  ✓ controllers never reference the storage facade                       0.02s  
+
+  Tests:    8 passed (149 assertions)
+  Duration: 1.91s
+
