@@ -48,4 +48,17 @@ class RegistrationFlagTest extends TestCase
             'password' => 'wrong',
         ])->assertStatus(422);
     }
+
+    /**
+     * Spec 003 T-06: with the flag off, the GET /register view route is
+     * also absent (same flag gate as the POST). The login view is
+     * unaffected.
+     */
+    public function test_register_view_absent_when_flag_off(): void
+    {
+        $this->get('/register')->assertNotFound();
+
+        // Other auth views are unaffected.
+        $this->get('/login')->assertOk();
+    }
 }
