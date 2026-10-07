@@ -293,8 +293,8 @@ class AuthFlowsTest extends TestCase
         $other = $fixtures->user('user_paralegal');
         $email = (string) $user->email;
 
-        // The test env uses the array session driver, so seed session rows
-        // directly: the revocation listener deletes by user_id regardless.
+        // Seed session rows directly (the test env uses the database
+        // session driver, same as production): the revocation listener deletes by user_id regardless.
         DB::table('sessions')->insert([
             ['id' => 'sess-a', 'user_id' => $user->getKey(), 'ip_address' => '127.0.0.1', 'user_agent' => 't', 'payload' => 'x', 'last_activity' => time()],
             ['id' => 'sess-b', 'user_id' => $user->getKey(), 'ip_address' => '127.0.0.1', 'user_agent' => 't', 'payload' => 'x', 'last_activity' => time()],

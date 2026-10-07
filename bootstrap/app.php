@@ -1,5 +1,8 @@
 <?php
 
+use App\Exceptions\InvitationInvalidException;
+use App\Http\Middleware\EnsureSessionLifetime;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
@@ -13,7 +16,9 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
-        //
+        // C-07: absolute session lifetime for privileged roles (org_admin +
+        // attorney). No-op for guests and non-privileged roles.
+        $middleware->web(append: [EnsureSessionLifetime::class]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         $exceptions->shouldRenderJsonWhen(
@@ -29,5 +34,20 @@ return Application::configure(basePath: dirname(__DIR__))
                     'details' => $e->errors(),
                 ], 422);
             }
+        });
+
+        // 03-contract.md: cross-org / missing resources render as
+        // {code: "not_found"} for JSON clients (no existence leak).
+        $exceptions->render(function (ModelNotFoundException $e, Request $request) {
+            if ($request->expectsJson()) {
+                return response()->json(['code' => 'not_found'], 404);
+            }
+        });
+
+        // C-05: every invitation failure mode (unknown/expired/revoked/
+        // accepted token, wrong signed-in user) renders the same generic
+        // body — no enumeration. JSON-only surface (no Blade per 001-D06).
+        $exceptions->render(function (InvitationInvalidException $e) {
+            return response()->json(['code' => 'invitation_invalid'], 422);
         });
     })->create();
