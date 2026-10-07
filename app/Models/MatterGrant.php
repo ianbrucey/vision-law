@@ -2,10 +2,14 @@
 
 namespace App\Models;
 
+use Carbon\CarbonInterface;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
+/**
+ * @property CarbonInterface|null $expires_at
+ */
 class MatterGrant extends Model
 {
     use HasUuids;

@@ -7,6 +7,8 @@ use App\Http\Controllers\Auth\PasswordResetLinkController;
 use App\Http\Controllers\Auth\RegisteredUserController;
 use App\Http\Controllers\Auth\TwoFactorChallengeController;
 use App\Http\Controllers\InvitationController;
+use App\Http\Controllers\MatterController;
+use App\Http\Controllers\MatterGrantController;
 use App\Http\Controllers\SessionController;
 use App\Http\Middleware\RequireOrgAdmin;
 use Illuminate\Support\Facades\Route;
@@ -97,3 +99,21 @@ Route::middleware(['auth:'.config('fortify.guard'), RequireOrgAdmin::class])
         Route::post('/invitations', [AdminInvitationController::class, 'store'])->name('invitations.store');
         Route::delete('/invitations/{invitation}', [AdminInvitationController::class, 'destroy'])->name('invitations.destroy');
     });
+
+// ── Ticket 6: matter grants + authorization proving ground (backend only,
+// no Blade per 001-D06) ──
+// RequireMatterAccess resolves the matter and authorizes BEFORE any data
+// access; controllers read the authorized matter from request attributes.
+Route::middleware(['auth:'.config('fortify.guard')])->group(function (): void {
+    Route::get('/matters/{matter}', [MatterController::class, 'show'])
+        ->middleware('matter.access:view')
+        ->name('matters.show');
+
+    Route::post('/matters/{matter}/grants', [MatterGrantController::class, 'store'])
+        ->middleware('matter.access:grant')
+        ->name('matters.grants.store');
+
+    Route::delete('/matters/{matter}/grants/{grant}', [MatterGrantController::class, 'destroy'])
+        ->middleware('matter.access:grant')
+        ->name('matters.grants.destroy');
+});
