@@ -3,6 +3,7 @@
 use App\Exceptions\InvitationInvalidException;
 use App\Http\Middleware\EnsureSessionLifetime;
 use App\Http\Middleware\RequireMatterAccess;
+use App\Http\Middleware\RestrictToTwoFactorSetup;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
@@ -21,11 +22,22 @@ return Application::configure(basePath: dirname(__DIR__))
         // runs before any data access on /matters/* routes.
         $middleware->alias([
             'matter.access' => RequireMatterAccess::class,
+            // Spec 005 (005-D01): restricted setup-mode session for org
+            // admins without confirmed 2FA. Explicit allowlist — enforced
+            // in the middleware, not a denylist.
+            '2fa.setup' => RestrictToTwoFactorSetup::class,
         ]);
 
         // C-07: absolute session lifetime for privileged roles (org_admin +
         // attorney). No-op for guests and non-privileged roles.
         $middleware->web(append: [EnsureSessionLifetime::class]);
+
+        // Spec 005 (005-D01): on the web group so EVERY web route is
+        // covered by default, including routes added later. Runs before the
+        // per-route auth middleware, but the flag implies an authenticated
+        // session (it is set only on login), so the outcome is identical.
+        // No-op for sessions without the setup-mode flag.
+        $middleware->web(append: ['2fa.setup']);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         $exceptions->shouldRenderJsonWhen(

@@ -10,6 +10,8 @@ use App\Actions\Fortify\EnsureLoginNotLockedOut;
 use App\Actions\Fortify\RedirectIfTwoFactorAuthenticatable;
 use App\Actions\Fortify\ResetUserPassword;
 use App\Actions\Fortify\UpdateUserPassword;
+use App\Http\Responses\RecoveryCodesGeneratedResponse as AppRecoveryCodesGeneratedResponse;
+use App\Http\Responses\TwoFactorConfirmedResponse as AppTwoFactorConfirmedResponse;
 use App\Listeners\AuthEventSubscriber;
 use App\Listeners\RevokeSessionsOnPasswordReset;
 use Illuminate\Auth\Events\PasswordReset;
@@ -19,6 +21,8 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\ServiceProvider;
 use Laravel\Fortify\Actions\EnableTwoFactorAuthentication as FortifyEnableTwoFactorAuthentication;
+use Laravel\Fortify\Contracts\RecoveryCodesGeneratedResponse as RecoveryCodesGeneratedResponseContract;
+use Laravel\Fortify\Contracts\TwoFactorConfirmedResponse as TwoFactorConfirmedResponseContract;
 use Laravel\Fortify\Fortify;
 
 /**
@@ -39,6 +43,19 @@ class FortifyServiceProvider extends ServiceProvider
         $this->app->bind(
             FortifyEnableTwoFactorAuthentication::class,
             AppEnableTwoFactorAuthentication::class
+        );
+
+        // Spec 005 T-01: the confirm/regenerate responses clear the
+        // setup-mode flag and flash the recovery codes for the once-display
+        // on the enrollment page (Fortify's sanctioned hook; the POST
+        // backends are untouched).
+        $this->app->bind(
+            TwoFactorConfirmedResponseContract::class,
+            AppTwoFactorConfirmedResponse::class
+        );
+        $this->app->bind(
+            RecoveryCodesGeneratedResponseContract::class,
+            AppRecoveryCodesGeneratedResponse::class
         );
     }
 
@@ -63,5 +80,12 @@ class FortifyServiceProvider extends ServiceProvider
 
         // C-03/C-06: audit + brute-force bookkeeping for Fortify auth events.
         Event::subscribe(AuthEventSubscriber::class);
+
+        // Spec 005 T-03: the confirm-password GET view (Fortify's sanctioned
+        // hook). Fortify skips registering the GET user/confirm-password
+        // route in headless mode (views => false); the route itself is
+        // registered in routes/web.php. No auth logic changes -- the POST
+        // backend stays Fortify's.
+        Fortify::confirmPasswordView('auth.confirm-password');
     }
 }

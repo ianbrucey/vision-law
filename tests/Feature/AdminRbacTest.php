@@ -632,11 +632,13 @@ class AdminRbacTest extends TestCase
     // ── 2FA required for org admins ──────────────────────────────────────
 
     /**
-     * T-04 deferred this (no contract behavior specified): an org admin
-     * without 2FA enrolled is denied at login completion with 403
-     * {code: "mfa_required"} — never left authenticated.
+     * Spec 005 (005-D01): an org admin without 2FA enrolled gets a
+     * restricted setup-mode session at login — a redirect to the enrollment
+     * page, NOT the old 403 {code: "mfa_required"} logout. The session stays
+     * authenticated but is limited to the enrollment surface until
+     * two-factor.confirm (see TwoFactorScreensTest for the full verdict).
      */
-    public function test_org_admin_without_mfa_gets_mfa_required_on_login(): void
+    public function test_org_admin_without_mfa_gets_setup_mode_session_on_login(): void
     {
         $loader = FixtureLoader::load();
         $orgId = $loader->id('org_sterling');
@@ -655,10 +657,11 @@ class AdminRbacTest extends TestCase
         $this->postJson('/login', [
             'email' => 'mfaless@sterling.test',
             'password' => FixtureLoader::DEFAULT_PASSWORD,
-        ])->assertStatus(403)->assertJson(['code' => 'mfa_required']);
+        ])->assertStatus(302)->assertRedirect(route('two-factor.settings'));
 
-        $this->assertGuest();
-        $this->assertDatabaseHas('audit_events', ['event' => 'auth.login.failed']);
+        $this->assertAuthenticatedAs($admin);
+        $this->assertTrue((bool) session('visionlaw.2fa_setup_required'));
+        $this->assertDatabaseHas('audit_events', ['event' => 'auth.login.2fa_enrollment_required']);
     }
 
     /**

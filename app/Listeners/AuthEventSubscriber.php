@@ -7,6 +7,8 @@ use App\Services\AuditLogger;
 use App\Services\LoginAttemptService;
 use Illuminate\Auth\Events\Logout;
 use Illuminate\Events\Dispatcher;
+use Laravel\Fortify\Events\RecoveryCodesGenerated;
+use Laravel\Fortify\Events\TwoFactorAuthenticationConfirmed;
 use Laravel\Fortify\Events\TwoFactorAuthenticationDisabled;
 use Laravel\Fortify\Events\TwoFactorAuthenticationEnabled;
 use Laravel\Fortify\Events\TwoFactorAuthenticationFailed;
@@ -43,8 +45,16 @@ class AuthEventSubscriber
             [self::class, 'onMfaEnabled']
         );
         $events->listen(
+            TwoFactorAuthenticationConfirmed::class,
+            [self::class, 'onMfaConfirmed']
+        );
+        $events->listen(
             TwoFactorAuthenticationDisabled::class,
             [self::class, 'onMfaDisabled']
+        );
+        $events->listen(
+            RecoveryCodesGenerated::class,
+            [self::class, 'onRecoveryCodesRegenerated']
         );
         $events->listen(Logout::class, [self::class, 'onLogout']);
     }
@@ -89,6 +99,10 @@ class AuthEventSubscriber
             'email_domain_digest' => LoginAttemptService::emailDomainDigest($email),
         ]);
 
+        // Spec 005 (03-contract.md): the 005-contract name for a rejected
+        // challenge code. Generic -- no code detail is logged.
+        AuditLogger::log('mfa.challenge.failed', $user, ['actor_id' => (string) $user->getKey()]);
+
         if ($outcome->isLockedOut()) {
             AuditLogger::log('auth.login.locked_out', $user, ['ip' => $ip]);
         }
@@ -102,12 +116,43 @@ class AuthEventSubscriber
         AuditLogger::log('auth.mfa.enabled', $user, ['actor_id' => (string) $user->getKey()]);
     }
 
+    /**
+     * Spec 005 (03-contract.md): two-factor.confirm succeeded - the
+     * enrollment is complete. Distinct from auth.mfa.enabled, which fires
+     * at enable time (unconfirmed secret).
+     */
+    public function onMfaConfirmed(TwoFactorAuthenticationConfirmed $event): void
+    {
+        /** @var User $user */
+        $user = $event->user;
+
+        AuditLogger::log('mfa.enrolled', $user, ['actor_id' => (string) $user->getKey()]);
+    }
+
     public function onMfaDisabled(TwoFactorAuthenticationDisabled $event): void
     {
         /** @var User $user */
         $user = $event->user;
 
         AuditLogger::log('auth.mfa.disabled', $user, ['actor_id' => (string) $user->getKey()]);
+
+        // Spec 005 (03-contract.md): the 005-contract name for a completed
+        // disable after password confirmation.
+        AuditLogger::log('mfa.disabled', $user, ['actor_id' => (string) $user->getKey()]);
+    }
+
+    /**
+     * Spec 005 (03-contract.md): recovery codes regenerated. The
+     * RecoveryCodesGenerated event fires only from the regenerate endpoint
+     * (GenerateNewRecoveryCodes is not invoked at enable/confirm time), so
+     * this maps exactly to "regeneration POST".
+     */
+    public function onRecoveryCodesRegenerated(RecoveryCodesGenerated $event): void
+    {
+        /** @var User $user */
+        $user = $event->user;
+
+        AuditLogger::log('mfa.recovery_codes.regenerated', $user, ['actor_id' => (string) $user->getKey()]);
     }
 
     public function onLogout(Logout $event): void
