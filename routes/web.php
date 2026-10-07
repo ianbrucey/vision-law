@@ -8,6 +8,7 @@ use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\Auth\PasswordResetLinkController;
 use App\Http\Controllers\Auth\RegisteredUserController;
 use App\Http\Controllers\Auth\TwoFactorChallengeController;
+use App\Http\Controllers\Auth\TwoFactorSettingsController;
 use App\Http\Controllers\InvitationController;
 use App\Http\Controllers\MatterController;
 use App\Http\Controllers\MatterGrantController;
@@ -64,6 +65,15 @@ Route::post('/forgot-password', [PasswordResetLinkController::class, 'store'])
 Route::post('/two-factor-challenge', [TwoFactorChallengeController::class, 'store'])
     ->middleware(['guest:'.config('fortify.guard'), 'throttle:10,1'])
     ->name('two-factor.login.store');
+
+// ── Spec 005 T-01: 2FA enrollment page (005-D02) ──
+// GET user/two-factor, named two-factor.settings. Fortify is headless
+// (views => false), so the POST/DELETE backends stay Fortify's; this is the
+// app-level view route. In setup mode (005-D01) RestrictToTwoFactorSetup
+// limits the session to this page and its actions.
+Route::get('user/two-factor', [TwoFactorSettingsController::class, 'index'])
+    ->middleware(['auth:'.config('fortify.guard')])
+    ->name('two-factor.settings');
 
 Route::get('/reset-password/{token}', function () {
     return response()->json([

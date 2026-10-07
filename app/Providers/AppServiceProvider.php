@@ -15,9 +15,9 @@ use Laravel\Fortify\Contracts\RegisterResponse as RegisterResponseContract;
  * App-level event wiring (kept out of FortifyServiceProvider, which is
  * T-04's file).
  *
- * - Login → EnforceSessionPolicies: MFA-required-for-org-admins (403
- *   mfa_required), absolute-lifetime anchor, concurrent-session limit
- *   (C-06/C-07).
+ * - Login → EnforceSessionPolicies: MFA-required-for-org-admins (spec
+ *   005 005-D01: restricted setup-mode session, not logout+403),
+ *   absolute-lifetime anchor, concurrent-session limit (C-06/C-07).
  * - RegisterResponse contract → App\Http\Responses\RegisterResponse:
  *   spec 003 T-05 (003-D02) verification toast on the browser registration
  *   redirect (Fortify's sanctioned hook; POST backend untouched).

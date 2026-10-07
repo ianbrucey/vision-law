@@ -7,6 +7,7 @@ use App\Services\AuditLogger;
 use App\Services\LoginAttemptService;
 use Illuminate\Auth\Events\Logout;
 use Illuminate\Events\Dispatcher;
+use Laravel\Fortify\Events\TwoFactorAuthenticationConfirmed;
 use Laravel\Fortify\Events\TwoFactorAuthenticationDisabled;
 use Laravel\Fortify\Events\TwoFactorAuthenticationEnabled;
 use Laravel\Fortify\Events\TwoFactorAuthenticationFailed;
@@ -41,6 +42,10 @@ class AuthEventSubscriber
         $events->listen(
             TwoFactorAuthenticationEnabled::class,
             [self::class, 'onMfaEnabled']
+        );
+        $events->listen(
+            TwoFactorAuthenticationConfirmed::class,
+            [self::class, 'onMfaConfirmed']
         );
         $events->listen(
             TwoFactorAuthenticationDisabled::class,
@@ -100,6 +105,19 @@ class AuthEventSubscriber
         $user = $event->user;
 
         AuditLogger::log('auth.mfa.enabled', $user, ['actor_id' => (string) $user->getKey()]);
+    }
+
+    /**
+     * Spec 005 (03-contract.md): two-factor.confirm succeeded - the
+     * enrollment is complete. Distinct from auth.mfa.enabled, which fires
+     * at enable time (unconfirmed secret).
+     */
+    public function onMfaConfirmed(TwoFactorAuthenticationConfirmed $event): void
+    {
+        /** @var User $user */
+        $user = $event->user;
+
+        AuditLogger::log('mfa.enrolled', $user, ['actor_id' => (string) $user->getKey()]);
     }
 
     public function onMfaDisabled(TwoFactorAuthenticationDisabled $event): void

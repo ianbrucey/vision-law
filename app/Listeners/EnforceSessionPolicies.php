@@ -2,12 +2,12 @@
 
 namespace App\Listeners;
 
+use App\Http\Middleware\RestrictToTwoFactorSetup;
 use App\Models\User;
 use App\Services\AuditLogger;
 use App\Services\LoginAttemptService;
 use Illuminate\Auth\Events\Login;
 use Illuminate\Http\Exceptions\HttpResponseException;
-use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -15,10 +15,13 @@ use Illuminate\Support\Facades\DB;
  * login paths are covered: the password pipeline (CompleteLogin) and the 2FA
  * challenge (TwoFactorAuthenticatedSessionController).
  *
- * 1. MFA required for org admins: an org_admin without enrolled 2FA is
- *    logged straight back out and denied with 403 {code: "mfa_required"}
- *    (JSON, no Blade per 001-D06). The denial is audited as
- *    auth.login.failed — no new event name invented.
+ * 1. MFA required for org admins: an org_admin without enrolled 2FA gets a
+ *    restricted "setup-mode" session (spec 005, 005-D01) instead of the old
+ *    logout+403. The session flag visionlaw.2fa_setup_required limits the
+ *    session to the enrollment surface (RestrictToTwoFactorSetup) until
+ *    two-factor.confirm clears it. The policy itself is unchanged — admins
+ *    must enroll — only the denial shape became shippable. The issuance is
+ *    audited as auth.login.2fa_enrollment_required.
  * 2. Absolute-lifetime anchor: visionlaw.login_at is stamped into the
  *    session for EnsureSessionLifetime to enforce.
  * 3. Concurrent-session limit (default 5): the oldest sessions beyond the
@@ -36,20 +39,37 @@ class EnforceSessionPolicies
         }
 
         if ($user->hasRole('org_admin') && ! $user->hasEnabledTwoFactorAuthentication()) {
-            // Never leave an MFA-less org admin authenticated: log out first,
-            // then deny. (The Logout event audits auth.logout via the
-            // existing subscriber.)
-            Auth::guard($event->guard)->logout();
+            $request = request();
 
-            AuditLogger::log('auth.login.failed', $user, [
-                'ip' => request()->ip(),
+            if ($request->hasSession()) {
+                $session = $request->session();
+
+                // 005-D01: restricted setup-mode session (replaces logout+403
+                // for this case only). The flag lives in the session only —
+                // never persisted to the user row.
+                $session->put(RestrictToTwoFactorSetup::SESSION_KEY, true);
+
+                // The password was proven seconds ago in this very request,
+                // so the enrollment POSTs (behind Fortify's password.confirm)
+                // work without a second password prompt. The setup-mode
+                // allowlist keeps the session restricted to the enrollment
+                // surface regardless.
+                $session->put('auth.password_confirmed_at', now()->timestamp);
+
+                // Rotate the session id on the privilege change, mirroring
+                // CompleteLogin's normal-path rotation.
+                $session->regenerate();
+            }
+
+            AuditLogger::log('auth.login.2fa_enrollment_required', $user, [
+                'ip' => $request->ip(),
                 'email_domain_digest' => LoginAttemptService::emailDomainDigest(
                     LoginAttemptService::normalizeEmail((string) $user->email)
                 ),
             ]);
 
             throw new HttpResponseException(
-                response()->json(['code' => 'mfa_required'], 403)
+                redirect()->route('two-factor.settings')
             );
         }
 
