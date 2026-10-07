@@ -17,7 +17,13 @@ use Symfony\Component\HttpFoundation\Response;
  */
 class RequireOrgAdmin
 {
-    public function handle(Request $request, Closure $next): Response
+    /**
+     * @param  string  $denialEvent  the audit event written on denial.
+     *                               Defaults to user.admin.denied; the audit
+     *                               viewer routes pass audit.viewer.denied
+     *                               (03-contract.md §Error catalog, T-07).
+     */
+    public function handle(Request $request, Closure $next, string $denialEvent = 'user.admin.denied'): Response
     {
         $user = $request->user();
 
@@ -26,7 +32,7 @@ class RequireOrgAdmin
         }
 
         if ($user instanceof User) {
-            AuditLogger::log('user.admin.denied', $user, [
+            AuditLogger::log($denialEvent, $user, [
                 'actor_id' => (string) $user->getKey(),
                 'path' => '/'.$request->path(),
             ]);

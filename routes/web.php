@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Admin\AuditEventController as AdminAuditEventController;
 use App\Http\Controllers\Admin\InvitationController as AdminInvitationController;
 use App\Http\Controllers\Admin\TeamController as AdminTeamController;
 use App\Http\Controllers\Admin\UserController as AdminUserController;
@@ -98,6 +99,22 @@ Route::middleware(['auth:'.config('fortify.guard'), RequireOrgAdmin::class])
         Route::get('/invitations', [AdminInvitationController::class, 'index'])->name('invitations.index');
         Route::post('/invitations', [AdminInvitationController::class, 'store'])->name('invitations.store');
         Route::delete('/invitations/{invitation}', [AdminInvitationController::class, 'destroy'])->name('invitations.destroy');
+    });
+
+// ── Ticket 7: audit viewer (backend only, no Blade per 001-D06) ──
+// Denials on these routes are audited as audit.viewer.denied (03-contract.md
+// §Error catalog), distinct from the generic user.admin.denied on the other
+// admin routes. The export additionally sits behind password.confirm.
+// Queries are scoped to the admin's org (001-D13: system-org events are out
+// of scope for the org viewer).
+Route::middleware(['auth:'.config('fortify.guard'), RequireOrgAdmin::class.':audit.viewer.denied'])
+    ->prefix('admin')
+    ->name('admin.')
+    ->group(function (): void {
+        Route::get('/audit-events', [AdminAuditEventController::class, 'index'])->name('audit-events.index');
+        Route::get('/audit-events/export', [AdminAuditEventController::class, 'export'])
+            ->middleware('password.confirm')
+            ->name('audit-events.export');
     });
 
 // ── Ticket 6: matter grants + authorization proving ground (backend only,
