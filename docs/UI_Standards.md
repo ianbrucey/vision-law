@@ -176,7 +176,7 @@ with the first UI feature; `tests/Architecture/` does not exist yet):
    `type="hidden"`), `<select>`, `<textarea>`, or kit controls fail outside
    `components/ui/`.
 4. **Page titles only via `<x-ui.page-header>`** — raw `<h1>` fails outside
-   `components/ui/`, auth, and welcome views.
+   `components/ui/`, auth views, and `public/` marketing views.
 5. **Modals only via `<x-ui.modal>`** — hand-rolled dialogs fail.
 6. **`wire:poll` only inside `components/ui/`** — create a component before
    polling anywhere.
@@ -187,11 +187,14 @@ with the first UI feature; `tests/Architecture/` does not exist yet):
    `00-brief.md` (client PII, privilege markers, secrets) must never appear
    in rendered views; scans live in the same test file.
 
-### Door exemptions (recorded 2026-10-07, spec 002 Freeze)
+### Door exemptions (recorded 2026-10-07, spec 002 Freeze; reconciled 2026-10-07, spec 003 T-07)
 
-- `resources/views/welcome.blade.php` is exempt from doors 1 (raw hex), 4
-  (page titles) and 7 (light-only): it is the Laravel scaffold page, not a
-  product screen — explicitly left alone per the spec's archaeology.
+- ~~`resources/views/welcome.blade.php` was exempt from doors 1 (raw hex), 4
+  (page titles) and 7 (light-only) per 002-D08~~ — DELETED in 003 T-02;
+  its exemptions died with it.
+- `resources/views/public/*` (marketing landing, spec 003) is exempt from
+  door 4 (page titles): the landing is a fixed marketing layout whose hero
+  h1 is the page's single heading per the approved mockup (003-D01).
 - `resources/views/layouts/app.blade.php` is the sanctioned home of the nav
   drawer (door 5): the drawer is layout infrastructure required by the mobile
   standards — keyboard-operable, Escape-closes, focus-trapped — not an
