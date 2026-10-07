@@ -14,9 +14,9 @@ use Tests\TestCase;
 
 /**
  * Spec 002 — UI foundation, tickets T-02 (primitive form components), T-03
- * (display components), T-04 (composite components) and T-05 (app shell +
- * patterns catalogue). Verdicts C-02 (complete)/C-03/C-04/C-06 (partial),
- * C-07, C-08, C-09 and C-10 live here.
+ * (display components), T-04 (composite components), T-05 (app shell +
+ * patterns catalogue) and T-07 (accessibility audit). Verdicts C-02
+ * (complete)/C-03/C-04/C-06 (complete), C-07, C-08, C-09 and C-10 live here.
  */
 class UiComponentsTest extends TestCase
 {
@@ -547,5 +547,184 @@ class UiComponentsTest extends TestCase
         $this->actingAs($loader->user('user_attorney_granted'))
             ->get('/_patterns')
             ->assertNotFound();
+    }
+
+    // ------------------------------------------------------------------
+    // Ticket 7 — accessibility audit
+    // ------------------------------------------------------------------
+
+    /**
+     * C-06 (complete): label[for] matches control id for all four controls —
+     * including custom id overrides and error states (aria-describedby).
+     */
+    public function test_all_form_controls_have_associated_labels_complete(): void
+    {
+        // Custom id override propagates to both the label and the control.
+        $cases = [
+            '<x-ui.field name="title" label="Matter title" id="custom-title" />',
+            '<x-ui.select name="status" label="Status" id="custom-status" :options="$options" />',
+            '<x-ui.textarea name="notes" label="Notes" id="custom-notes" />',
+            '<x-ui.checkbox name="privileged" label="Privileged" id="custom-privileged" />',
+        ];
+
+        foreach ($cases as $template) {
+            $html = Blade::render($template, ['options' => ['open' => 'Open']]);
+
+            preg_match('/<label[^>]*\bfor="([^"]+)"/', $html, $labelMatch);
+            preg_match('/<(?:input|select|textarea)[^>]*\bid="([^"]+)"/', $html, $controlMatch);
+
+            $this->assertNotEmpty($labelMatch, "No label[for] found in: {$template}");
+            $this->assertNotEmpty($controlMatch, "No control id found in: {$template}");
+            $this->assertSame($labelMatch[1], $controlMatch[1], "label[for] does not match control id in: {$template}");
+            $this->assertStringStartsWith('custom-', $labelMatch[1], "Custom id not applied in: {$template}");
+        }
+
+        // Error state keeps the association and wires aria-describedby to the
+        // error node under the same id family.
+        $html = Blade::render('<x-ui.field name="title" label="Matter title" error="Required." />');
+        $this->assertStringContainsString('<label for="title"', $html);
+        $this->assertStringContainsString('id="title"', $html);
+        $this->assertStringContainsString('aria-describedby="title-error"', $html);
+        $this->assertStringContainsString('id="title-error"', $html);
+    }
+
+    /**
+     * T-07: the focus-visible contract from UI_Standards ("2px --vl-info
+     * outline on all interactive elements") is declared in the base CSS and
+     * survives the Vite build into the compiled bundle.
+     */
+    public function test_focus_visible_styles_render_on_interactive_elements(): void
+    {
+        $css = (string) file_get_contents(resource_path('css/app.css'));
+
+        $this->assertMatchesRegularExpression(
+            '/:focus-visible\s*\{[^}]*outline:\s*2px\s+solid\s+var\(--vl-info\)/',
+            $css,
+            'Base CSS must declare a 2px var(--vl-info) :focus-visible outline.'
+        );
+
+        // The compiled asset keeps the rule — no silent loss in the build.
+        $manifest = json_decode((string) file_get_contents(public_path('build/manifest.json')), true);
+        $cssAsset = $manifest['resources/css/app.css']['file'] ?? null;
+        $this->assertNotNull($cssAsset, 'Vite manifest must reference the compiled CSS.');
+        $compiled = (string) file_get_contents(public_path('build/'.$cssAsset));
+        $this->assertStringContainsString(':focus-visible{outline:2px solid var(--vl-info)', $compiled);
+    }
+
+    /**
+     * T-07: contrast audit — parse the @theme hex values from app.css,
+     * compute WCAG 2.1 contrast vs white, and verify no regression vs the
+     * 05-ui.md recorded pairs (all ≥ 4.5:1 for text).
+     */
+    public function test_contrast_pairs_meet_aa_and_match_recorded_values(): void
+    {
+        $css = (string) file_get_contents(resource_path('css/app.css'));
+
+        $tokens = [];
+        foreach (['ink', 'text', 'mut', 'brass', 'ok', 'bad', 'info'] as $name) {
+            preg_match('/--color-vl-'.$name.':\s*(#[0-9a-fA-F]{6})/', $css, $match);
+            $this->assertNotEmpty($match, "Token --color-vl-{$name} not found in @theme.");
+            $tokens[$name] = $match[1];
+        }
+
+        $recorded = [
+            'ink' => 14.5, 'text' => 14.5, 'mut' => 5.5, 'brass' => 4.7,
+            'ok' => 5.0, 'bad' => 5.9, 'info' => 6.8,
+        ];
+
+        foreach ($recorded as $name => $expected) {
+            $ratio = $this->contrastRatio($tokens[$name], '#FFFFFF');
+            $this->assertGreaterThanOrEqual(4.5, $ratio, "--vl-{$name} on white is below WCAG AA 4.5:1.");
+            $this->assertEqualsWithDelta($expected, $ratio, 0.2, "--vl-{$name} drifted from the recorded {$expected}:1.");
+        }
+    }
+
+    private function contrastRatio(string $foreground, string $background): float
+    {
+        $l1 = $this->relativeLuminance($foreground);
+        $l2 = $this->relativeLuminance($background);
+        [$high, $low] = $l1 >= $l2 ? [$l1, $l2] : [$l2, $l1];
+
+        return ($high + 0.05) / ($low + 0.05);
+    }
+
+    private function relativeLuminance(string $hex): float
+    {
+        $hex = ltrim($hex, '#');
+        $channels = array_map(
+            fn (string $pair): float => hexdec($pair) / 255,
+            [substr($hex, 0, 2), substr($hex, 2, 2), substr($hex, 4, 2)]
+        );
+
+        $linear = array_map(
+            fn (float $channel): float => $channel <= 0.03928
+                ? $channel / 12.92
+                : pow(($channel + 0.055) / 1.055, 2.4),
+            $channels
+        );
+
+        return 0.2126 * $linear[0] + 0.7152 * $linear[1] + 0.0722 * $linear[2];
+    }
+
+    /**
+     * T-07 keyboard walk: the modal traps focus while open, Escape closes it,
+     * and it is a properly labelled dialog (x-trap comes from the Alpine
+     * focus plugin bundled in T-01).
+     */
+    public function test_modal_traps_focus_and_closes_on_escape(): void
+    {
+        $html = Blade::render(
+            '<x-ui.modal id="audit-modal" title="Delete draft"><p>Body.</p>'
+            .'<x-slot:footer><x-ui.button variant="danger">Delete</x-ui.button></x-slot:footer></x-ui.modal>'
+        );
+
+        $this->assertStringContainsString('role="dialog"', $html);
+        $this->assertStringContainsString('aria-modal="true"', $html);
+        $this->assertStringContainsString('aria-labelledby="audit-modal-title"', $html);
+        $this->assertStringContainsString('x-trap="open"', $html, 'Focus containment must come from x-trap.');
+        $this->assertStringContainsString('x-on:keydown.escape.window', $html, 'Escape must close the modal.');
+    }
+
+    /**
+     * T-07 keyboard walk: the mobile nav drawer is keyboard-operable —
+     * Escape closes, focus is trapped, and the icon-only buttons expose
+     * accessible names.
+     */
+    public function test_mobile_drawer_is_keyboard_operable(): void
+    {
+        $html = Blade::render(
+            '<x-layouts.app title="Drawer check"><x-slot:nav><a href="#a">Matters</a></x-slot:nav>'
+            .'<x-slot:content><p>Body</p></x-slot:content></x-layouts.app>'
+        );
+
+        $this->assertStringContainsString('x-on:keydown.escape.window="drawerOpen = false"', $html);
+        $this->assertStringContainsString('x-trap="drawerOpen"', $html);
+        $this->assertStringContainsString('aria-label="Site navigation"', $html);
+        $this->assertStringContainsString('aria-label="Open navigation"', $html, 'Icon-only drawer toggle needs an accessible name.');
+        $this->assertStringContainsString('aria-label="Close navigation"', $html, 'Icon-only drawer close needs an accessible name.');
+    }
+
+    /**
+     * T-07: the skip link targets the main-content landmark — asserted on the
+     * live /_patterns page in local env (the env binding is restored after).
+     */
+    public function test_skip_link_targets_main_content_landmark(): void
+    {
+        $previousEnv = app('env');
+        app()->instance('env', 'local');
+
+        try {
+            $loader = FixtureLoader::load();
+            $html = $this->actingAs($loader->user('user_attorney_granted'))
+                ->get('/_patterns')
+                ->assertOk()
+                ->getContent();
+
+            $this->assertStringContainsString('href="#vl-main"', $html);
+            $this->assertStringContainsString('Skip to main content', $html);
+            $this->assertStringContainsString('<main id="vl-main"', $html);
+        } finally {
+            app()->instance('env', $previousEnv);
+        }
     }
 }
