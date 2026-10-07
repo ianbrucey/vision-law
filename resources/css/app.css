@@ -142,6 +142,52 @@
         background-color: var(--vl-paper);
     }
 
+    /* App shell chrome (spec 002, mockup section 09). */
+
+    /* Icon buttons on the dark top bar: white glyph on ink. Specificity beats
+       the ghost variant's text-vl-ink / hover:bg-vl-line deterministically. */
+    header.vl-topbar .vl-bar-toggle,
+    header.vl-topbar .vl-bar-toggle:hover {
+        color: #fff;
+        background-color: transparent;
+        border-color: transparent;
+    }
+
+    header.vl-topbar .vl-bar-toggle:hover {
+        background-color: rgba(255, 255, 255, 0.12);
+    }
+
+    /* Primary nav links render in two contexts (dark top bar / light drawer),
+       so the shell styles them — callers pass plain <a> elements. */
+    .vl-topbar nav a {
+        color: rgba(255, 255, 255, 0.8);
+        text-decoration: none;
+        font-size: 14px;
+        font-weight: 600;
+        padding: 8px 12px;
+        border-radius: 8px;
+    }
+
+    .vl-topbar nav a:hover {
+        color: #fff;
+        background-color: rgba(255, 255, 255, 0.12);
+    }
+
+    .vl-drawer nav a {
+        display: block;
+        color: var(--vl-mut);
+        text-decoration: none;
+        font-size: 14.5px;
+        font-weight: 600;
+        padding: 10px 12px;
+        border-radius: 8px;
+    }
+
+    .vl-drawer nav a:hover {
+        color: var(--vl-ink);
+        background-color: var(--vl-paper);
+    }
+
     .vl-card.vl-card-flush {
         padding: 0;
     }

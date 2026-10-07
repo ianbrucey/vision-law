@@ -9,6 +9,7 @@ use Illuminate\Support\MessageBag;
 use Illuminate\Support\ViewErrorBag;
 use Illuminate\View\ViewException;
 use InvalidArgumentException;
+use Tests\Helpers\FixtureLoader;
 use Tests\TestCase;
 
 /**
@@ -482,5 +483,69 @@ class UiComponentsTest extends TestCase
                 $this->assertStringContainsString($message, $e->getMessage());
             }
         }
+    }
+
+    // ------------------------------------------------------------------
+    // Ticket 5 — app shell + patterns catalogue
+    // ------------------------------------------------------------------
+
+    /**
+     * C-07: the app shell renders — wordmark, org/user-menu slots, skip link,
+     * 1120px container, toast mount point, Alpine drawer hooks.
+     */
+    public function test_app_shell_layout_renders(): void
+    {
+        $html = Blade::render(
+            '<x-layouts.app title="Shell check">'
+            .'<x-slot:org>Sterling &amp; Associates</x-slot:org>'
+            .'<x-slot:userMenu>G. Granted</x-slot:userMenu>'
+            .'<x-slot:nav><a href="#a">Matters</a></x-slot:nav>'
+            .'<x-slot:content><p>Body copy</p></x-slot:content>'
+            .'</x-layouts.app>'
+        );
+
+        $this->assertStringContainsString('<title>Shell check</title>', $html);
+        $this->assertStringContainsString('Vision Law', $html);
+        $this->assertStringContainsString('Sterling &amp; Associates', $html);
+        $this->assertStringContainsString('G. Granted', $html);
+        $this->assertStringContainsString('Skip to main content', $html);
+        $this->assertStringContainsString('href="#vl-main"', $html);
+        $this->assertStringContainsString('<main id="vl-main"', $html);
+        $this->assertStringContainsString('max-w-[1120px]', $html);
+        $this->assertStringContainsString('drawerOpen', $html);
+        $this->assertStringContainsString('Body copy', $html);
+
+        // Toast mount point: a flashed toast renders inside the shell.
+        session()->flash('toast', ['tone' => 'ok', 'message' => 'Shell toast check.']);
+        $html = Blade::render(
+            '<x-layouts.app title="Shell toast"><x-slot:content><p>Hi</p></x-slot:content></x-layouts.app>'
+        );
+        $this->assertStringContainsString('Shell toast check.', $html);
+    }
+
+    /**
+     * C-08: /_patterns renders the catalogue in local and 404s in production.
+     */
+    public function test_patterns_route_renders_in_local_and_404s_in_production(): void
+    {
+        // app()->environment() reads the container 'env' binding (set at
+        // bootstrap), not config('app.env') — set the binding directly.
+        app()->instance('env', 'local');
+
+        // The route sits behind auth like every other non-guest route
+        // (AuthenticatedByDefaultTest door), so sign in first.
+        $loader = FixtureLoader::load();
+        $this->actingAs($loader->user('user_attorney_granted'))
+            ->get('/_patterns')
+            ->assertOk()
+            ->assertSee('UI patterns', false)
+            ->assertSee('Synthetic document', false)
+            ->assertSee('role="dialog"', false)
+            ->assertSee('aria-label="Pagination"', false);
+
+        app()->instance('env', 'production');
+        $this->actingAs($loader->user('user_attorney_granted'))
+            ->get('/_patterns')
+            ->assertNotFound();
     }
 }

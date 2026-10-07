@@ -12,6 +12,7 @@ use App\Http\Controllers\MatterController;
 use App\Http\Controllers\MatterGrantController;
 use App\Http\Controllers\SessionController;
 use App\Http\Middleware\RequireOrgAdmin;
+use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\Route;
 use Laravel\Fortify\Features;
 
@@ -134,3 +135,39 @@ Route::middleware(['auth:'.config('fortify.guard')])->group(function (): void {
         ->middleware('matter.access:grant')
         ->name('matters.grants.destroy');
 });
+
+// ── Spec 002 T-05: /_patterns catalogue (local only) ──
+// Renders every x-ui primitive in every variant/state with synthetic data —
+// the living drift detector (docs/UI_Standards.md Governance). 404s outside
+// the local environment (C-08). Implemented as an env-gated abort inside the
+// route (rather than conditional registration) so the suite can assert both
+// states; externally it is unreachable in production either way. Carries auth
+// like every other non-guest route (AuthenticatedByDefaultTest door) — in
+// production an authenticated hit still 404s on the env gate.
+Route::get('/_patterns', function () {
+    abort_unless(app()->environment('local'), 404);
+
+    $documents = collect(range(1, 42))->map(fn (int $i): array => [
+        'title' => "Synthetic document {$i}",
+        'status' => ['draft', 'final', 'superseded'][$i % 3],
+        'modified' => 'Oct '.(1 + ($i % 6)).', 2026',
+        'by' => $i % 2 === 0 ? 'G. Granted' : 'P. Paralegal',
+    ]);
+    $perPage = 15;
+    $pageItems = $documents->forPage(2, $perPage)->values();
+    $paginator = new LengthAwarePaginator($pageItems, $documents->count(), $perPage, 2, ['path' => '/_patterns']);
+
+    // Rendered by <x-ui.toast /> in the patterns page (re-flashed per tone so
+    // every tone is demonstrated from the real session-flash path).
+    $toastDemos = [
+        ['tone' => 'ok', 'message' => 'Draft exported — PDF saved to Sterling v. Apex › Documents.'],
+        ['tone' => 'bad', 'message' => 'Upload failed — contract-scan.pdf exceeds the 50 MB limit.'],
+        ['tone' => 'info', 'message' => 'Deadline recalculated — discovery cutoff moved to Nov 12.'],
+    ];
+
+    return view('patterns', [
+        'documents' => $pageItems,
+        'paginator' => $paginator,
+        'toastDemos' => $toastDemos,
+    ]);
+})->middleware('auth:'.config('fortify.guard'))->name('patterns');
