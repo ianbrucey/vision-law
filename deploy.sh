@@ -8,3 +8,4 @@ npm run build
 php artisan migrate --force
 php artisan optimize
 systemctl restart visionlaw-web
+systemctl restart visionlaw-webhook
