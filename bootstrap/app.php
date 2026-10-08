@@ -1,6 +1,8 @@
 <?php
 
+use App\Exceptions\AccessDeniedException;
 use App\Exceptions\InvitationInvalidException;
+use App\Exceptions\MatterStateException;
 use App\Http\Middleware\EnsureSessionLifetime;
 use App\Http\Middleware\RequireMatterAccess;
 use App\Http\Middleware\RestrictToTwoFactorSetup;
@@ -68,5 +70,21 @@ return Application::configure(basePath: dirname(__DIR__))
         // body — no enumeration. JSON-only surface (no Blade per 001-D06).
         $exceptions->render(function (InvitationInvalidException $e) {
             return response()->json(['code' => 'invitation_invalid'], 422);
+        });
+
+        // Spec 006 T-02: domain lifecycle failures render the contract
+        // error-catalog body ({code, ...context}) for JSON clients.
+        $exceptions->render(function (MatterStateException $e) {
+            return response()->json($e->body(), $e->httpStatus);
+        });
+
+        // Spec 006 T-02: service-level authorization denials (create,
+        // delete, restore) render the same bodies RequireMatterAccess
+        // produces — {code: "forbidden"} / {code: "not_found"}.
+        $exceptions->render(function (AccessDeniedException $e) {
+            return response()->json(
+                ['code' => $e->httpStatus === 404 ? 'not_found' : 'forbidden'],
+                $e->httpStatus
+            );
         });
     })->create();

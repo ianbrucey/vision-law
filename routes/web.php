@@ -188,15 +188,53 @@ Route::middleware(['auth:'.config('fortify.guard'), RequireOrgAdmin::class.':aud
             ->name('audit-events.export');
     });
 
-// ── Ticket 6: matter grants + authorization proving ground (backend only,
-// no Blade per 001-D06) ──
-// RequireMatterAccess resolves the matter and authorizes BEFORE any data
-// access; controllers read the authorized matter from request attributes.
+// === 006 matter routes ===
+// Spec 006 T-02 owns this section: matter CRUD + lifecycle (index, create,
+// store, show, edit, update, destroy, restore, transition, close, summary).
+// Tickets 3/4 APPEND their own delimited sections AFTER this one — do not
+// scatter 006 routes elsewhere.
+//
+// Auth note: every route requires authentication. Matter-scoped routes use
+// RequireMatterAccess with the EXISTING action levels (Ticket 6 adds
+// :comment/:edit/:manage — until then :update (editor+) and :grant
+// (matter_admin+, ≈ manage per the contract) stand in). POST
+// /matters/{matter}/restore resolves soft-deleted rows, which
+// RequireMatterAccess cannot see, so it carries no matter middleware — the
+// controller enforces org_admin + same-org scoping before any data access.
 Route::middleware(['auth:'.config('fortify.guard')])->group(function (): void {
+    Route::get('/matters', [MatterController::class, 'index'])->name('matters.index');
+    Route::get('/matters/create', [MatterController::class, 'create'])->name('matters.create');
+    Route::post('/matters', [MatterController::class, 'store'])->name('matters.store');
+
     Route::get('/matters/{matter}', [MatterController::class, 'show'])
         ->middleware('matter.access:view')
         ->name('matters.show');
+    Route::get('/matters/{matter}/edit', [MatterController::class, 'edit'])
+        ->middleware('matter.access:update')
+        ->name('matters.edit');
+    Route::patch('/matters/{matter}', [MatterController::class, 'update'])
+        ->middleware('matter.access:update')
+        ->name('matters.update');
+    Route::delete('/matters/{matter}', [MatterController::class, 'destroy'])
+        ->middleware('matter.access:grant')
+        ->name('matters.destroy');
+    Route::post('/matters/{matter}/restore', [MatterController::class, 'restore'])
+        ->name('matters.restore');
+    Route::post('/matters/{matter}/transition', [MatterController::class, 'transition'])
+        ->middleware('matter.access:grant')
+        ->name('matters.transition');
+    Route::post('/matters/{matter}/close', [MatterController::class, 'close'])
+        ->middleware('matter.access:grant')
+        ->name('matters.close');
+    Route::get('/matters/{matter}/summary', [MatterController::class, 'summary'])
+        ->middleware('matter.access:view')
+        ->name('matters.summary');
+});
 
+// ── Ticket 6: matter grants (backend only, no Blade per 001-D06) ──
+// RequireMatterAccess resolves the matter and authorizes BEFORE any data
+// access; controllers read the authorized matter from request attributes.
+Route::middleware(['auth:'.config('fortify.guard')])->group(function (): void {
     Route::post('/matters/{matter}/grants', [MatterGrantController::class, 'store'])
         ->middleware('matter.access:grant')
         ->name('matters.grants.store');
