@@ -33,8 +33,16 @@ matter-owned table).
 | `disabled_at` | timestamp nullable | Laragear's soft-state. NOT used by 008 flows — revocation deletes the row (008-D08); the column ships with the package schema and stays null |
 | `created_at` / `updated_at` | timestamps | `updated_at` advances on counter sync — displayed as "last used" |
 
-Indexes: morphs index on (`authenticatable_type`, `authenticatable_id`) from the
-package migration.
+Indexes: morphs index `webauthn_user_index` on
+(`authenticatable_type`, `authenticatable_id`).
+
+**Migration provenance (amended during execution, 2026-10-08):** the file is
+hand-rolled rather than deferring to `WebAuthnCredential::migration()` — the
+package's `createMorph()` emits a **bigint** `authenticatable_id` (it assumes
+integer user keys), which cannot hold Vision Law's UUID user keys (spec 001).
+The hand-rolled migration copies the package's `makeMigration()` closure
+column-for-column, substituting `uuidMorphs('authenticatable',
+'webauthn_user_index')` for the morph only.
 
 ### Existing tables
 

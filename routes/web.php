@@ -7,6 +7,7 @@ use App\Http\Controllers\Admin\TeamController as AdminTeamController;
 use App\Http\Controllers\Admin\UserController as AdminUserController;
 use App\Http\Controllers\AssignmentController;
 use App\Http\Controllers\Auth\LoginController;
+use App\Http\Controllers\Auth\PasskeyController;
 use App\Http\Controllers\Auth\PasswordResetLinkController;
 use App\Http\Controllers\Auth\RegisteredUserController;
 use App\Http\Controllers\Auth\TwoFactorChallengeController;
@@ -112,6 +113,24 @@ Route::get('/two-factor-challenge', function (TwoFactorLoginRequest $request) {
 Route::get('user/two-factor', [TwoFactorSettingsController::class, 'index'])
     ->middleware(['auth:'.config('fortify.guard')])
     ->name('two-factor.settings');
+
+// ── Spec 008: passkey management (03-contract.md §Routes) ──
+// Authenticated (incl. setup-mode sessions — the routes are on the
+// RestrictToTwoFactorSetup allowlist so an admin can complete setup with a
+// passkey instead of an authenticator app). Ceremonies are Laragear's
+// pipelines inside PasskeyController (008-D01); revocation carries the
+// same password.confirm gate as the 2FA disable flow.
+Route::post('user/passkeys/register/options', [PasskeyController::class, 'registerOptions'])
+    ->middleware(['auth:'.config('fortify.guard')])
+    ->name('passkeys.register.options');
+
+Route::post('user/passkeys', [PasskeyController::class, 'store'])
+    ->middleware(['auth:'.config('fortify.guard')])
+    ->name('passkeys.register');
+
+Route::delete('user/passkeys/{credential}', [PasskeyController::class, 'destroy'])
+    ->middleware(['auth:'.config('fortify.guard'), 'password.confirm'])
+    ->name('passkeys.destroy');
 
 // --- Spec 005 T-03: QR-as-image + confirm-password view ---
 // two-factor.qr-image: Fortify's two-factor.qr-code returns JSON {svg, url},
