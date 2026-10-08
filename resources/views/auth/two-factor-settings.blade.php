@@ -231,7 +231,10 @@
                                 @csrf
                                 @method('DELETE')
 
-                                <x-ui.button variant="secondary" size="sm" type="submit">
+                                {{-- Default size, not sm: the 390px mobile
+                                     gate (C-10) measures every action at
+                                     ≥44px; sm renders 36px tall. --}}
+                                <x-ui.button variant="secondary" type="submit">
                                     Revoke
                                 </x-ui.button>
                             </form>

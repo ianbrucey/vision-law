@@ -173,10 +173,17 @@ but the label is what the audit is for; ids stay out.>
   enrollment HTML/JSON (all states), challenge HTML/JSON, and logs contain no
   `private_key` markers, no raw `clientDataJSON`/`authenticatorData`/
   assertion payloads, and no challenge values (C-07).
-- `public_key`, `credential id`, `aaguid`, `certificates` are never rendered
-  in any view or JSON response the app produces (the options JSON contains
-  credential ids **only** in `allowCredentials` for the owner's own
-  challenge — that is the protocol working, and it goes only to the
-  challenged user's own browser session).
+- `public_key`, `aaguid`, `certificates` are never rendered in any view or
+  JSON response the app produces. Credential ids appear **only** where the
+  protocol or the app's own addressing requires them: in `allowCredentials`
+  for the owner's own challenge (the protocol working — it goes only to the
+  challenged user's own browser session), and as the revoke form's action
+  URL segment on the owner's own settings page (resource addressing, like
+  every matter/document URL in the app; credential ids are public
+  identifiers, not key material). Never in page text, data attributes, or
+  scripts. *(Amended during execution, 2026-10-08: the original draft
+  forbade credential ids in rendered HTML outright; C-07's first run showed
+  the revoke URL necessarily carries the id. The sentinel's target is key
+  material and secret-adjacent data, which remain fully forbidden.)*
 - Labels are user-generated content: rendered escaped (Blade `{{ }}`), never
   raw.

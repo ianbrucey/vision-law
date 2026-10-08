@@ -23,3 +23,41 @@
 - Tag each decision [D]/[P]/[O] using the same meanings as the system docs.
 - A decision that reverses an earlier one marks the old row [S] superseded and links the new ID — never delete or rewrite history.
 - Decisions that change a governing system document are noted here AND proposed as an edit to that document.
+
+---
+
+## Freeze notes (execution, 2026-10-08)
+
+Branch `feat/008-passkey-authentication`. Final gates on the server:
+Pint clean (276 files), PHPStan level 7 clean, **238 tests passed /
+3925 assertions** (baseline 221 + 17 new), `npm run build` clean
+(passkey.js in the bundle).
+
+| Claim | Verdict — named test(s) |
+|---|---|
+| C-01 | ✅ `test_setup_mode_offers_passkey_and_totp_enrollment` |
+| C-02 | ✅ `test_user_registers_passkey_via_ui` |
+| C-03 | ✅ `test_passkey_enrollment_clears_setup_mode` |
+| C-04 | ✅ `test_login_challenge_accepts_passkey_assertion` |
+| C-05 | ✅ `test_passkey_challenge_failure_is_generic` |
+| C-06 | ✅ `test_user_can_revoke_passkey` + `test_admin_revoking_last_factor_returns_to_setup_mode` |
+| C-07 | ✅ `test_passkey_storage_contains_no_private_material` |
+| C-08 | ✅ `test_assertion_from_wrong_origin_is_rejected` + `test_challenge_replay_is_rejected` |
+| C-09 | ✅ `test_user_with_both_factors_can_use_either`; spec 005 suite passes unmodified |
+| C-10 | ✅ `test_mobile_layout_includes_passkey_screens` (390px; screenshots `10-mobile-*.png`) |
+| C-11 | ✅ `test_passkey_events_are_audited` + challenge audit assertions in the C-04/C-05 tests |
+
+Execution amendments recorded where they happened:
+- `02-schema-delta.md` — migration hand-rolled with `uuidMorphs`
+  (the package's `createMorph()` assumes bigint user keys).
+- `03-contract.md` — completion redirect pinned to
+  `Fortify::redirects('login')`; leak sentinel refined for credential
+  ids (revoke URL addressing + `allowCredentials` only).
+- `05-ui.md` — Revoke button ships at default size (the `sm` variant
+  measured 36px against the C-10 gate).
+
+Not done / gates for later (per the brief): real-device enrollment
+needs the production domain (RP ID is origin-bound; the dev URL is an
+IP literal) — rollout gate, not a build gate. Email delivery for
+invitations remains unconfigured (manual links are the pilot path);
+passkey flows do not depend on it.

@@ -11,15 +11,15 @@ use Illuminate\Http\Exceptions\HttpResponseException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
+use Laravel\Fortify\Events\TwoFactorAuthenticationFailed;
+use Laravel\Fortify\Events\ValidTwoFactorAuthenticationCodeProvided;
+use Laravel\Fortify\Fortify;
 use Laragear\WebAuthn\Assertion\Creator\AssertionCreation;
 use Laragear\WebAuthn\Assertion\Creator\AssertionCreator;
 use Laragear\WebAuthn\Assertion\Validator\AssertionValidation;
 use Laragear\WebAuthn\Assertion\Validator\AssertionValidator;
 use Laragear\WebAuthn\Enums\UserVerification;
 use Laragear\WebAuthn\Exceptions\AssertionException;
-use Laravel\Fortify\Events\TwoFactorAuthenticationFailed;
-use Laravel\Fortify\Events\ValidTwoFactorAuthenticationCodeProvided;
-use Laravel\Fortify\Fortify;
 use Throwable;
 
 /**
@@ -83,7 +83,7 @@ class PasskeyChallengeController extends Controller
 
         try {
             app(AssertionValidator::class)->send($validation)->thenReturn();
-        } catch (AssertionException|Throwable $e) {
+        } catch (Throwable $e) {
             // The Fortify failed event feeds the same lockout + audit
             // bookkeeping a bad TOTP code gets (AuthEventSubscriber).
             event(new TwoFactorAuthenticationFailed($user));
@@ -101,7 +101,7 @@ class PasskeyChallengeController extends Controller
 
         AuditLogger::log('mfa.passkey.challenge.succeeded', $user, [
             'actor_id' => (string) $user->getKey(),
-            'credential_label' => (string) ($validation->credential?->alias ?? 'Passkey'),
+            'credential_label' => (string) (optional($validation->credential)->alias ?? 'Passkey'),
             'ip' => $request->ip(),
         ]);
 
