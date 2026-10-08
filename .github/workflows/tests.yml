@@ -62,6 +62,12 @@ jobs:
         # tests/Doubles/) — CI intentionally does not install them.
         run: sudo apt-get update && sudo apt-get install -y poppler-utils
 
+      - name: Setup Chrome
+        # The mobile visual gate (DocumentMobileTest) needs a real headless
+        # renderer; the test reads the binary path from CHROMIUM_BIN.
+        id: setup-chrome
+        uses: browser-actions/setup-chrome@v1
+
       - name: Install dependencies
         run: |
           composer install --no-interaction --prefer-dist
@@ -78,4 +84,6 @@ jobs:
 
       - name: Tests (PostgreSQL)
         run: php artisan test
+        env:
+          CHROMIUM_BIN: ${{ steps.setup-chrome.outputs.chrome-path }}
 

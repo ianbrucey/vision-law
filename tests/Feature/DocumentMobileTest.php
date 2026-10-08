@@ -41,6 +41,14 @@ class DocumentMobileTest extends TestCase
 
     private string $specDir;
 
+    /**
+     * Headless-browser binary: CHROMIUM_BIN env var (CI provides Chrome via
+     * browser-actions/setup-chrome) or the dev server default. When no
+     * binary is executable the visual gate skips — the layout assertions
+     * need a real renderer.
+     */
+    private string $chromiumBin;
+
     protected function setUp(): void
     {
         parent::setUp();
@@ -66,6 +74,12 @@ class DocumentMobileTest extends TestCase
 
     public function test_mobile_layout(): void
     {
+        $this->chromiumBin = getenv('CHROMIUM_BIN') ?: self::CHROMIUM;
+
+        if (! is_executable($this->chromiumBin)) {
+            $this->markTestSkipped('No headless-browser binary at '.$this->chromiumBin);
+        }
+
         $matter = $this->loader->docMatter('MAT-2026-001');
         $m = (string) $matter->getKey();
 
@@ -150,7 +164,7 @@ class DocumentMobileTest extends TestCase
 
         // Screenshot for the spec folder (visual contract vs the mockup).
         $shot = new Process([
-            self::CHROMIUM, '--headless=new', '--disable-gpu', '--no-sandbox',
+            $this->chromiumBin, '--headless=new', '--disable-gpu', '--no-sandbox',
             '--hide-scrollbars',
             '--window-size='.self::WIDTH.',844',
             '--screenshot='.$base.'.png',
@@ -163,7 +177,7 @@ class DocumentMobileTest extends TestCase
 
         // DOM dump carries the metrics probe's JSON.
         $dump = new Process([
-            self::CHROMIUM, '--headless=new', '--disable-gpu', '--no-sandbox',
+            $this->chromiumBin, '--headless=new', '--disable-gpu', '--no-sandbox',
             '--window-size='.self::WIDTH.',844',
             '--dump-dom',
             'file://'.$base.'.html',
