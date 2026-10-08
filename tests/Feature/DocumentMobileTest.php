@@ -23,9 +23,10 @@ use Tests\TestCase;
  * Screenshots land in specs/007-document-management/10-mobile-*.png for
  * visual comparison against 05-ui-mockup.html.
  *
- * NOTE: Chromium runs as a snap here; it can only read/write under /root,
- * so standalone HTML + screenshots stage in /root/vl-mobile-test/ and the
- * PNGs are copied into the spec folder afterwards.
+ * NOTE: On the dev server Chromium runs as a snap; it can only read/write
+ * under /root, so standalone HTML + screenshots stage in /root/vl-mobile-test/
+ * there. Elsewhere (CI) they stage in the system temp dir. The PNGs are
+ * copied into the spec folder afterwards either way.
  */
 class DocumentMobileTest extends TestCase
 {
@@ -65,7 +66,12 @@ class DocumentMobileTest extends TestCase
         $this->loader = FixtureLoader::loadDocumentFixtures();
         $this->actingAs($this->loader->docUser('g.grant@sterling.example'));
 
-        $this->stageDir = '/root/vl-mobile-test';
+        // Stage where the current user can write: /root on the dev server
+        // (its snap-packaged Chromium can only read/write under /root),
+        // the system temp dir anywhere else (CI runners are not root).
+        $this->stageDir = is_writable('/root')
+            ? '/root/vl-mobile-test'
+            : sys_get_temp_dir().'/vl-mobile-test';
         $this->specDir = base_path('specs/007-document-management');
         if (! is_dir($this->stageDir)) {
             mkdir($this->stageDir, 0700, true);

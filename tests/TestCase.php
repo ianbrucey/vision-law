@@ -5,10 +5,12 @@ namespace Tests;
 use App\Services\MalwareScanner;
 use App\Services\Ocr\OcrProvider;
 use App\Services\OfficePreviewService;
+use App\Services\PdfRenditionService;
 use Illuminate\Foundation\Testing\TestCase as BaseTestCase;
 use Tests\Doubles\FakeMalwareScanner;
 use Tests\Doubles\FakeOcrProvider;
 use Tests\Doubles\FakeOfficePreviewService;
+use Tests\Doubles\FakePdfRenditionService;
 
 abstract class TestCase extends BaseTestCase
 {
@@ -24,9 +26,11 @@ abstract class TestCase extends BaseTestCase
         $this->app->bind(MalwareScanner::class, FakeMalwareScanner::class);
         $this->app->bind(OcrProvider::class, FakeOcrProvider::class);
         $this->app->bind(OfficePreviewService::class, FakeOfficePreviewService::class);
+        $this->app->bind(PdfRenditionService::class, FakePdfRenditionService::class);
 
         FakeMalwareScanner::$unreachable = false;
         FakeOcrProvider::$withText = true;
         FakeOfficePreviewService::$failConversion = false;
+        FakePdfRenditionService::$failConversion = false;
     }
 }
