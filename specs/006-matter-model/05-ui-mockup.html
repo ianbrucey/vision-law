@@ -1,0 +1,364 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Vision Law — spec 006 mockup · Matter model & lifecycle</title>
+<style>
+:root{
+  --vl-ink:#1F2A37; --vl-ink-2:#31404F; --vl-brass:#9A6823; --vl-brass-soft:#F6EED9;
+  --vl-paper:#F7F8FA; --vl-card:#FFFFFF; --vl-line:#E3E8EE; --vl-mut:#5B687C;
+  --vl-ok:#2F7D4F; --vl-ok-soft:#E6F2E9; --vl-bad:#B23B3B; --vl-bad-soft:#FBE8E8;
+  --vl-info:#285F8A; --vl-info-soft:#E7EFF6; --vl-warn:#9A6823; --vl-warn-soft:#F6EED9;
+  --r-card:10px; --r-in:8px;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--vl-paper);color:var(--vl-ink);
+  font:16px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
+h1,h2,h3,.serif{font-family:Georgia,"Times New Roman",serif;font-weight:600}
+.mocknav{position:sticky;top:0;z-index:50;background:var(--vl-ink);color:#fff;
+  padding:10px 20px;display:flex;gap:16px;align-items:center;font-size:14px;flex-wrap:wrap}
+.mocknav a{color:#cfe0f4;text-decoration:none;border-bottom:2px solid transparent;padding:2px 0}
+.mocknav a:hover{border-color:var(--vl-brass)}
+.mocknav .tag{margin-left:auto;font-size:12px;color:#9fb3c8;border:1px solid #3a4a5c;border-radius:999px;padding:2px 10px}
+section.screen{max-width:1120px;margin:0 auto;padding:36px 20px 8px}
+.eyebrow{font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--vl-brass);font-weight:700;margin:0 0 6px}
+.screen h2{font-size:30px;margin:0 0 6px}
+.screen .lede{color:var(--vl-mut);max-width:680px;margin:0 0 20px}
+.card{background:var(--vl-card);border:1px solid var(--vl-line);border-radius:var(--r-card);padding:20px 24px;margin:0 0 20px}
+.card h3{margin:0 0 12px;font-size:19px}
+.ph{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;margin:0 0 20px;flex-wrap:wrap}
+.ph h1{font-size:30px;margin:0}
+.ph p{color:var(--vl-mut);margin:4px 0 0;max-width:560px}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;border-radius:var(--r-in);
+  padding:10px 18px;font-size:15px;font-weight:600;cursor:pointer;border:1px solid transparent;text-decoration:none}
+.btn-primary{background:var(--vl-ink);color:#fff}
+.btn-secondary{background:#fff;color:var(--vl-ink);border-color:var(--vl-line)}
+.btn-danger{background:var(--vl-bad);color:#fff}
+.btn-sm{padding:6px 12px;font-size:13px}
+.field{margin:0 0 14px}
+.field label{display:block;font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--vl-mut);font-weight:700;margin:0 0 6px}
+.field input,.field select,.field textarea{width:100%;padding:10px 12px;font-size:15px;border:1px solid var(--vl-line);border-radius:var(--r-in);background:#fff;color:var(--vl-ink);font-family:inherit}
+.field .hint{font-size:13px;color:var(--vl-mut);margin-top:5px}
+.field .err{font-size:13px;color:var(--vl-bad);margin-top:5px;font-weight:600}
+.field input[aria-invalid="true"]{border-color:var(--vl-bad)}
+.frow{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.frow .full{grid-column:1/-1}
+.tblwrap{overflow-x:auto;border:1px solid var(--vl-line);border-radius:var(--r-card);background:#fff}
+table{width:100%;border-collapse:collapse;font-size:14px;min-width:760px}
+thead th{font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--vl-mut);text-align:left;padding:10px 14px;background:var(--vl-paper);border-bottom:1px solid var(--vl-line)}
+tbody td{padding:12px 14px;border-bottom:1px solid var(--vl-line);vertical-align:middle}
+tbody tr:last-child td{border-bottom:none}
+tbody tr:hover{background:#fafbfc}
+.mut{color:var(--vl-mut)}
+.st{display:inline-block;font-size:12px;font-weight:700;border-radius:999px;padding:3px 10px;white-space:nowrap}
+.st-intake{background:var(--vl-info-soft);color:var(--vl-info)}
+.st-active{background:var(--vl-ok-soft);color:var(--vl-ok)}
+.st-discovery{background:#E9EFFA;color:#3B5BDB}
+.st-pretrial{background:var(--vl-warn-soft);color:var(--vl-warn)}
+.st-trial{background:#F3E8FD;color:#7048C8}
+.st-closed{background:var(--vl-paper);color:var(--vl-mut);border:1px solid var(--vl-line)}
+.st-retention{background:#FDEEE3;color:#B25E09}
+.st-disposition{background:var(--vl-bad-soft);color:var(--vl-bad)}
+.chip{display:inline-block;font-size:12px;font-weight:600;border-radius:999px;padding:3px 10px;background:var(--vl-paper);border:1px solid var(--vl-line);color:var(--vl-ink-2)}
+.subnav{display:flex;gap:4px;border-bottom:1px solid var(--vl-line);margin:0 0 20px;flex-wrap:wrap}
+.subnav a{padding:10px 14px;font-size:14px;font-weight:600;color:var(--vl-mut);text-decoration:none;border-bottom:2px solid transparent;margin-bottom:-1px}
+.subnav a.on{color:var(--vl-ink);border-color:var(--vl-brass)}
+.kv{display:grid;grid-template-columns:180px 1fr;gap:8px 16px;font-size:14px}
+.kv dt{color:var(--vl-mut)}
+.kv dd{margin:0}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:20px}
+.banner{border-radius:var(--r-card);padding:14px 18px;margin:0 0 20px;font-size:14px;border:1px solid}
+.banner strong{display:block;margin-bottom:2px}
+.banner.brass{background:var(--vl-brass-soft);border-color:#e2cf9e;color:var(--vl-ink)}
+.banner.info{background:var(--vl-info-soft);border-color:#c3d6e6;color:var(--vl-ink)}
+.empty{border:1px dashed var(--vl-line);border-radius:var(--r-card);background:#fff;padding:36px 20px;text-align:center}
+.empty h3{margin:0 0 6px}
+.empty p{color:var(--vl-mut);font-size:14px;margin:0 0 16px}
+.feed{list-style:none;margin:0;padding:0}
+.feed li{display:flex;gap:12px;padding:12px 0;border-bottom:1px solid var(--vl-line);font-size:14px}
+.feed li:last-child{border-bottom:none}
+.feed .dot{flex:0 0 8px;height:8px;border-radius:50%;background:var(--vl-brass);margin-top:7px}
+.feed .when{margin-left:auto;color:var(--vl-mut);font-size:12px;white-space:nowrap}
+.comment{border:1px solid var(--vl-line);border-radius:var(--r-card);padding:14px 16px;margin:0 0 12px;background:#fff}
+.comment.reply{margin-left:32px}
+.comment .who{font-weight:700;font-size:14px}
+.comment .meta{color:var(--vl-mut);font-size:12px;margin-left:8px}
+.comment .body{font-size:14px;margin:8px 0 0}
+.comment.tomb .body{color:var(--vl-mut);font-style:italic}
+.edited{font-size:11px;color:var(--vl-mut);border:1px solid var(--vl-line);border-radius:4px;padding:1px 6px;margin-left:8px}
+.toolbar{display:flex;gap:10px;align-items:center;margin:0 0 16px;flex-wrap:wrap}
+.toolbar .search{flex:1;min-width:200px}
+.toolbar input[type=search]{width:100%;padding:10px 12px;font-size:15px;border:1px solid var(--vl-line);border-radius:var(--r-in)}
+.fchip{display:inline-block;font-size:13px;font-weight:600;border:1px solid var(--vl-line);background:#fff;border-radius:999px;padding:6px 12px;cursor:pointer}
+.fchip.on{background:var(--vl-ink);color:#fff;border-color:var(--vl-ink)}
+.mback{position:fixed;inset:0;background:rgba(31,42,55,.55);display:flex;align-items:center;justify-content:center;padding:20px;z-index:100}
+.modal{background:#fff;border-radius:12px;max-width:480px;width:100%;padding:24px}
+.modal h3{margin:0 0 8px;font-size:20px}
+.modal p{color:var(--vl-mut);font-size:14px;margin:0 0 18px}
+.modal .row{display:flex;gap:10px;justify-content:flex-end}
+footer{max-width:1120px;margin:40px auto;padding:0 20px 40px;color:var(--vl-mut);font-size:12px}
+@media(max-width:640px){
+  .frow,.grid2{grid-template-columns:1fr}
+  .screen h2{font-size:24px}.ph h1{font-size:24px}
+  .btn{width:100%}.ph .btn,.modal .row .btn{width:auto}
+  .kv{grid-template-columns:1fr}
+  .kv dt{margin-top:8px}
+}
+</style>
+</head>
+<body>
+
+<nav class="mocknav" aria-label="Mockup sections">
+  <strong>spec 006 mockup</strong>
+  <a href="#s-list">Matter list</a>
+  <a href="#s-detail">Matter detail</a>
+  <a href="#s-timeline">Timeline &amp; comments</a>
+  <a href="#s-team">Team &amp; sharing</a>
+  <a href="#s-new">New matter</a>
+  <a href="#s-denied">Denied</a>
+  <span class="tag">SYNTHETIC DATA ONLY</span>
+</nav>
+
+<!-- ══════════ 1 · MATTER LIST ══════════ -->
+<section class="screen" id="s-list">
+  <p class="eyebrow">01 · Matters</p>
+  <div class="ph">
+    <div><h1>Matters</h1><p>3 matters · Sterling &amp; Associates LLP</p></div>
+    <a class="btn btn-primary" href="#s-new">New matter</a>
+  </div>
+  <div class="toolbar">
+    <div class="search"><input type="search" placeholder="Search title, matter number, client, party…" aria-label="Search matters"></div>
+    <span class="fchip on">All states</span><span class="fchip">Active</span><span class="fchip">Intake</span><span class="fchip">Closed</span>
+  </div>
+  <div class="tblwrap" role="region" aria-label="Matters" tabindex="0">
+    <table>
+      <thead><tr><th>Matter no.</th><th>Title</th><th>Client</th><th>State</th><th>Updated</th></tr></thead>
+      <tbody>
+        <tr><td><strong>MAT-2026-001</strong></td><td><strong>Sterling v. Apex Construction</strong></td><td>Sterling Manufacturing Co.</td><td><span class="st st-active">Active</span></td><td class="mut">Oct 7, 2026</td></tr>
+        <tr><td><strong>MAT-2026-002</strong></td><td><strong>Harborview Lease Dispute</strong></td><td>Harborview LLC</td><td><span class="st st-discovery">Discovery</span></td><td class="mut">Oct 5, 2026</td></tr>
+        <tr><td><strong>MAT-2026-003</strong></td><td><strong>Meridian Internal Review</strong></td><td>Meridian Corp</td><td><span class="st st-intake">Intake</span></td><td class="mut">Oct 2, 2026</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p class="lede" style="margin-top:12px">Search is trigram-backed across title, matter number, client, and party names; filters AND-combine. Results are permission-scoped before pagination — ungranted matters never appear, not even as rows.</p>
+  <div class="empty" style="margin-top:20px">
+    <h3 class="serif">No matters yet</h3>
+    <p>Create your first matter to begin tracking work.</p>
+    <a class="btn btn-primary" href="#s-new">New matter</a>
+  </div>
+</section>
+
+<!-- ══════════ 2 · MATTER DETAIL ══════════ -->
+<section class="screen" id="s-detail">
+  <p class="eyebrow">02 · Matter detail · Overview tab</p>
+  <div class="ph">
+    <div>
+      <p class="mut" style="margin:0 0 4px;font-size:13px">MAT-2026-001 · <span class="st st-active">Active</span> · 12 days in state</p>
+      <h1 class="serif">Sterling v. Apex Construction</h1>
+      <p>Breach of contract — Fulton County Superior Court.</p>
+    </div>
+    <div style="display:flex;gap:10px;flex-wrap:wrap">
+      <a class="btn btn-secondary" href="#transition-modal">Transition state</a>
+      <a class="btn btn-primary" href="#s-new">Edit</a>
+    </div>
+  </div>
+  <nav class="subnav" aria-label="Matter sections">
+    <a href="#s-detail" class="on">Overview</a><a href="#s-documents">Documents</a><a href="#s-timeline">Timeline</a><a href="#s-team">Team</a>
+  </nav>
+
+  <div class="grid2">
+    <div class="card">
+      <h3>Details</h3>
+      <dl class="kv">
+        <dt>Client</dt><dd>Sterling Manufacturing Co.</dd>
+        <dt>Matter type</dt><dd>Litigation</dd>
+        <dt>Opened</dt><dd>October 2, 2026</dd>
+        <dt>Lead attorney</dt><dd>A. Attorney</dd>
+        <dt>Next deadline</dt><dd class="mut">— <span style="font-size:12px">(deadline engine arrives in Phase 4)</span></dd>
+      </dl>
+    </div>
+    <div class="card">
+      <h3>Status summary <span class="mut" style="font-weight:400;font-size:13px">· derived on read</span></h3>
+      <dl class="kv">
+        <dt>Documents</dt><dd>2 received · 1 sent <span class="mut" style="font-size:12px">(log only until Phase 3)</span></dd>
+        <dt>Tasks</dt><dd class="mut">— <span style="font-size:12px">(Phase 4)</span></dd>
+        <dt>Unread comments</dt><dd>2</dd>
+        <dt>Last activity</dt><dd>Comment by P. Paralegal · 2h ago</dd>
+        <dt>Holds / shares</dt><dd class="mut">None</dd>
+      </dl>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3>Parties</h3>
+    <div class="tblwrap" style="border:none">
+      <table style="min-width:560px">
+        <thead><tr><th>Name</th><th>Type</th><th>Contact</th><th></th></tr></thead>
+        <tbody>
+          <tr><td><strong>Sterling Manufacturing Co.</strong></td><td><span class="chip">client</span></td><td class="mut">gc@sterlingmfg.example</td><td><a class="btn btn-secondary btn-sm" href="#">Remove</a></td></tr>
+          <tr><td><strong>Apex Construction Inc.</strong></td><td><span class="chip">opposing party</span></td><td class="mut">—</td><td><a class="btn btn-secondary btn-sm" href="#">Remove</a></td></tr>
+          <tr><td><strong>J. Kennamer</strong></td><td><span class="chip">opposing counsel</span></td><td class="mut">jkennamer@burr.example</td><td><a class="btn btn-secondary btn-sm" href="#">Remove</a></td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p style="margin:12px 0 0"><a class="btn btn-secondary btn-sm" href="#">Add party</a></p>
+  </div>
+
+  <div class="card" id="s-documents">
+    <h3>Documents</h3>
+    <div class="empty">
+      <h3 class="serif">Document management arrives in Phase 3</h3>
+      <p>Uploads, versions, and previews will live here. The received/sent register below is available now.</p>
+    </div>
+    <h3 style="margin-top:20px">Received / sent log</h3>
+    <div class="tblwrap" style="border:none">
+      <table style="min-width:560px">
+        <thead><tr><th>Direction</th><th>Counterparty</th><th>Date</th><th>Method</th><th>Notes</th></tr></thead>
+        <tbody>
+          <tr><td><span class="chip">received</span></td><td> Apex Construction Inc.</td><td>Oct 4, 2026</td><td>email</td><td class="mut">Initial disclosures</td></tr>
+          <tr><td><span class="chip">sent</span></td><td>Fulton County Superior Court</td><td>Oct 2, 2026</td><td>upload</td><td class="mut">Complaint — filed stamp</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="mut" style="font-size:13px;margin:10px 0 0">Append-only: entries are never edited — corrections are new rows. <a class="btn btn-secondary btn-sm" href="#" style="margin-left:8px">Log an item</a></p>
+  </div>
+</section>
+
+<!-- transition modal (static render) -->
+<div class="mback" id="transition-modal">
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="tm-t">
+    <h3 id="tm-t">Transition state</h3>
+    <p>Current state: <strong>Active</strong>. Only legal next states are offered — anything else returns 409.</p>
+    <div class="field"><label for="tm-to">Next state</label>
+      <select id="tm-to"><option>Discovery</option><option>Closed — settled</option></select>
+      <div class="hint">Closing requires a closing note below.</div>
+    </div>
+    <div class="field"><label for="tm-note">Note</label>
+      <textarea id="tm-note" rows="3" placeholder="Why is this moving? (recorded in the audit trail)"></textarea>
+    </div>
+    <div class="row"><a class="btn btn-secondary" href="#s-detail">Cancel</a><button class="btn btn-primary" type="button">Transition</button></div>
+  </div>
+</div>
+
+<!-- ══════════ 3 · TIMELINE ══════════ -->
+<section class="screen" id="s-timeline">
+  <p class="eyebrow">03 · Matter detail · Timeline tab</p>
+  <h2>Timeline</h2>
+  <p class="lede">Activity is derived from the tamper-evident audit trail — newest first, filterable, paginated. Comments live on the same timeline.</p>
+  <div class="card">
+    <h3>Activity</h3>
+    <ul class="feed">
+      <li><span class="dot"></span><span><strong>P. Paralegal</strong> commented</span><span class="when">2h ago</span></li>
+      <li><span class="dot"></span><span><strong>A. Attorney</strong> transitioned <strong>Intake → Active</strong> — "Client engaged, discovery plan approved."</span><span class="when">Oct 3, 2026</span></li>
+      <li><span class="dot"></span><span><strong>System</strong> logged received item from Apex Construction Inc.</span><span class="when">Oct 4, 2026</span></li>
+      <li><span class="dot"></span><span><strong>G. Granted</strong> assigned <strong>R. Rivera</strong> (outside counsel, 30-day grant)</span><span class="when">Oct 2, 2026</span></li>
+      <li><span class="dot"></span><span><strong>A. Attorney</strong> created the matter</span><span class="when">Oct 2, 2026</span></li>
+    </ul>
+  </div>
+  <div class="card">
+    <h3>Comments</h3>
+    <div class="comment">
+      <span class="who">A. Attorney</span><span class="meta">Oct 6, 2026</span>
+      <p class="body">Deposition outline is ready for review. <strong>@p.paralegal</strong> — the two exhibits we discussed.</p>
+    </div>
+    <div class="comment reply">
+      <span class="who">P. Paralegal</span><span class="meta">Oct 6, 2026</span><span class="edited">edited</span>
+      <p class="body">Reviewed — two exhibits still missing, following up with the client today.</p>
+    </div>
+    <div class="comment tomb">
+      <span class="who">A. Attorney</span><span class="meta">Oct 3, 2026</span>
+      <p class="body">Comment deleted.</p>
+    </div>
+    <div class="field"><label for="nc">Add a comment</label>
+      <textarea id="nc" rows="3" placeholder="Markdown supported. @mention assigned team members."></textarea>
+      <div class="hint">Replies nest one level only. Edits allowed within 24 hours.</div>
+    </div>
+    <button class="btn btn-primary" type="button">Post comment</button>
+  </div>
+</section>
+
+<!-- ══════════ 4 · TEAM ══════════ -->
+<section class="screen" id="s-team">
+  <p class="eyebrow">04 · Matter detail · Team tab</p>
+  <h2>Team &amp; sharing</h2>
+  <p class="lede">Assignment rides on matter grants. Only owners and org admins assign; the final owner cannot be removed.</p>
+  <div class="card">
+    <h3>Assigned team</h3>
+    <div class="tblwrap" style="border:none">
+      <table style="min-width:560px">
+        <thead><tr><th>User</th><th>Role</th><th>Expires</th><th></th></tr></thead>
+        <tbody>
+          <tr><td><strong>A. Attorney</strong></td><td><span class="chip">owner</span></td><td class="mut">—</td><td class="mut">—</td></tr>
+          <tr><td><strong>P. Paralegal</strong></td><td><span class="chip">editor</span></td><td class="mut">—</td><td><a class="btn btn-secondary btn-sm" href="#">Remove</a></td></tr>
+          <tr><td><strong>R. Rivera</strong> <span class="mut" style="font-size:12px">(external)</span></td><td><span class="chip">outside counsel</span></td><td>Nov 6, 2026</td><td><a class="btn btn-secondary btn-sm" href="#">Revoke</a></td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p style="margin:12px 0 0"><a class="btn btn-secondary btn-sm" href="#">Assign someone</a></p>
+  </div>
+  <div class="card">
+    <h3>Related matters</h3>
+    <div class="tblwrap" style="border:none">
+      <table style="min-width:560px">
+        <thead><tr><th>Matter</th><th>Relationship</th><th></th></tr></thead>
+        <tbody>
+          <tr><td><strong>MAT-2026-002 · Harborview Lease Dispute</strong></td><td><span class="chip">same client</span></td><td><a class="btn btn-secondary btn-sm" href="#">Unlink</a></td></tr>
+          <tr><td class="mut"><em>restricted matter</em></td><td><span class="chip">companion</span></td><td class="mut">—</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="mut" style="font-size:13px;margin:10px 0 0">Matters you can't access render as "restricted matter" — no title, no metadata.</p>
+  </div>
+</section>
+
+<!-- ══════════ 5 · NEW MATTER ══════════ -->
+<section class="screen" id="s-new">
+  <p class="eyebrow">05 · New matter</p>
+  <h2>New matter</h2>
+  <p class="lede">The matter number is generated on save (<code>MAT-2026-NNNN</code>, unique per organization). State starts at Intake.</p>
+  <div class="card">
+    <form>
+      <div class="field"><label for="nm-title">Title</label>
+        <input id="nm-title" type="text" placeholder="e.g. Sterling v. Apex Construction">
+      </div>
+      <div class="frow">
+        <div class="field"><label for="nm-type">Matter type</label>
+          <select id="nm-type"><option>Litigation</option><option>Transactional</option><option>Regulatory</option><option>Employment</option><option>Real estate</option><option>Estate planning</option><option>Other</option></select>
+        </div>
+        <div class="field"><label for="nm-client">Client name</label>
+          <input id="nm-client" type="text" placeholder="e.g. Sterling Manufacturing Co.">
+        </div>
+      </div>
+      <div class="field"><label for="nm-desc">Description <span style="text-transform:none;letter-spacing:0;font-weight:400">(optional)</span></label>
+        <textarea id="nm-desc" rows="3" placeholder="What is this matter about?"></textarea>
+      </div>
+      <div class="field"><label for="nm-title-err">Title</label>
+        <input id="nm-title-err" type="text" value="" aria-invalid="true" placeholder="(validation error state)">
+        <div class="err">A title is required.</div>
+      </div>
+      <button class="btn btn-primary" type="button">Create matter</button>
+      <a class="btn btn-secondary" href="#s-list" style="margin-left:10px">Cancel</a>
+    </form>
+  </div>
+</section>
+
+<!-- ══════════ 6 · DENIED ══════════ -->
+<section class="screen" id="s-denied">
+  <p class="eyebrow">06 · Denied state</p>
+  <h2>One page for every denial</h2>
+  <p class="lede">Unassigned users, other-organization users, and anonymous visitors all see the same generic page — no existence leak, no distinguishing detail.</p>
+  <div class="empty">
+    <h3 class="serif">Not found</h3>
+    <p>This matter doesn't exist or you don't have access to it.</p>
+    <a class="btn btn-secondary" href="#s-list">Back to matters</a>
+  </div>
+</section>
+
+<footer>
+  Vision Law · spec 006 mockup · synthetic data only · no real client information ·
+  State badges pair color with text labels (never color-only). All timestamps absolute; timezone is the viewer's.
+</footer>
+
+</body>
+</html>
