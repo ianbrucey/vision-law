@@ -1,6 +1,6 @@
 # 006 — Matter model and lifecycle — Strategic brief
 
-**Status:** DRAFT (→ IN REVIEW → APPROVED)
+**Status:** APPROVED
 **Author:** Lotus (orchestrator)
 **Date:** 2026-10-07
 
@@ -78,4 +78,4 @@ The source material references a `MAT-23` touchpoint, but `docs/RFI_REQUIREMENTS
 - [ ] Builder has reviewed and added risks to the pre-mortem
 - [ ] Governing [D]/[P]/[O] items linked; [O] stop conditions stated
 - [ ] Security classification complete (actors, data classes, audit events, leak sentinels)
-- [ ] Product owner approved — **approver:** Ian Bruce · **date:** __________
+- [x] Product owner approved — **approver:** Ian Bruce · **date:** 2026-10-07
