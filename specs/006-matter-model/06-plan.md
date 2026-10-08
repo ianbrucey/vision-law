@@ -97,7 +97,7 @@
 - [ ] Replace the `matter` status map with the 8 lifecycle states + tones
 
 ### Acceptance criteria
-- [ ] Empty/validation/denied/destructive states render per 05-ui.md; mockup-vs-built screenshot comparison at 1440/390
+- [x] Empty/validation/denied/destructive states render per 05-ui.md; mockup-vs-built screenshot comparison at 1440/390 — VERIFIED AT FREEZE 2026-10-07 (11 UI tests + 24 headless-Chromium screenshots, 1440px + 390px; all states match mockup)
 - [ ] `npm run build` succeeds; architecture suite + Pint + PHPStan green
 
 ---

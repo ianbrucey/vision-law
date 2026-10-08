@@ -74,6 +74,62 @@ Agentic drafting assistance operates in **controlled working copies** (see `DRAF
 - Authorization failures never leak existence: cross-boundary access returns 404-not-403 semantics [D].
 - "Cases" and "matters" are the same thing; the product standardizes on **matter**.
 
+### 4.1 Matter schema (spec 006, frozen 2026-10-07)
+
+One home per fact: the accepted 006 schema delta lives here now
+(`specs/006-matter-model/02-schema-delta.md` is the frozen proposal).
+
+- **`matters`** — `matter_number` format `MAT-YYYY-NNNN`, unique per org per
+  year (006-D01); generated under `pg_advisory_xact_lock(org_id, year)` +
+  MAX+1 (006-D10). `lifecycle_state` CHECK over the 8 states
+  (`INTAKE, ACTIVE, DISCOVERY, PRE_TRIAL, TRIAL_SETTLEMENT, CLOSED,
+  RETENTION_HOLD, DISPOSITION`), default `INTAKE` — replaces the 001 `status`
+  column (006-D02, `open` → `INTAKE` backfill). `matter_type` CHECK over
+  `litigation, transactional, regulatory, employment, real_estate,
+  estate_planning, other`. `title`, `client_name` (confidential display
+  convenience; structured data lives in `matter_parties`), `description`
+  (work-product), `closed_at` (set on CLOSED, cleared on reopen),
+  `deleted_at` soft delete (recoverable by org admins ≤ 30 days).
+  `template_id`/`template_version` reserved as the Phase 4 interface (006-D07,
+  no FK yet). Indexes: `UNIQUE(org_id, matter_number)`, `(org_id,
+  lifecycle_state) WHERE deleted_at IS NULL`, trigram GIN
+  (`matters_search_trgm`) over title/client_name/matter_number.
+- **`matter_parties`** — 7 types (006-D14:
+  `client, opposing_party, opposing_counsel, witness, expert, court, other`);
+  name (confidential) + role_description/email/phone/address + optional
+  `user_id` link; soft delete.
+- **`matter_comments`** — markdown body (work-product), one-level threading
+  (`parent_id` must be top-level), author edit within 24h (`edited_at` badge),
+  soft delete → tombstone (row + author retained). `created_at` and
+  `matter_comment_reads.last_read_at` are `timestamptz(6)` so unread counts
+  are deterministic (006-D15).
+- **`matter_comment_reads`** — `UNIQUE(matter_id, user_id)`, `last_read_at`;
+  internal telemetry, powers MAT-16 unread counts.
+- **`matter_links`** — bidirectional related matters, canonical
+  `matter_id < related_matter_id`, typed
+  (`same_client, consolidated, appeal, companion, other`), self-link rejected,
+  `UNIQUE(org_id, matter_id, related_matter_id)`. Restricted matters render
+  as "restricted matter" with no title/metadata leak.
+- **`matter_document_log`** — the received/sent register (NOT document
+  storage — Phase 3). Append-only by design: no update/delete routes, core
+  fields immutable, corrections are new rows, `annotations` (jsonb) the only
+  mutable field. `direction` (`received, sent`) and `method`
+  (`upload, email, share_link, integration`) CHECKs. Phase 3 may add a
+  nullable `document_id` FK.
+- **`matter_grants`** — unchanged; assignment rides on 001's table (006-D05).
+  Contract roles (`owner, editor, viewer, outside_counsel`) reconciled with
+  legacy names in `AccessControl::ROLE_RANK` — `owner` ≡ `matter_owner`
+  (rank 5), `outside_counsel` between `viewer` (1) and `editor` (3) (006-D11).
+  Last-owner protection is rank-based on both the 006 service path (006-D16)
+  and the 001 grants path (006-D17).
+- **Activity feed** — a read model over `audit_events` (006-D04); no separate
+  table. Every 006 mutation writes its audit row in the same transaction.
+- **Lifecycle rules** — the transition table is contract data (migration-free
+  changes); invalid transition → 409 with legal next states; same-state
+  transition → 200 no-op (006-D06); `INTAKE → ACTIVE` requires a `client`
+  party; guided closure requires a closing note; CLOSED matters are read-only
+  except reopen/transition.
+
 ---
 
 ## 5. Architecture decisions

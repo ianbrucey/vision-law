@@ -4,15 +4,20 @@ use App\Http\Controllers\Admin\AuditEventController as AdminAuditEventController
 use App\Http\Controllers\Admin\InvitationController as AdminInvitationController;
 use App\Http\Controllers\Admin\TeamController as AdminTeamController;
 use App\Http\Controllers\Admin\UserController as AdminUserController;
+use App\Http\Controllers\AssignmentController;
 use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\Auth\PasswordResetLinkController;
 use App\Http\Controllers\Auth\RegisteredUserController;
 use App\Http\Controllers\Auth\TwoFactorChallengeController;
 use App\Http\Controllers\Auth\TwoFactorQrCodeImageController;
 use App\Http\Controllers\Auth\TwoFactorSettingsController;
+use App\Http\Controllers\CommentController;
+use App\Http\Controllers\DocumentLogController;
 use App\Http\Controllers\InvitationController;
+use App\Http\Controllers\LinkController;
 use App\Http\Controllers\MatterController;
 use App\Http\Controllers\MatterGrantController;
+use App\Http\Controllers\PartyController;
 use App\Http\Controllers\SessionController;
 use App\Http\Middleware\RequireOrgAdmin;
 use Illuminate\Pagination\LengthAwarePaginator;
@@ -188,15 +193,116 @@ Route::middleware(['auth:'.config('fortify.guard'), RequireOrgAdmin::class.':aud
             ->name('audit-events.export');
     });
 
-// ── Ticket 6: matter grants + authorization proving ground (backend only,
-// no Blade per 001-D06) ──
-// RequireMatterAccess resolves the matter and authorizes BEFORE any data
-// access; controllers read the authorized matter from request attributes.
+// === 006 matter routes ===
+// Spec 006 T-02 owns this section: matter CRUD + lifecycle (index, create,
+// store, show, edit, update, destroy, restore, transition, close, summary).
+// Tickets 3/4 APPEND their own delimited sections AFTER this one — do not
+// scatter 006 routes elsewhere.
+//
+// Auth note: every route requires authentication. Matter-scoped routes use
+// RequireMatterAccess with the contract action levels (Ticket 6):
+// :view < :comment < :edit < :manage (grant ≈ manage). POST
+// /matters/{matter}/restore resolves soft-deleted rows, which
+// RequireMatterAccess cannot see, so it carries no matter middleware — the
+// controller enforces org_admin + same-org scoping before any data access.
 Route::middleware(['auth:'.config('fortify.guard')])->group(function (): void {
+    Route::get('/matters', [MatterController::class, 'index'])->name('matters.index');
+    Route::get('/matters/create', [MatterController::class, 'create'])->name('matters.create');
+    Route::post('/matters', [MatterController::class, 'store'])->name('matters.store');
+
     Route::get('/matters/{matter}', [MatterController::class, 'show'])
         ->middleware('matter.access:view')
         ->name('matters.show');
+    Route::get('/matters/{matter}/edit', [MatterController::class, 'edit'])
+        ->middleware('matter.access:edit')
+        ->name('matters.edit');
+    Route::patch('/matters/{matter}', [MatterController::class, 'update'])
+        ->middleware('matter.access:edit')
+        ->name('matters.update');
+    Route::delete('/matters/{matter}', [MatterController::class, 'destroy'])
+        ->middleware('matter.access:manage')
+        ->name('matters.destroy');
+    Route::post('/matters/{matter}/restore', [MatterController::class, 'restore'])
+        ->name('matters.restore');
+    Route::post('/matters/{matter}/transition', [MatterController::class, 'transition'])
+        ->middleware('matter.access:manage')
+        ->name('matters.transition');
+    Route::post('/matters/{matter}/close', [MatterController::class, 'close'])
+        ->middleware('matter.access:manage')
+        ->name('matters.close');
+    Route::get('/matters/{matter}/summary', [MatterController::class, 'summary'])
+        ->middleware('matter.access:view')
+        ->name('matters.summary');
+});
 
+// === 006 matter routes — Tickets 3/4 ===
+// Spec 006 T-03/T-04 own this section: parties, comments, links, document
+// log, assignments, search, timeline reads. Appended AFTER T-02's
+// `// === 006 matter routes ===` section — do not scatter 006 routes
+// elsewhere.
+//
+// Action levels (Ticket 6): :view < :comment < :edit < :manage
+// (grant ≈ manage). Comment routes: store carries :comment at the
+// middleware (the 006-D13 floor moved out of the controller); update and
+// destroy keep :view at the middleware because the contract's "author
+// (24h) or :manage" rule needs the comment row — a viewer must still edit
+// their own comment within 24h, which a pure middleware gate cannot
+// express — so the author-or-manage check stays in CommentController.
+//
+// Search lives at GET /search/matters (006-D12): /matters/{matter} is
+// registered earlier in this file and would swallow /matters/search.
+Route::middleware(['auth:'.config('fortify.guard')])->group(function (): void {
+    Route::get('/search/matters', [MatterController::class, 'search'])->name('search.matters');
+
+    Route::post('/matters/{matter}/parties', [PartyController::class, 'store'])
+        ->middleware('matter.access:edit')
+        ->name('matters.parties.store');
+    Route::delete('/matters/{matter}/parties/{party}', [PartyController::class, 'destroy'])
+        ->middleware('matter.access:edit')
+        ->name('matters.parties.destroy');
+
+    Route::post('/matters/{matter}/comments', [CommentController::class, 'store'])
+        ->middleware('matter.access:comment')
+        ->name('matters.comments.store');
+    Route::patch('/matters/{matter}/comments/{comment}', [CommentController::class, 'update'])
+        ->middleware('matter.access:view')
+        ->name('matters.comments.update');
+    Route::delete('/matters/{matter}/comments/{comment}', [CommentController::class, 'destroy'])
+        ->middleware('matter.access:view')
+        ->name('matters.comments.destroy');
+    Route::post('/matters/{matter}/timeline/read', [CommentController::class, 'markRead'])
+        ->middleware('matter.access:view')
+        ->name('matters.timeline.read');
+
+    Route::get('/matters/{matter}/links', [LinkController::class, 'index'])
+        ->middleware('matter.access:view')
+        ->name('matters.links.index');
+    Route::post('/matters/{matter}/links', [LinkController::class, 'store'])
+        ->middleware('matter.access:edit')
+        ->name('matters.links.store');
+    Route::delete('/matters/{matter}/links/{link}', [LinkController::class, 'destroy'])
+        ->middleware('matter.access:edit')
+        ->name('matters.links.destroy');
+
+    Route::post('/matters/{matter}/document-log', [DocumentLogController::class, 'store'])
+        ->middleware('matter.access:edit')
+        ->name('matters.document-log.store');
+    Route::patch('/matters/{matter}/document-log/{log}', [DocumentLogController::class, 'update'])
+        ->middleware('matter.access:edit')
+        ->name('matters.document-log.update');
+
+    Route::post('/matters/{matter}/assignments', [AssignmentController::class, 'store'])
+        ->middleware('matter.access:manage')
+        ->name('matters.assignments.store');
+    Route::delete('/matters/{matter}/assignments/{grant}', [AssignmentController::class, 'destroy'])
+        ->middleware('matter.access:manage')
+        ->name('matters.assignments.destroy');
+});
+
+// ── Ticket 6: matter grants (backend only, no Blade per 001-D06) ──
+// RequireMatterAccess resolves the matter and authorizes BEFORE any data
+// access; controllers read the authorized matter from request attributes.
+Route::middleware(['auth:'.config('fortify.guard')])->group(function (): void {
     Route::post('/matters/{matter}/grants', [MatterGrantController::class, 'store'])
         ->middleware('matter.access:grant')
         ->name('matters.grants.store');
@@ -241,3 +347,14 @@ Route::get('/_patterns', function () {
         'toastDemos' => $toastDemos,
     ]);
 })->middleware('auth:'.config('fortify.guard'))->name('patterns');
+// === 006 matter routes — Ticket 6 ===
+// Spec 006 T-06 owns this section: the immutable activity feed (C-07;
+// 006-D04 — a read model over audit_events, newest-first, filterable by
+// type/actor, paginated). Authorization is :view — every actor who can see
+// the matter can read its feed; the feed never reveals more than the
+// matter's own audit rows.
+Route::middleware(['auth:'.config('fortify.guard')])->group(function (): void {
+    Route::get('/matters/{matter}/feed', [MatterController::class, 'feed'])
+        ->middleware('matter.access:view')
+        ->name('matters.feed');
+});

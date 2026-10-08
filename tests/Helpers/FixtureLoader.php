@@ -4,11 +4,16 @@ namespace Tests\Helpers;
 
 use App\Models\Invitation;
 use App\Models\Matter;
+use App\Models\MatterComment;
+use App\Models\MatterDocumentLog;
 use App\Models\MatterGrant;
+use App\Models\MatterLink;
+use App\Models\MatterParty;
 use App\Models\Organization;
 use App\Models\Role;
 use App\Models\Team;
 use App\Models\User;
+use Carbon\CarbonInterface;
 use Database\Seeders\PermissionMatrixSeeder;
 use Illuminate\Support\Str;
 use Laravel\Fortify\RecoveryCode;
@@ -45,12 +50,11 @@ class FixtureLoader
     /** @var array<string, string> symbolic id => real UUID */
     private array $ids = [];
 
-    private function __construct()
+    private function __construct(string $fixturePath)
     {
-        $path = base_path('specs/001-foundation-auth-rbac-audit/04-fixtures.json');
-        $json = file_get_contents($path);
+        $json = file_get_contents($fixturePath);
         if ($json === false) {
-            throw new \RuntimeException("Fixture file not found: {$path}");
+            throw new \RuntimeException("Fixture file not found: {$fixturePath}");
         }
         /** @var array<string, mixed> $data */
         $data = json_decode($json, true, 512, JSON_THROW_ON_ERROR);
@@ -59,10 +63,284 @@ class FixtureLoader
 
     public static function load(): self
     {
-        $loader = new self;
+        $loader = new self(base_path('specs/001-foundation-auth-rbac-audit/04-fixtures.json'));
         $loader->run();
 
         return $loader;
+    }
+
+    /**
+     * Loads specs/006-matter-model/04-fixtures.json — the SINGLE canonical
+     * fixture definition for the matter model (006 T-01). Self-contained:
+     * orgs, users in every role (incl. the cross-tenant adversary, the
+     * unassigned viewer, and outside counsel with a single-matter grant),
+     * matters across lifecycle states, parties of all six types, a threaded
+     * comment set (a 25-hour-old comment and a tombstone), document-log rows
+     * in both directions, a bidirectional matter link, and grants including
+     * an expired one.
+     */
+    public static function loadMatterFixtures(): self
+    {
+        $loader = new self(base_path('specs/006-matter-model/04-fixtures.json'));
+        $loader->runMatterFixtures();
+
+        return $loader;
+    }
+
+    /**
+     * Links whose target matter may not be loaded yet are deferred until
+     * every matter exists, then written in canonical order.
+     *
+     * @var list<array{org_id: string, matter_id: string, related: string, link_type: string, note: ?string}>
+     */
+    private array $pendingLinks = [];
+
+    private function runMatterFixtures(): void
+    {
+        foreach ($this->data['fixtures'] ?? [] as $item) {
+            switch ($item['type']) {
+                case 'organization':
+                    $this->loadMatterOrg($item);
+                    break;
+                case 'user':
+                    $this->loadMatterUser($item);
+                    break;
+                case 'matter':
+                    $this->loadMatterMatter($item);
+                    break;
+                case 'grant':
+                    $this->loadMatterGrant(
+                        $this->ids[$item['org']],
+                        $this->ids[$item['matter']],
+                        $item
+                    );
+                    break;
+                default:
+                    throw new \RuntimeException("Unknown 006 fixture type: {$item['type']}");
+            }
+        }
+
+        $this->flushPendingLinks();
+
+        app(PermissionRegistrar::class)->forgetCachedPermissions();
+    }
+
+    private function loadMatterOrg(array $org): void
+    {
+        $model = Organization::firstOrCreate(
+            ['slug' => $org['slug']],
+            ['name' => $org['name']]
+        );
+
+        PermissionMatrixSeeder::seedFor($model);
+
+        $this->ids[$org['id']] = (string) $model->getKey();
+    }
+
+    private function loadMatterUser(array $user): void
+    {
+        $orgId = $this->ids[$user['org']];
+
+        $model = User::firstOrCreate(
+            ['org_id' => $orgId, 'email' => $user['email']],
+            [
+                'name' => $user['name'],
+                // The 'hashed' cast hashes this on set.
+                'password' => self::DEFAULT_PASSWORD,
+            ]
+        );
+
+        if ($model->email_verified_at === null) {
+            $model->forceFill(['email_verified_at' => now()])->save();
+        }
+
+        $guard = (string) config('auth.defaults.guard', 'web');
+
+        $role = Role::where('org_id', $orgId)
+            ->where('name', $user['role'])
+            ->where('guard_name', $guard)
+            ->firstOrFail();
+
+        $model->assignRole($role);
+
+        $this->ids[$user['id']] = (string) $model->getKey();
+    }
+
+    /**
+     * @param  array<string, mixed>  $matter
+     */
+    private function loadMatterMatter(array $matter): void
+    {
+        $orgId = $this->ids[$matter['org']];
+
+        $model = Matter::firstOrCreate(
+            [
+                'org_id' => $orgId,
+                'matter_number' => $matter['matter_number'],
+            ],
+            [
+                'title' => $matter['title'],
+                'lifecycle_state' => $matter['lifecycle_state'],
+                'matter_type' => $matter['matter_type'] ?? 'other',
+                'description' => $matter['description'] ?? null,
+                'client_name' => $matter['client_name'] ?? $matter['title'],
+            ]
+        );
+
+        $matterId = (string) $model->getKey();
+        $this->ids[$matter['id']] = $matterId;
+
+        foreach ($matter['parties'] ?? [] as $party) {
+            MatterParty::firstOrCreate(
+                [
+                    'matter_id' => $matterId,
+                    'party_type' => $party['party_type'],
+                    'name' => $party['name'],
+                ],
+                [
+                    'org_id' => $orgId,
+                    'role_description' => $party['role_description'] ?? null,
+                    'email' => $party['email'] ?? null,
+                    'phone' => $party['phone'] ?? null,
+                    'address' => $party['address'] ?? null,
+                ]
+            );
+        }
+
+        foreach ($matter['comments'] ?? [] as $comment) {
+            $this->loadMatterComment($comment, $orgId, $matterId, null);
+        }
+
+        foreach ($matter['document_log'] ?? [] as $entry) {
+            MatterDocumentLog::firstOrCreate(
+                [
+                    'matter_id' => $matterId,
+                    'direction' => $entry['direction'],
+                    'counterparty' => $entry['counterparty'],
+                    'method' => $entry['method'],
+                ],
+                [
+                    'org_id' => $orgId,
+                    'logged_at' => now(),
+                    'notes' => $entry['notes'] ?? null,
+                    'annotations' => [],
+                ]
+            );
+        }
+
+        foreach ($matter['grants'] ?? [] as $grant) {
+            $this->loadMatterGrant($orgId, $matterId, $grant);
+        }
+
+        foreach ($matter['links'] ?? [] as $link) {
+            $this->pendingLinks[] = [
+                'org_id' => $orgId,
+                'matter_id' => $matterId,
+                'related' => $link['related'],
+                'link_type' => $link['link_type'],
+                'note' => $link['note'] ?? null,
+            ];
+        }
+    }
+
+    /**
+     * @param  array<string, mixed>  $comment
+     */
+    private function loadMatterComment(array $comment, string $orgId, string $matterId, ?string $parentId): void
+    {
+        $model = MatterComment::firstOrCreate(
+            [
+                'matter_id' => $matterId,
+                'author_id' => $this->ids[$comment['author']],
+                'body' => $comment['body'],
+            ],
+            [
+                'org_id' => $orgId,
+                'parent_id' => $parentId,
+            ]
+        );
+
+        if (isset($comment['created_at']) && $model->wasRecentlyCreated) {
+            // created_at is deliberately not fillable — set it directly so
+            // the 25-hour-old fixture comment really is 25 hours old.
+            $model->forceFill(['created_at' => $this->parseRelativeTime($comment['created_at'])])->save();
+        }
+
+        if (! empty($comment['deleted'])) {
+            // Tombstone — the row and its author are retained.
+            $model->delete();
+        }
+
+        $commentId = (string) $model->getKey();
+        if (isset($comment['id'])) {
+            $this->ids[$comment['id']] = $commentId;
+        }
+
+        foreach ($comment['replies'] ?? [] as $reply) {
+            $this->loadMatterComment($reply, $orgId, $matterId, $commentId);
+        }
+    }
+
+    /**
+     * @param  array<string, mixed>  $grant
+     */
+    private function loadMatterGrant(string $orgId, string $matterId, array $grant): void
+    {
+        MatterGrant::firstOrCreate(
+            [
+                'matter_id' => $matterId,
+                'user_id' => $this->ids[$grant['user']],
+            ],
+            [
+                'org_id' => $orgId,
+                'role' => $grant['role'],
+                'expires_at' => isset($grant['expires_at'])
+                    ? $this->parseRelativeTime($grant['expires_at'])
+                    : null,
+                'granted_by' => $this->adminIdFor($orgId),
+            ]
+        );
+    }
+
+    private function flushPendingLinks(): void
+    {
+        foreach ($this->pendingLinks as $link) {
+            $relatedId = $this->ids[$link['related']];
+
+            // Canonical ordering: matter_id < related_matter_id.
+            [$low, $high] = $link['matter_id'] < $relatedId
+                ? [$link['matter_id'], $relatedId]
+                : [$relatedId, $link['matter_id']];
+
+            MatterLink::firstOrCreate(
+                [
+                    'org_id' => $link['org_id'],
+                    'matter_id' => $low,
+                    'related_matter_id' => $high,
+                ],
+                [
+                    'link_type' => $link['link_type'],
+                    'note' => $link['note'],
+                ]
+            );
+        }
+
+        $this->pendingLinks = [];
+    }
+
+    /**
+     * Parses fixture-relative timestamps ("-25h", "+30d", "-1d").
+     */
+    private function parseRelativeTime(string $value): CarbonInterface
+    {
+        if (preg_match('/^([+-])(\d+)([hd])$/', $value, $m) !== 1) {
+            throw new \RuntimeException("Unparseable relative time: {$value}");
+        }
+
+        $amount = (int) $m[2];
+        $unit = $m[3] === 'h' ? 'Hours' : 'Days';
+
+        return $m[1] === '-' ? now()->{"sub{$unit}"}($amount) : now()->{"add{$unit}"}($amount);
     }
 
     private function run(): void
@@ -163,7 +441,10 @@ class FixtureLoader
                 ],
                 [
                     'title' => $matter['title'],
-                    'status' => $matter['status'],
+                    // 006-D02: the 001 stub's 'open' status backfills to INTAKE.
+                    'lifecycle_state' => 'INTAKE',
+                    'matter_type' => $matter['matter_type'] ?? 'other',
+                    'client_name' => $matter['client_name'] ?? $matter['title'],
                 ]
             );
 

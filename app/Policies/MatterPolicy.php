@@ -18,6 +18,27 @@ use App\Services\AccessControl;
  */
 class MatterPolicy
 {
+    /**
+     * 006-D03: only attorney, org_admin, and paralegal org roles may create
+     * matters. Viewers and outside counsel must not.
+     */
+    public function create(User $user): bool
+    {
+        return $user->hasRole('attorney')
+            || $user->hasRole('org_admin')
+            || $user->hasRole('paralegal');
+    }
+
+    /**
+     * Every authenticated user may list matters — the result set is scoped
+     * server-side ("My Matters": org_admin sees all org matters, everyone
+     * else only matters with a valid grant).
+     */
+    public function viewAny(User $user): bool
+    {
+        return true;
+    }
+
     public function view(User $user, Matter $matter): bool
     {
         return $this->allows($user, 'view', $matter);
