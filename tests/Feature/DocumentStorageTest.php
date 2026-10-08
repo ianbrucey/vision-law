@@ -134,7 +134,9 @@ class DocumentStorageTest extends TestCase
             $this->assertTrue(Schema::hasTable($table), "expected table {$table} to exist after migrate");
         }
 
-        Artisan::call('migrate:rollback', ['--step' => 12]);
+        // Reset (not --step): later 007 tickets added migrations after
+        // T-01's twelve, so a fixed step no longer lands on the T-01 set.
+        Artisan::call('migrate:reset');
 
         foreach (self::T01_TABLES as $table) {
             $this->assertFalse(Schema::hasTable($table), "expected table {$table} to be gone after rollback");
