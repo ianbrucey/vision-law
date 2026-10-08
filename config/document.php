@@ -46,6 +46,12 @@ return [
     // Idle chunked-upload sessions expire after 24h (007-D05).
     'upload_session_ttl_hours' => (int) env('DOCUMENT_UPLOAD_SESSION_TTL_HOURS', 24),
 
+    // Ops alert recipient for stalled malware scans (C-03): queued when a
+    // version has waited longer than clamav.alert_after_minutes with the
+    // engine unreachable. Empty disables the mail (the audit row is still
+    // written).
+    'ops_alert_email' => env('DOCUMENT_OPS_ALERT_EMAIL', 'ops@example.com'),
+
     /*
     |--------------------------------------------------------------------------
     | MIME allowlist (C-04 / DOC-04)

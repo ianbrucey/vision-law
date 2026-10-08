@@ -203,8 +203,10 @@ class DocumentStorageTest extends TestCase
             $this->assertStringContainsString('immutable', $e->getMessage());
         }
 
-        // The row is untouched.
-        $this->assertSame(1, DocumentVersion::count());
+        // The row is untouched. Scoped to this test document: the
+        // canonical fixture loader (007 T-02) now creates document rows
+        // with versions of their own.
+        $this->assertSame(1, DocumentVersion::where('document_id', $document->getKey())->count());
         $this->assertNull($version->fresh()->change_note);
     }
 }

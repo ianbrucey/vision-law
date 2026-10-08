@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Casts\PostgresTextArray;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -58,6 +59,10 @@ class Document extends Model
         'metadata_status',
         'retention_flagged_at',
         'created_by',
+        'template_id',
+        'template_version',
+        'draft_content',
+        'draft_updated_at',
     ];
 
     /**
@@ -75,8 +80,11 @@ class Document extends Model
     protected function casts(): array
     {
         return [
-            'tags' => 'array',
+            // text[] column: Laravel's 'array' cast writes JSON, which
+            // Postgres rejects — the custom cast speaks array literals.
+            'tags' => PostgresTextArray::class,
             'retention_flagged_at' => 'datetime',
+            'draft_updated_at' => 'datetime',
         ];
     }
 
@@ -110,6 +118,17 @@ class Document extends Model
     public function currentVersion(): BelongsTo
     {
         return $this->belongsTo(DocumentVersion::class, 'current_version_id');
+    }
+
+    /**
+     * Source template for kind=generated documents (007 T-04, stationery).
+     * Null for uploaded/authored documents.
+     *
+     * @return BelongsTo<DocumentTemplate, $this>
+     */
+    public function template(): BelongsTo
+    {
+        return $this->belongsTo(DocumentTemplate::class, 'template_id');
     }
 
     /**

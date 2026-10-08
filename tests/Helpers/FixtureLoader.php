@@ -2,7 +2,9 @@
 
 namespace Tests\Helpers;
 
+use App\Models\Document;
 use App\Models\DocumentFolder;
+use App\Models\DocumentVersion;
 use App\Models\Invitation;
 use App\Models\Matter;
 use App\Models\MatterComment;
@@ -14,6 +16,9 @@ use App\Models\Organization;
 use App\Models\Role;
 use App\Models\Team;
 use App\Models\User;
+use App\Services\DocumentIngestService;
+use App\Services\DocumentStore;
+use App\Services\MalwareScanner;
 use Carbon\CarbonInterface;
 use Database\Seeders\PermissionMatrixSeeder;
 use Illuminate\Support\Facades\DB;
@@ -574,9 +579,9 @@ class FixtureLoader
      * 001/006 fixtures and are found via firstOrCreate, never duplicated.
      *
      * T-01 loads orgs, users, matters, folders, retention policies, and
-     * templates. Document rows are deferred to T-02 (they need the upload
-     * pipeline: bytes → blob → version), shares to T-08, and matter grants
-     * are left to the 006 loader's domain.
+     * templates. Document rows are loaded by T-02's loadDocumentRows()
+     * below (they need the upload pipeline: bytes → blob → version),
+     * shares by T-08, and matter grants are left to the 006 loader's domain.
      */
     public static function loadDocumentFixtures(): self
     {
@@ -709,6 +714,8 @@ class FixtureLoader
             }
         }
 
+        $this->loadDocumentRows();
+
         app(PermissionRegistrar::class)->forgetCachedPermissions();
     }
 
@@ -725,5 +732,121 @@ class FixtureLoader
     public function docMatter(string $number): Matter
     {
         return Matter::findOrFail($this->id('doc-matter:'.$number));
+    }
+
+    /**
+     * Loads the `documents` rows from the canonical 007 fixtures through
+     * the real upload pipeline (bytes → blob → version, 007 T-02): v1 goes
+     * through DocumentIngestService (MIME sniff, allowlist, ClamAV scan,
+     * audit), extra versions are appended as new immutable rows.
+     * Idempotent: documents are matched by matter + title.
+     *
+     * Deferred: `authored` documents (T-04's editor pipeline owns them) and
+     * the rival-org document (no matter in the canonical fixtures; its
+     * cross-tenant isolation is exercised by T-08/T-10 adversarial cases).
+     * Legal holds are T-09's — the held document's row is created, the
+     * hold itself is not.
+     */
+    private function loadDocumentRows(): void
+    {
+        $ingest = app(DocumentIngestService::class);
+        $store = app(DocumentStore::class);
+        $uploader = $this->docUser('a.attorney@sterling.example');
+
+        foreach ($this->list('documents') as $doc) {
+            /** @var array<string, mixed> $doc */
+            if (($doc['kind'] ?? '') === 'authored' || ($doc['matter'] ?? null) === null) {
+                continue;
+            }
+
+            $matter = $this->docMatter((string) $doc['matter']);
+
+            $exists = Document::query()
+                ->where('matter_id', $matter->getKey())
+                ->where('title', (string) $doc['title'])
+                ->exists();
+
+            if ($exists) {
+                continue;
+            }
+
+            $folderId = null;
+
+            if (isset($doc['folder'])) {
+                $folderId = DocumentFolder::query()
+                    ->where('matter_id', $matter->getKey())
+                    ->where('name', (string) $doc['folder'])
+                    ->value('id');
+                $folderId = $folderId !== null ? (string) $folderId : null;
+            }
+
+            $meta = [
+                'title' => (string) $doc['title'],
+                'tags' => array_map('strval', $doc['tags'] ?? []),
+                'folder_id' => $folderId,
+                'filename' => isset($doc['filename']) ? (string) $doc['filename'] : (string) $doc['title'],
+            ];
+
+            if (($doc['mime'] ?? '') === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document') {
+                // Synthetic bytes cannot sniff as OOXML; the store's
+                // explicit MIME override (trusted internal caller) carries
+                // the canonical type instead.
+                $meta['mime'] = (string) $doc['mime'];
+            }
+
+            $document = $ingest->ingest($matter, $uploader, $this->fixtureBytes($doc, 1), $meta);
+
+            // NOTE: range(2, 1) yields [2, 1] in PHP — a plain for loop.
+            $versionCount = (int) ($doc['versions'] ?? 1);
+            for ($n = 2; $n <= $versionCount; $n++) {
+                $blob = $store->put(
+                    $this->fixtureBytes($doc, $n),
+                    isset($meta['mime']) ? ['mime' => $meta['mime']] : []
+                );
+
+                $version = DocumentVersion::create([
+                    'document_id' => $document->getKey(),
+                    'version_number' => $n,
+                    'blob_id' => $blob->getKey(),
+                    'processing_status' => 'ready',
+                    'created_by' => $uploader->getKey(),
+                ]);
+
+                $document->update(['current_version_id' => $version->getKey()]);
+            }
+
+            if (($doc['trashed'] ?? false) === true) {
+                $document->delete();
+            }
+        }
+    }
+
+    /**
+     * Synthetic fixture bytes for one document version. PDFs carry a real
+     * %PDF header so fileinfo sniffs them correctly; TIFFs carry a real
+     * header; the quarantined fixture is the inert EICAR test vector (the
+     * real ClamAV scan flags it, exercising the quarantine path).
+     *
+     * @param  array<string, mixed>  $doc
+     */
+    private function fixtureBytes(array $doc, int $version): string
+    {
+        $seed = "007-fixture:{$doc['title']}:v{$version}\n";
+
+        if (! empty($doc['quarantined'])) {
+            return MalwareScanner::EICAR_TEST_STRING;
+        }
+
+        $mime = (string) ($doc['mime'] ?? 'application/pdf');
+
+        if (str_starts_with($mime, 'image/')) {
+            return "II*\x00".$seed.str_repeat("\x00", 256);
+        }
+
+        if ($mime === 'application/pdf') {
+            return "%PDF-1.4\n%{$seed}\n1 0 obj\n<<>>\nendobj\ntrailer\n<<>>\n%%EOF\n";
+        }
+
+        return $seed.str_repeat('z', 512);
     }
 }
