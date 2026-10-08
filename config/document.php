@@ -110,6 +110,24 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Text extraction / OCR pipeline (007 T-06, DOC-15/16/17)
+    |--------------------------------------------------------------------------
+    */
+
+    'ocr' => [
+        // Page render resolution for OCR input (DPI).
+        'dpi' => (int) env('DOCUMENT_OCR_DPI', 300),
+        // Tesseract language for OCR.
+        'language' => env('DOCUMENT_OCR_LANG', 'eng'),
+        // Pages with mean per-word confidence below this are flagged
+        // low-confidence (surfaced via Document::lowConfidencePages()).
+        'low_confidence_threshold' => (float) env('DOCUMENT_OCR_LOW_CONFIDENCE_THRESHOLD', 0.70),
+        // Per-page subprocess timeout (render + OCR), seconds.
+        'page_timeout_seconds' => (int) env('DOCUMENT_OCR_PAGE_TIMEOUT', 120),
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
     | Sharing: grants, links, export (007 T-08, DOC-24/25/26)
     |--------------------------------------------------------------------------
     */

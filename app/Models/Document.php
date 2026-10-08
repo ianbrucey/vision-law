@@ -44,6 +44,22 @@ class Document extends Model
     public const METADATA_STATUSES = ['ok', 'partial'];
 
     /**
+     * Mirrors the documents_processing_stage_check constraint (007 T-06).
+     * The extraction/OCR pipeline stage for the current version. NULL =
+     * the pipeline never ran (rows predating T-06).
+     *
+     * @var list<string>
+     */
+    public const PROCESSING_STAGES = [
+        'processing',
+        'extracting',
+        'needs_ocr',
+        'ocr_processing',
+        'indexed',
+        'partial',
+    ];
+
+    /**
      * @var list<string>
      */
     protected $fillable = [
@@ -59,6 +75,8 @@ class Document extends Model
         'metadata_status',
         'metadata',
         'needs_ocr',
+        'processing_stage',
+        'ocr_cost',
         'retention_flagged_at',
         'created_by',
         'template_id',
@@ -87,6 +105,7 @@ class Document extends Model
             'tags' => PostgresTextArray::class,
             'metadata' => 'array',
             'needs_ocr' => 'boolean',
+            'ocr_cost' => 'array',
             'retention_flagged_at' => 'datetime',
             'draft_updated_at' => 'datetime',
         ];
@@ -106,6 +125,36 @@ class Document extends Model
     public function matter(): BelongsTo
     {
         return $this->belongsTo(Matter::class, 'matter_id');
+    }
+
+    /**
+     * Page numbers of the current version whose OCR confidence fell
+     * below the configured threshold (007 T-06, DOC-16). Empty for
+     * natively-extracted documents (ocr_confidence is null there).
+     *
+     * @return list<int>
+     */
+    public function lowConfidencePages(): array
+    {
+        $versionId = $this->current_version_id;
+        if ($versionId === null) {
+            return [];
+        }
+
+        $threshold = (float) config('document.ocr.low_confidence_threshold', 0.70);
+
+        $numbers = DocumentTextPage::query()
+            ->where('version_id', $versionId)
+            ->whereNotNull('ocr_confidence')
+            ->where('ocr_confidence', '<', $threshold)
+            ->orderBy('page_number')
+            ->pluck('page_number')
+            ->all();
+
+        return array_map(
+            static fn (mixed $n): int => (int) $n,
+            array_values($numbers),
+        );
     }
 
     /**

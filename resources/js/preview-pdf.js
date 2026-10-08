@@ -51,6 +51,13 @@ async function init() {
   buildThumbnails();
   await renderPage(state.pageNum);
   wireControls();
+
+  // 007 T-06: search-result deep link — pre-fill find-in-page with the
+  // query terms so hits are highlighted on arrival.
+  if (config.highlight && typeof config.highlight === "string" && config.highlight.trim() !== "") {
+    $("pv-find").value = config.highlight.slice(0, 200);
+    runFind();
+  }
 }
 
 function showFatal(message) {

@@ -9,7 +9,8 @@
 
     Expects: $matter, $document, $version, $previewMode
              (pdf|image|text|unavailable), $fileUrl, $downloadUrl,
-             $pageCount, $metadata (extracted metadata array).
+             $pageCount, $metadata (extracted metadata array),
+             $initialPage (search deep-link, 007 T-06), $highlight.
 --}}
 <x-layouts.app title="Preview · {{ $document->title }} · Vision Law">
     <x-ui.page-header
@@ -71,7 +72,7 @@
             <p class="px-3 py-2 text-[12.5px] text-vl-mut border-t border-vl-line">Access re-checked on every page load. Text is selectable.</p>
         </x-ui.card>
         <script>
-            window.__previewConfig = @json(['fileUrl' => $fileUrl, 'pageCount' => $pageCount]);
+            window.__previewConfig = @json($previewConfig);
         </script>
         @vite(['resources/js/preview-pdf.js'])
     @elseif ($previewMode === 'image')

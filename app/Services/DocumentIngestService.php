@@ -155,7 +155,15 @@ class DocumentIngestService
             return $document;
         });
 
-        return $document->fresh() ?? $document;
+        $created = $document->fresh() ?? $document;
+
+        // 007 T-06: kick off the text extraction/OCR pipeline for v1.
+        // Queued (sync in tests); the pipeline is idempotent, never
+        // extracts quarantined bytes, and never marks anything clean —
+        // T-02's scan state is untouched here.
+        app(DocumentProcessingPipeline::class)->process($created);
+
+        return $created;
     }
 
     /**

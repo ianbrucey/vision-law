@@ -18,7 +18,9 @@ use App\Http\Controllers\DocumentEditorController;
 use App\Http\Controllers\DocumentHoldController;
 use App\Http\Controllers\DocumentLogController;
 use App\Http\Controllers\DocumentPreviewController;
+use App\Http\Controllers\DocumentSearchController;
 use App\Http\Controllers\DocumentShareController;
+use App\Http\Controllers\DocumentTextController;
 use App\Http\Controllers\DocumentUploadController;
 use App\Http\Controllers\DocumentVersionController;
 use App\Http\Controllers\FolderController;
@@ -263,6 +265,19 @@ Route::middleware(['auth:'.config('fortify.guard')])->group(function (): void {
 // registered earlier in this file and would swallow /matters/search.
 Route::middleware(['auth:'.config('fortify.guard')])->group(function (): void {
     Route::get('/search/matters', [MatterController::class, 'search'])->name('search.matters');
+
+    // ── Spec 007 T-06: extraction/OCR pipeline + full-text search ──
+    // (DOC-14/15/16/17; C-09 search half). The search route is not
+    // matter-nested (the query spans matters); permission scoping
+    // happens inside the controller before any text is selected —
+    // ungranted users get zero hits and no titles/snippets leak.
+    Route::get('/search/documents', [DocumentSearchController::class, 'index'])->name('search.documents');
+
+    // Extracted/OCR text layer download (DOC-16): :view, audited as
+    // document.downloaded; quarantined → 403.
+    Route::get('/matters/{matter}/documents/{document}/text', [DocumentTextController::class, 'download'])
+        ->middleware('matter.access:view')
+        ->name('documents.text');
 
     Route::post('/matters/{matter}/parties', [PartyController::class, 'store'])
         ->middleware('matter.access:edit')

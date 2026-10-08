@@ -48,7 +48,7 @@ class AuthoredDocumentService
             throw new \LogicException('Only authored or generated documents can be published from the editor.');
         }
 
-        return DB::transaction(function () use ($document, $html, $changeNote, $actor): DocumentVersion {
+        $version = DB::transaction(function () use ($document, $html, $changeNote, $actor): DocumentVersion {
             // Gapless version_number: lock the latest version row (FOR UPDATE
             // with ORDER BY + LIMIT is legal in Postgres; FOR UPDATE with an
             // aggregate is not) so concurrent publishers serialize.
@@ -86,6 +86,12 @@ class AuthoredDocumentService
 
             return $version;
         });
+
+        // 007 T-06: authored/generated documents extract from the PDF
+        // rendition. Queued (sync in tests); idempotent.
+        app(DocumentProcessingPipeline::class)->process($document->fresh() ?? $document);
+
+        return $version;
     }
 
     /**

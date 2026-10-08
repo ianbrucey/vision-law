@@ -7,6 +7,8 @@ use App\Http\Responses\RegisterResponse as AppRegisterResponse;
 use App\Listeners\EnforceSessionPolicies;
 use App\Services\DocumentStore;
 use App\Services\LocalDocumentStore;
+use App\Services\Ocr\OcrProvider;
+use App\Services\Ocr\TesseractOcrProvider;
 use App\View\Components\Layouts\PublicLayout;
 use Illuminate\Auth\Events\Login;
 use Illuminate\Support\Facades\Blade;
@@ -42,6 +44,9 @@ class AppServiceProvider extends ServiceProvider
         // DocumentStore abstraction. LocalDocumentStore (local disk) is
         // the deployed driver; S3-compatible is designed, not deployed.
         $this->app->bind(DocumentStore::class, LocalDocumentStore::class);
+        // 007 T-06: native Tesseract first (007-D02); a paid/API provider
+        // implements OcrProvider and swaps this binding.
+        $this->app->bind(OcrProvider::class, TesseractOcrProvider::class);
 
         // Spec 003 T-05 (003-D02): the browser registration flow ends on
         // the sign-in page with a verification toast. Swapping the

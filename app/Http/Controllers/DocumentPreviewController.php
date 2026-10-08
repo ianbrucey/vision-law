@@ -88,6 +88,17 @@ class DocumentPreviewController extends Controller
             'downloadUrl' => route('documents.download', [$matterModel, $doc]).'?'.$downloadQuery,
             'pageCount' => $version->page_count,
             'metadata' => $doc->metadata ?? [],
+            // 007 T-06: search-result deep link (?page= + highlight=).
+            // The pdf.js viewer already honors ?page= from location.search;
+            // highlight pre-fills the find box via __previewConfig.
+            'initialPage' => max(1, $request->integer('page', 1)),
+            'highlight' => mb_substr($request->string('highlight')->toString(), 0, 200),
+            'previewConfig' => [
+                'fileUrl' => route('documents.preview.file', [$matterModel, $doc]).'?'.$fileQuery,
+                'pageCount' => $version->page_count,
+                'initialPage' => max(1, $request->integer('page', 1)),
+                'highlight' => mb_substr($request->string('highlight')->toString(), 0, 200),
+            ],
         ]);
     }
 

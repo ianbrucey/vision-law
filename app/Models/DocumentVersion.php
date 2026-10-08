@@ -6,6 +6,7 @@ use Carbon\CarbonInterface;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 /**
  * Immutable content version (007, DOC-18/20, 007-D06). Every content change
@@ -72,6 +73,17 @@ class DocumentVersion extends Model
     public function blob(): BelongsTo
     {
         return $this->belongsTo(DocumentBlob::class, 'blob_id');
+    }
+
+    /**
+     * Per-page extracted/OCR text rows (007 T-06, DOC-15/16/17).
+     * Idempotent per version; read by full-text search and T-07 diffs.
+     *
+     * @return HasMany<DocumentTextPage, $this>
+     */
+    public function textPages(): HasMany
+    {
+        return $this->hasMany(DocumentTextPage::class, 'version_id')->orderBy('page_number');
     }
 
     /**
