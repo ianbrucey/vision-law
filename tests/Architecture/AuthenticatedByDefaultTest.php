@@ -35,6 +35,12 @@ class AuthenticatedByDefaultTest extends TestCase
         ['POST', 'reset-password'],
         ['GET', 'two-factor-challenge'],
         ['POST', 'two-factor-challenge'],
+        // Spec 008 passkey challenge (specs/008-passkey-authentication/
+        // 03-contract.md §Routes): guest-reachable by necessity — the
+        // caller is mid-login — and guarded by the challenged session
+        // inside the controller (no challenged session = generic 422).
+        ['POST', 'two-factor-challenge/passkey/options'],
+        ['POST', 'two-factor-challenge/passkey'],
         ['GET', 'invitations/{token}'],
         // Spec 007 external share links (specs/007-document-management/
         // 03-contract.md §Routes — "External access (no session)"):

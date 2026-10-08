@@ -102,11 +102,14 @@ branch: parent declines to challenge (no confirmed TOTP) **and** the user
    challenged user (challenge single-use from session, RP-ID hash, origin,
    UV, signature, counter strictly increasing — the pipeline syncs the
    counter and stamps the credential).
-5. **Success** (008-D06 — Fortify's completion, mirrored): clear brute-force
-   counters, set `last_login_at`, `guard->login($user, login.remember)`,
-   forget `login.id`/`login.remember`, regenerate the session, audit
-   `mfa.passkey.challenge.succeeded` and `auth.login` (`mfa_used: true`),
-   redirect to the intended URL (Fortify home fallback).
+5. **Success** (008-D06 — Fortify's completion, mirrored): fire Fortify's
+   `ValidTwoFactorAuthenticationCodeProvided` (whose subscriber clears the
+   brute-force counters, sets `last_login_at`, and audits `auth.login`
+   with `mfa_used: true`), `guard->login($user, login.remember)`, forget
+   `login.id`/`login.remember`, regenerate the session, audit
+   `mfa.passkey.challenge.succeeded`, and respond JSON `{redirect}` where
+   the target is `redirect()->intended(Fortify::redirects('login'))` —
+   the app-configured post-login target, exactly the TOTP path's.
 6. **Failure** (any reason — unknown credential, bad signature, wrong origin,
    replayed challenge, UV absent, user cancellation surfaced as an invalid
    body): record a brute-force failure (lockout bookkeeping, like a bad TOTP
