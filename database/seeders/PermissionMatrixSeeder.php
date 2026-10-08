@@ -26,6 +26,7 @@ class PermissionMatrixSeeder extends Seeder
         'org.audit.view' => 'View audit log',
         'org.matters.create' => 'Create matter (stub: title/number)',
         'org.directory.view' => 'List org user directory',
+        'org.templates.publish' => 'Publish document templates',
     ];
 
     /**
@@ -41,6 +42,10 @@ class PermissionMatrixSeeder extends Seeder
         'paralegal' => ['org.directory.view'],
         'outside_counsel' => [],
         'viewer' => ['org.directory.view'],
+        // 007 T-04: publishing a template (stationery) requires this role;
+        // anyone in the org may create drafts and generate from published
+        // templates. Publishing stays 403 for actors without the role.
+        'template_editor' => ['org.templates.publish'],
     ];
 
     /**
