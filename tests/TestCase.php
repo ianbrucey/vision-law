@@ -26,6 +26,7 @@ abstract class TestCase extends BaseTestCase
         $this->app->bind(OfficePreviewService::class, FakeOfficePreviewService::class);
 
         FakeMalwareScanner::$unreachable = false;
+        FakeOcrProvider::$withText = true;
         FakeOfficePreviewService::$failConversion = false;
     }
 }

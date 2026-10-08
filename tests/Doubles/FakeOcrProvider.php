@@ -18,6 +18,13 @@ use App\Services\Ocr\OcrProvider;
 class FakeOcrProvider implements OcrProvider
 {
     /**
+     * When false, pages come back with empty text (confidence 0) — for
+     * tests exercising the "no text" paths (e.g. diff unavailable).
+     * Reset to true in Tests\TestCase::setUp.
+     */
+    public static bool $withText = true;
+
+    /**
      * @return array<int, OcrPageResult> keyed by 1-based page number
      */
     public function ocrPdf(string $pdfPath, int $pageCount): array
@@ -43,6 +50,10 @@ class FakeOcrProvider implements OcrProvider
 
     private function page(int $pageNumber): OcrPageResult
     {
+        if (! self::$withText) {
+            return new OcrPageResult($pageNumber, '', 0.0, [], 5);
+        }
+
         return new OcrPageResult(
             $pageNumber,
             "kaleidoscope\n",

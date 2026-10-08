@@ -12,6 +12,7 @@ use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Testing\TestResponse;
+use Tests\Doubles\FakeOcrProvider;
 use Tests\Helpers\FixtureLoader;
 use Tests\TestCase;
 
@@ -263,6 +264,9 @@ class DocumentVersioningTest extends TestCase
 
         // Minimal 1x1 PNG: image-only, no extracted text rows (T-06 not
         // run) → clean "diff unavailable" state, never OCR here.
+        // Hermetic: the OCR fake returns empty text for this ingest so no
+        // text rows exist even if the OCR job runs inline.
+        FakeOcrProvider::$withText = false;
         $png = base64_decode(
             'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg=='
         );
