@@ -4,6 +4,7 @@ use App\Exceptions\AccessDeniedException;
 use App\Exceptions\DocumentFilingException;
 use App\Exceptions\InvitationInvalidException;
 use App\Exceptions\MatterStateException;
+use App\Exceptions\RetentionException;
 use App\Http\Middleware\EnsureSessionLifetime;
 use App\Http\Middleware\RequireMatterAccess;
 use App\Http\Middleware\RestrictToTwoFactorSetup;
@@ -85,6 +86,12 @@ return Application::configure(basePath: dirname(__DIR__))
         // Spec 007 T-05: domain filing failures render the contract
         // error-catalog body ({code, ...context}) for JSON clients.
         $exceptions->render(function (DocumentFilingException $e) {
+            return response()->json($e->body(), $e->httpStatus);
+        });
+
+        // Spec 007 T-09: retention / hold / disposition domain failures
+        // render the contract error-catalog body ({code, ...context}).
+        $exceptions->render(function (RetentionException $e) {
             return response()->json($e->body(), $e->httpStatus);
         });
 

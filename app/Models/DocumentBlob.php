@@ -39,6 +39,7 @@ class DocumentBlob extends Model
             'size' => 'integer',
             'refcount' => 'integer',
             'quarantined' => 'boolean',
+            'archived' => 'boolean',
         ];
     }
 

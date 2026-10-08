@@ -67,6 +67,18 @@ class Status extends Component
             'revoked' => ['label' => 'Revoked', 'tone' => 'neutral'],
             'expired' => ['label' => 'Expired', 'tone' => 'warn'],
         ],
+        // Spec 007 T-09: retention policy + disposition statuses.
+        'retention_policy' => [
+            'draft' => ['label' => 'Draft', 'tone' => 'warn'],
+            'active' => ['label' => 'Active', 'tone' => 'ok'],
+            'superseded' => ['label' => 'Superseded', 'tone' => 'neutral'],
+        ],
+        'disposition' => [
+            'pending' => ['label' => 'Pending', 'tone' => 'warn'],
+            'approved' => ['label' => 'Approved', 'tone' => 'info'],
+            'rejected' => ['label' => 'Rejected', 'tone' => 'neutral'],
+            'executed' => ['label' => 'Executed', 'tone' => 'ok'],
+        ],
     ];
 
     public string $label;

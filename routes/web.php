@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Admin\AuditEventController as AdminAuditEventController;
 use App\Http\Controllers\Admin\InvitationController as AdminInvitationController;
+use App\Http\Controllers\Admin\RetentionController as AdminRetentionController;
 use App\Http\Controllers\Admin\TeamController as AdminTeamController;
 use App\Http\Controllers\Admin\UserController as AdminUserController;
 use App\Http\Controllers\AssignmentController;
@@ -14,6 +15,7 @@ use App\Http\Controllers\Auth\TwoFactorSettingsController;
 use App\Http\Controllers\CommentController;
 use App\Http\Controllers\DocumentController;
 use App\Http\Controllers\DocumentEditorController;
+use App\Http\Controllers\DocumentHoldController;
 use App\Http\Controllers\DocumentLogController;
 use App\Http\Controllers\DocumentPreviewController;
 use App\Http\Controllers\DocumentShareController;
@@ -531,6 +533,48 @@ Route::middleware(['auth:'.config('fortify.guard')])->group(function (): void {
     Route::post('/matters/{matter}/documents/{document}/move', [DocumentController::class, 'move'])
         ->middleware('matter.access:edit')
         ->name('documents.move');
+});
+
+// ── Spec 007 T-09: retention policies, legal holds, disposition ──
+// (DOC-27/28/29). Admin policy/disposition/hold routes live under the
+// existing org_admin group; hold placement/release on the matter-nested
+// routes additionally requires the legal-hold role (403 otherwise).
+Route::middleware(['auth:'.config('fortify.guard'), RequireOrgAdmin::class])
+    ->prefix('admin')
+    ->name('admin.')
+    ->group(function (): void {
+        Route::get('/retention/policies', [AdminRetentionController::class, 'index'])->name('retention.policies.index');
+        Route::get('/retention/policies/create', [AdminRetentionController::class, 'create'])->name('retention.policies.create');
+        Route::post('/retention/policies', [AdminRetentionController::class, 'store'])->name('retention.policies.store');
+        Route::get('/retention/policies/{policy}', [AdminRetentionController::class, 'show'])->name('retention.policies.show');
+        Route::get('/retention/policies/{policy}/edit', [AdminRetentionController::class, 'edit'])->name('retention.policies.edit');
+        Route::patch('/retention/policies/{policy}', [AdminRetentionController::class, 'update'])->name('retention.policies.update');
+        Route::post('/retention/policies/{policy}/activate', [AdminRetentionController::class, 'activate'])->name('retention.policies.activate');
+        Route::post('/retention/policies/{policy}/simulate', [AdminRetentionController::class, 'simulate'])->name('retention.policies.simulate');
+
+        Route::get('/retention/disposition', [AdminRetentionController::class, 'dispositionIndex'])->name('retention.disposition.index');
+        Route::post('/retention/disposition', [AdminRetentionController::class, 'dispositionStore'])->name('retention.disposition.store');
+        Route::get('/retention/disposition/{entry}', [AdminRetentionController::class, 'dispositionShow'])->name('retention.disposition.show');
+        Route::post('/retention/disposition/{entry}/approve', [AdminRetentionController::class, 'dispositionApprove'])->name('retention.disposition.approve');
+        Route::post('/retention/disposition/{entry}/reject', [AdminRetentionController::class, 'dispositionReject'])->name('retention.disposition.reject');
+
+        Route::get('/retention/holds', [AdminRetentionController::class, 'holdsIndex'])->name('retention.holds.index');
+        Route::post('/retention/holds/{hold}/release', [AdminRetentionController::class, 'holdRelease'])->name('retention.holds.release');
+    });
+
+Route::middleware(['auth:'.config('fortify.guard')])->group(function (): void {
+    Route::post('/matters/{matter}/documents/{document}/hold', [DocumentHoldController::class, 'store'])
+        ->middleware('matter.access:manage')
+        ->name('documents.hold.store');
+    Route::post('/matters/{matter}/documents/{document}/hold/release', [DocumentHoldController::class, 'release'])
+        ->middleware('matter.access:manage')
+        ->name('documents.hold.release');
+    Route::get('/matters/{matter}/holds', [DocumentHoldController::class, 'matterHolds'])
+        ->middleware('matter.access:view')
+        ->name('matters.holds.index');
+    Route::post('/matters/{matter}/hold', [DocumentHoldController::class, 'matterStore'])
+        ->middleware('matter.access:manage')
+        ->name('matters.hold.store');
 });
 
 // ── Spec 007 T-08: sharing — grants, links, export ──
