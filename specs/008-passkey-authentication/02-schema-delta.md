@@ -20,13 +20,14 @@ matter-owned table).
 |---|---|---|
 | `id` | varchar(510) PRIMARY KEY | The WebAuthn credential ID (base64url), assigned by the authenticator — not a UUID |
 | `authenticatable_type` / `authenticatable_id` | morphs (uuid) | Owning user (`App\Models\User`) |
+| `user_id` | uuid | The WebAuthn **user handle** — a random UUID the package assigns per user to anonymize them to authenticators; it is NOT our user PK and is copied across the user's credentials |
 | `alias` | varchar nullable | User-chosen label (008-D10) — the only credential data rendered or audited |
 | `counter` | bigint unsigned nullable | Signature counter; the validator rejects non-increasing counters (clone detection) and syncs it on each assertion |
 | `rp_id` | varchar | RP ID the credential was created for (env-configured, 008-D03) |
 | `origin` | varchar | Origin recorded at registration |
 | `transports` | json nullable | Authenticator transports (`internal`, `usb`, …) |
 | `aaguid` | uuid nullable | Authenticator model GUID — never rendered (008-D10) |
-| `public_key` | text | COSE **public** key. Not secret: the matching private key never leaves the authenticator (C-07) |
+| `public_key` | text | COSE **public** key, stored through the model's `encrypted` cast (encrypted at rest by the package — defense in depth; the value is not secret). The matching private key never leaves the authenticator (C-07) |
 | `attestation_format` | varchar, default `none` | No attestation enforcement in v1 (008-D04) |
 | `certificates` | json nullable | Attestation certificate chain when a format provides one; empty for `none` |
 | `disabled_at` | timestamp nullable | Laragear's soft-state. NOT used by 008 flows — revocation deletes the row (008-D08); the column ships with the package schema and stays null |

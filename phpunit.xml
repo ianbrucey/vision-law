@@ -22,6 +22,14 @@
     </source>
     <php>
         <env name="APP_ENV" value="testing"/>
+        <!--
+            Spec 008 (008-D03): WebAuthn ceremonies are pinned to a test
+            RP ID + origin so the virtual authenticator is hermetic on the
+            dev server and in CI alike. Production reads WEBAUTHN_ID /
+            WEBAUTHN_ORIGINS from the real environment instead.
+        -->
+        <env name="WEBAUTHN_ID" value="localhost"/>
+        <env name="WEBAUTHN_ORIGINS" value="http://localhost"/>
         <env name="APP_MAINTENANCE_DRIVER" value="file"/>
         <!--
             Decision 001-D08: Argon2id parameters for the test environment are

@@ -13,13 +13,15 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\Pivot;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Laragear\WebAuthn\Contracts\WebAuthnAuthenticatable;
+use Laragear\WebAuthn\WebAuthnAuthentication;
 use Laravel\Fortify\TwoFactorAuthenticatable;
 use Spatie\Permission\Traits\HasRoles;
 
-class User extends Authenticatable implements MustVerifyEmail
+class User extends Authenticatable implements MustVerifyEmail, WebAuthnAuthenticatable
 {
     /** @use HasFactory<UserFactory> */
-    use HasFactory, HasRoles, HasUuids, MustVerifyEmailTrait, Notifiable, TwoFactorAuthenticatable;
+    use HasFactory, HasRoles, HasUuids, MustVerifyEmailTrait, Notifiable, TwoFactorAuthenticatable, WebAuthnAuthentication;
 
     /**
      * @var list<string>
@@ -63,6 +65,17 @@ class User extends Authenticatable implements MustVerifyEmail
             'last_login_at' => 'datetime',
             'deactivated_at' => 'datetime',
         ];
+    }
+
+    /**
+     * Spec 008: the user owns at least one usable passkey. Revocation
+     * deletes credential rows (008-D08), so existence is the whole rule.
+     * This is the second MFA-satisfaction predicate beside Fortify's
+     * hasEnabledTwoFactorAuthentication() (see EnforceSessionPolicies).
+     */
+    public function hasPasskeys(): bool
+    {
+        return $this->webAuthnCredentials()->whereEnabled()->exists();
     }
 
     /**
