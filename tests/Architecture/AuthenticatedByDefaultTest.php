@@ -36,6 +36,13 @@ class AuthenticatedByDefaultTest extends TestCase
         ['GET', 'two-factor-challenge'],
         ['POST', 'two-factor-challenge'],
         ['GET', 'invitations/{token}'],
+        // Spec 007 external share links (specs/007-document-management/
+        // 03-contract.md §Routes — "External access (no session)"):
+        // deliberately sessionless; the unguessable token IS the credential
+        // (007-D08), hardened endpoint with access audit + password lockout.
+        ['GET', 's/{token}'],
+        ['POST', 's/{token}'],
+        ['POST', 's/{token}/download'],
     ];
 
     /**

@@ -30,7 +30,7 @@
     {{-- Fixed top bar --}}
     <header class="vl-topbar fixed inset-x-0 top-0 z-40 bg-vl-ink text-white">
         <div class="mx-auto max-w-[1120px] px-4 min-[821px]:px-8 h-16 flex items-center gap-3">
-            <x-ui.button variant="ghost" size="sm" aria-label="Open navigation" class="vl-bar-toggle min-[821px]:hidden shrink-0" x-on:click="drawerOpen = true">
+            <x-ui.button variant="ghost" size="sm" aria-label="Open navigation" class="vl-bar-toggle min-[821px]:hidden shrink-0 min-h-[44px] min-w-[44px]" x-on:click="drawerOpen = true">
                 <svg width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M3 5h14M3 10h14M3 15h14" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
             </x-ui.button>
             <span class="font-serif text-[17px] tracking-[0.02em] shrink-0">Vision Law</span>
@@ -52,7 +52,7 @@
         <aside class="vl-drawer absolute inset-y-0 left-0 w-[280px] max-w-[85vw] bg-vl-card p-4 overflow-y-auto" role="dialog" aria-modal="true" aria-label="Site navigation" x-trap="drawerOpen">
             <div class="flex items-center justify-between mb-4">
                 <span class="font-serif text-[17px] text-vl-ink">Vision Law</span>
-                <x-ui.button variant="ghost" size="sm" aria-label="Close navigation" x-on:click="drawerOpen = false">
+                <x-ui.button variant="ghost" size="sm" aria-label="Close navigation" class="min-h-[44px] min-w-[44px]" x-on:click="drawerOpen = false">
                     <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M3 3l10 10M13 3L3 13" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
                 </x-ui.button>
             </div>

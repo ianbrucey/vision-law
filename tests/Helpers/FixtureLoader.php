@@ -2,6 +2,10 @@
 
 namespace Tests\Helpers;
 
+use App\Models\Document;
+use App\Models\DocumentFolder;
+use App\Models\DocumentShare;
+use App\Models\DocumentVersion;
 use App\Models\Invitation;
 use App\Models\Matter;
 use App\Models\MatterComment;
@@ -13,8 +17,12 @@ use App\Models\Organization;
 use App\Models\Role;
 use App\Models\Team;
 use App\Models\User;
+use App\Services\DocumentIngestService;
+use App\Services\DocumentStore;
+use App\Services\MalwareScanner;
 use Carbon\CarbonInterface;
 use Database\Seeders\PermissionMatrixSeeder;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Laravel\Fortify\RecoveryCode;
 use PragmaRX\Google2FA\Google2FA;
@@ -43,6 +51,13 @@ class FixtureLoader
      * re-load when the invitation already existed.
      */
     private ?string $invitationToken = null;
+
+    /**
+     * Plaintext token for the expired share-link fixture (T-08). Only the
+     * SHA-256 hash is stored in the DB. Null on re-load when the share
+     * row already existed.
+     */
+    private ?string $expiredShareToken = null;
 
     /** @var array<string, mixed> */
     private array $data;
@@ -563,5 +578,325 @@ class FixtureLoader
     public function adversarialCaseIds(): array
     {
         return array_column($this->list('adversarial_cases'), 'id');
+    }
+
+    /**
+     * Loads specs/007-document-management/04-fixtures.json — the SINGLE
+     * canonical fixture definition for document management (007 T-01).
+     * Self-contained and idempotent: orgs/users/matters overlap with the
+     * 001/006 fixtures and are found via firstOrCreate, never duplicated.
+     *
+     * T-01 loads orgs, users, matters, folders, retention policies, and
+     * templates. Document rows are loaded by T-02's loadDocumentRows()
+     * below (they need the upload pipeline: bytes → blob → version),
+     * share links by T-08's loadShareRows() below, and matter grants are
+     * left to the 006 loader's domain.
+     */
+    public static function loadDocumentFixtures(): self
+    {
+        $loader = new self(base_path('specs/007-document-management/04-fixtures.json'));
+        $loader->runDocumentFixtures();
+
+        return $loader;
+    }
+
+    private function runDocumentFixtures(): void
+    {
+        foreach ($this->list('organizations') as $org) {
+            $model = Organization::firstOrCreate(
+                ['slug' => $org['slug']],
+                ['name' => $org['name']]
+            );
+
+            PermissionMatrixSeeder::seedFor($model);
+
+            $this->ids['doc-org:'.$org['slug']] = (string) $model->getKey();
+        }
+
+        $guard = (string) config('auth.defaults.guard', 'web');
+
+        foreach ($this->list('users') as $user) {
+            $orgId = $this->ids['doc-org:'.$user['org']];
+
+            $model = User::firstOrCreate(
+                ['org_id' => $orgId, 'email' => $user['email']],
+                [
+                    'name' => $user['name'],
+                    // The 'hashed' cast hashes this on set.
+                    'password' => self::DEFAULT_PASSWORD,
+                ]
+            );
+
+            if ($model->email_verified_at === null) {
+                $model->forceFill(['email_verified_at' => now()])->save();
+            }
+
+            $role = Role::where('org_id', $orgId)
+                ->where('name', $user['roles'][0])
+                ->where('guard_name', $guard)
+                ->firstOrFail();
+
+            $model->assignRole($role);
+
+            $this->ids['doc-user:'.$user['email']] = (string) $model->getKey();
+        }
+
+        foreach ($this->list('matters') as $matter) {
+            $orgId = $this->ids['doc-org:'.$matter['org']];
+
+            $model = Matter::firstOrCreate(
+                [
+                    'org_id' => $orgId,
+                    'matter_number' => $matter['number'],
+                ],
+                [
+                    'title' => $matter['title'],
+                    'lifecycle_state' => 'INTAKE',
+                    'matter_type' => 'other',
+                    'client_name' => $matter['title'],
+                ]
+            );
+
+            $this->ids['doc-matter:'.$matter['number']] = (string) $model->getKey();
+        }
+
+        foreach ($this->list('folders') as $folder) {
+            $matter = Matter::findOrFail($this->ids['doc-matter:'.$folder['matter']]);
+
+            DocumentFolder::firstOrCreate(
+                [
+                    'org_id' => $matter->org_id,
+                    'matter_id' => $matter->getKey(),
+                    'name' => $folder['name'],
+                ]
+            );
+        }
+
+        foreach ($this->list('retention_policies') as $policy) {
+            $orgId = $this->ids['doc-org:'.$policy['org']];
+
+            $exists = DB::table('retention_policies')
+                ->where('org_id', $orgId)
+                ->where('name', $policy['name'])
+                ->exists();
+
+            if (! $exists) {
+                DB::table('retention_policies')->insert([
+                    'id' => (string) Str::uuid(),
+                    'org_id' => $orgId,
+                    'name' => $policy['name'],
+                    'category' => $policy['category'],
+                    // Value comes from our own canonical fixture file.
+                    'retention_period' => DB::raw("INTERVAL '".$policy['retention_period']."'"),
+                    'trigger' => $policy['trigger'],
+                    'disposition' => $policy['disposition'],
+                    'legal_basis' => 'Fixture policy — synthetic data.',
+                    'version' => 1,
+                    'status' => $policy['status'],
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ]);
+            }
+        }
+
+        foreach ($this->list('templates') as $template) {
+            $orgId = $this->ids['doc-org:'.$template['org']];
+
+            $exists = DB::table('document_templates')
+                ->where('org_id', $orgId)
+                ->where('name', $template['name'])
+                ->exists();
+
+            if (! $exists) {
+                DB::table('document_templates')->insert([
+                    'id' => (string) Str::uuid(),
+                    'org_id' => $orgId,
+                    'name' => $template['name'],
+                    'body_html' => '<p>Fixture template — synthetic.</p>',
+                    'field_definitions' => json_encode($template['fields'] ?? [], JSON_THROW_ON_ERROR),
+                    'version' => 1,
+                    'status' => $template['status'],
+                    'created_by' => $this->ids['doc-user:g.grant@sterling.example'],
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ]);
+            }
+        }
+
+        $this->loadDocumentRows();
+        $this->loadShareRows();
+
+        app(PermissionRegistrar::class)->forgetCachedPermissions();
+    }
+
+    public function docOrg(string $slug): Organization
+    {
+        return Organization::findOrFail($this->id('doc-org:'.$slug));
+    }
+
+    public function docUser(string $email): User
+    {
+        return User::findOrFail($this->id('doc-user:'.$email));
+    }
+
+    public function docMatter(string $number): Matter
+    {
+        return Matter::findOrFail($this->id('doc-matter:'.$number));
+    }
+
+    /**
+     * Loads the `documents` rows from the canonical 007 fixtures through
+     * the real upload pipeline (bytes → blob → version, 007 T-02): v1 goes
+     * through DocumentIngestService (MIME sniff, allowlist, ClamAV scan,
+     * audit), extra versions are appended as new immutable rows.
+     * Idempotent: documents are matched by matter + title.
+     *
+     * Deferred: `authored` documents (T-04's editor pipeline owns them) and
+     * the rival-org document (no matter in the canonical fixtures; its
+     * cross-tenant isolation is exercised by T-08/T-10 adversarial cases).
+     * Legal holds are T-09's — the held document's row is created, the
+     * hold itself is not.
+     */
+    private function loadDocumentRows(): void
+    {
+        $ingest = app(DocumentIngestService::class);
+        $store = app(DocumentStore::class);
+        $uploader = $this->docUser('a.attorney@sterling.example');
+
+        foreach ($this->list('documents') as $doc) {
+            /** @var array<string, mixed> $doc */
+            if (($doc['kind'] ?? '') === 'authored' || ($doc['matter'] ?? null) === null) {
+                continue;
+            }
+
+            $matter = $this->docMatter((string) $doc['matter']);
+
+            $exists = Document::query()
+                ->where('matter_id', $matter->getKey())
+                ->where('title', (string) $doc['title'])
+                ->exists();
+
+            if ($exists) {
+                continue;
+            }
+
+            $folderId = null;
+
+            if (isset($doc['folder'])) {
+                $folderId = DocumentFolder::query()
+                    ->where('matter_id', $matter->getKey())
+                    ->where('name', (string) $doc['folder'])
+                    ->value('id');
+                $folderId = $folderId !== null ? (string) $folderId : null;
+            }
+
+            $meta = [
+                'title' => (string) $doc['title'],
+                'tags' => array_map('strval', $doc['tags'] ?? []),
+                'folder_id' => $folderId,
+                'filename' => isset($doc['filename']) ? (string) $doc['filename'] : (string) $doc['title'],
+            ];
+
+            if (($doc['mime'] ?? '') === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document') {
+                // Synthetic bytes cannot sniff as OOXML; the store's
+                // explicit MIME override (trusted internal caller) carries
+                // the canonical type instead.
+                $meta['mime'] = (string) $doc['mime'];
+            }
+
+            $document = $ingest->ingest($matter, $uploader, $this->fixtureBytes($doc, 1), $meta);
+
+            // NOTE: range(2, 1) yields [2, 1] in PHP — a plain for loop.
+            $versionCount = (int) ($doc['versions'] ?? 1);
+            for ($n = 2; $n <= $versionCount; $n++) {
+                $blob = $store->put(
+                    $this->fixtureBytes($doc, $n),
+                    isset($meta['mime']) ? ['mime' => $meta['mime']] : []
+                );
+
+                $version = DocumentVersion::create([
+                    'document_id' => $document->getKey(),
+                    'version_number' => $n,
+                    'blob_id' => $blob->getKey(),
+                    'processing_status' => 'ready',
+                    'created_by' => $uploader->getKey(),
+                ]);
+
+                $document->update(['current_version_id' => $version->getKey()]);
+            }
+
+            if (($doc['trashed'] ?? false) === true) {
+                $document->delete();
+            }
+        }
+    }
+
+    /**
+     * Loads the `shares` rows from the canonical 007 fixtures (T-08).
+     * Idempotent: shares are matched by (document_id, version_id), so a
+     * re-load never duplicates them. The canonical fixture is an expired
+     * link — its plaintext token is exposed via expiredShareToken() so
+     * tests can prove expired links render the identical 404.
+     */
+    private function loadShareRows(): void
+    {
+        foreach ($this->list('shares') as $share) {
+            /** @var array<string, mixed> $share */
+            $document = Document::query()
+                ->where('title', (string) $share['document'])
+                ->firstOrFail();
+
+            $token = Str::random(48);
+
+            $row = DocumentShare::firstOrCreate(
+                [
+                    'document_id' => $document->getKey(),
+                    'version_id' => $document->current_version_id,
+                ],
+                [
+                    'token_hash' => hash('sha256', $token),
+                    'expires_at' => now()->addDays((int) $share['expires_in_days']),
+                    'created_by' => $this->ids['doc-user:g.grant@sterling.example'],
+                ]
+            );
+
+            if ($row->wasRecentlyCreated) {
+                $this->expiredShareToken = $token;
+            }
+        }
+    }
+
+    public function expiredShareToken(): ?string
+    {
+        return $this->expiredShareToken;
+    }
+
+    /**
+     * Synthetic fixture bytes for one document version. PDFs carry a real
+     * %PDF header so fileinfo sniffs them correctly; TIFFs carry a real
+     * header; the quarantined fixture is the inert EICAR test vector (the
+     * real ClamAV scan flags it, exercising the quarantine path).
+     *
+     * @param  array<string, mixed>  $doc
+     */
+    private function fixtureBytes(array $doc, int $version): string
+    {
+        $seed = "007-fixture:{$doc['title']}:v{$version}\n";
+
+        if (! empty($doc['quarantined'])) {
+            return MalwareScanner::EICAR_TEST_STRING;
+        }
+
+        $mime = (string) ($doc['mime'] ?? 'application/pdf');
+
+        if (str_starts_with($mime, 'image/')) {
+            return "II*\x00".$seed.str_repeat("\x00", 256);
+        }
+
+        if ($mime === 'application/pdf') {
+            return "%PDF-1.4\n%{$seed}\n1 0 obj\n<<>>\nendobj\ntrailer\n<<>>\n%%EOF\n";
+        }
+
+        return $seed.str_repeat('z', 512);
     }
 }

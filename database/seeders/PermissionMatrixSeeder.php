@@ -26,6 +26,8 @@ class PermissionMatrixSeeder extends Seeder
         'org.audit.view' => 'View audit log',
         'org.matters.create' => 'Create matter (stub: title/number)',
         'org.directory.view' => 'List org user directory',
+        'org.templates.publish' => 'Publish document templates',
+        'org.holds.manage' => 'Place and release legal holds',
     ];
 
     /**
@@ -41,6 +43,14 @@ class PermissionMatrixSeeder extends Seeder
         'paralegal' => ['org.directory.view'],
         'outside_counsel' => [],
         'viewer' => ['org.directory.view'],
+        // 007 T-04: publishing a template (stationery) requires this role;
+        // anyone in the org may create drafts and generate from published
+        // templates. Publishing stays 403 for actors without the role.
+        'template_editor' => ['org.templates.publish'],
+        // 007 T-09: placing or releasing a legal hold requires this
+        // role; release additionally requires a logged reason. 403
+        // otherwise (DOC-28).
+        'legal_hold' => ['org.holds.manage'],
     ];
 
     /**

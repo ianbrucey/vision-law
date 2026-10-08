@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Admin\AuditEventController as AdminAuditEventController;
 use App\Http\Controllers\Admin\InvitationController as AdminInvitationController;
+use App\Http\Controllers\Admin\RetentionController as AdminRetentionController;
 use App\Http\Controllers\Admin\TeamController as AdminTeamController;
 use App\Http\Controllers\Admin\UserController as AdminUserController;
 use App\Http\Controllers\AssignmentController;
@@ -12,13 +13,25 @@ use App\Http\Controllers\Auth\TwoFactorChallengeController;
 use App\Http\Controllers\Auth\TwoFactorQrCodeImageController;
 use App\Http\Controllers\Auth\TwoFactorSettingsController;
 use App\Http\Controllers\CommentController;
+use App\Http\Controllers\DocumentActivityController;
+use App\Http\Controllers\DocumentController;
+use App\Http\Controllers\DocumentEditorController;
+use App\Http\Controllers\DocumentHoldController;
 use App\Http\Controllers\DocumentLogController;
+use App\Http\Controllers\DocumentPreviewController;
+use App\Http\Controllers\DocumentSearchController;
+use App\Http\Controllers\DocumentShareController;
+use App\Http\Controllers\DocumentTextController;
+use App\Http\Controllers\DocumentUploadController;
+use App\Http\Controllers\DocumentVersionController;
+use App\Http\Controllers\FolderController;
 use App\Http\Controllers\InvitationController;
 use App\Http\Controllers\LinkController;
 use App\Http\Controllers\MatterController;
 use App\Http\Controllers\MatterGrantController;
 use App\Http\Controllers\PartyController;
 use App\Http\Controllers\SessionController;
+use App\Http\Controllers\TemplateController;
 use App\Http\Middleware\RequireOrgAdmin;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\Route;
@@ -254,6 +267,19 @@ Route::middleware(['auth:'.config('fortify.guard')])->group(function (): void {
 Route::middleware(['auth:'.config('fortify.guard')])->group(function (): void {
     Route::get('/search/matters', [MatterController::class, 'search'])->name('search.matters');
 
+    // ── Spec 007 T-06: extraction/OCR pipeline + full-text search ──
+    // (DOC-14/15/16/17; C-09 search half). The search route is not
+    // matter-nested (the query spans matters); permission scoping
+    // happens inside the controller before any text is selected —
+    // ungranted users get zero hits and no titles/snippets leak.
+    Route::get('/search/documents', [DocumentSearchController::class, 'index'])->name('search.documents');
+
+    // Extracted/OCR text layer download (DOC-16): :view, audited as
+    // document.downloaded; quarantined → 403.
+    Route::get('/matters/{matter}/documents/{document}/text', [DocumentTextController::class, 'download'])
+        ->middleware('matter.access:view')
+        ->name('documents.text');
+
     Route::post('/matters/{matter}/parties', [PartyController::class, 'store'])
         ->middleware('matter.access:edit')
         ->name('matters.parties.store');
@@ -358,3 +384,296 @@ Route::middleware(['auth:'.config('fortify.guard')])->group(function (): void {
         ->middleware('matter.access:view')
         ->name('matters.feed');
 });
+
+// === Spec 007 T-04: editor + templates (stationery) ===
+// Built-in editor (authoring from scratch, DOC-09/10) and the template
+// library (merge-field stationery only, DOC-22/23 — 007-D03: no drafting
+// intelligence). Editor routes nest under /matters/{matter} and carry
+// RequireMatterAccess before any data access; the generate flow resolves
+// its target matter in TemplateController (contract §Templates).
+Route::middleware(['auth:'.config('fortify.guard')])->group(function (): void {
+    // Editor (authored/generated documents; uploaded binaries are 422 here)
+    Route::get('/matters/{matter}/documents/authored/create', [DocumentEditorController::class, 'create'])
+        ->middleware('matter.access:edit')
+        ->name('documents.authored.create');
+
+    Route::post('/matters/{matter}/documents/authored', [DocumentEditorController::class, 'store'])
+        ->middleware('matter.access:edit')
+        ->name('documents.authored.store');
+
+    Route::get('/matters/{matter}/documents/{document}/edit', [DocumentEditorController::class, 'edit'])
+        ->middleware('matter.access:edit')
+        ->name('documents.editor.edit');
+
+    // Autosave draft every 30s: ephemeral, NOT a version, no audit row.
+    Route::post('/matters/{matter}/documents/{document}/draft', [DocumentEditorController::class, 'draft'])
+        ->middleware('matter.access:edit')
+        ->name('documents.draft.update');
+
+    // Explicit Save: publishes a new immutable version (HTML + PDF rendition).
+    Route::post('/matters/{matter}/documents/{document}/publish', [DocumentEditorController::class, 'publish'])
+        ->middleware('matter.access:edit')
+        ->name('documents.versions.publish');
+
+    // Templates (org-level stationery; publishing needs template_editor role)
+    Route::get('/templates', [TemplateController::class, 'index'])->name('templates.index');
+    Route::get('/templates/create', [TemplateController::class, 'create'])->name('templates.create');
+    Route::post('/templates', [TemplateController::class, 'store'])->name('templates.store');
+    Route::get('/templates/{template}', [TemplateController::class, 'show'])->name('templates.show');
+    Route::get('/templates/{template}/edit', [TemplateController::class, 'edit'])->name('templates.edit');
+    Route::patch('/templates/{template}', [TemplateController::class, 'update'])->name('templates.update');
+    Route::post('/templates/{template}/publish', [TemplateController::class, 'publish'])->name('templates.publish');
+    Route::get('/templates/{template}/generate', [TemplateController::class, 'generateForm'])->name('templates.generate.form');
+    Route::post('/templates/{template}/generate', [TemplateController::class, 'generate'])->name('templates.generate');
+});
+
+// === 007 document routes — T-02: upload pipeline + malware scan ===
+// Spec 007 T-02 owns this section: single-shot upload, chunked/resumable
+// upload sessions, and the ClamAV scan gate. Later 007 tickets append their
+// own sections below — do not interleave.
+//
+// Action levels: every upload route carries matter.access:edit (uploads
+// create content); chunk-session routes additionally require session
+// ownership (enforced in DocumentUploadController: 403 + audit otherwise).
+Route::middleware(['auth:'.config('fortify.guard')])->group(function (): void {
+    // 007 T-10: the upload form (05-ui.md §02, mockup §02) — registered
+    // here, ahead of documents.show, so the literal /upload wins over
+    // the {document} placeholder.
+    Route::get('/matters/{matter}/documents/upload', [DocumentUploadController::class, 'create'])
+        ->middleware('matter.access:edit')
+        ->name('documents.upload.form');
+    Route::post('/matters/{matter}/documents/upload', [DocumentUploadController::class, 'store'])
+        ->middleware('matter.access:edit')
+        ->name('documents.upload');
+    Route::post('/matters/{matter}/documents/uploads/init', [DocumentUploadController::class, 'init'])
+        ->middleware('matter.access:edit')
+        ->name('documents.uploads.init');
+    Route::get('/matters/{matter}/documents/uploads/{session}', [DocumentUploadController::class, 'show'])
+        ->middleware('matter.access:edit')
+        ->name('documents.uploads.show');
+    Route::put('/matters/{matter}/documents/uploads/{session}/chunks/{n}', [DocumentUploadController::class, 'chunk'])
+        ->middleware('matter.access:edit')
+        ->where('n', '[0-9]+')
+        ->name('documents.uploads.chunk');
+    Route::post('/matters/{matter}/documents/uploads/{session}/complete', [DocumentUploadController::class, 'complete'])
+        ->middleware('matter.access:edit')
+        ->name('documents.uploads.complete');
+    Route::delete('/matters/{matter}/documents/uploads/{session}', [DocumentUploadController::class, 'cancel'])
+        ->middleware('matter.access:edit')
+        ->name('documents.uploads.cancel');
+});
+
+// ── Spec 007 T-03: metadata, previews, download ──
+// Preview page + signed-URL byte serving + exact-bytes download
+// (DOC-04/05/06/07/08). The page route carries matter.access:view; the
+// byte routes (preview/file, download) are authorized by HMAC-signed
+// URLs (15-min, scoped to the user) with permission re-checked on every
+// request — including range requests — so revoked access kills
+// outstanding URLs. Quarantined documents → 403 'quarantined'.
+Route::middleware(['auth:'.config('fortify.guard')])->group(function (): void {
+    Route::get('/matters/{matter}/documents/{document}/preview', [DocumentPreviewController::class, 'show'])
+        ->middleware('matter.access:view')
+        ->name('documents.preview');
+    Route::get('/matters/{matter}/documents/{document}/preview/file', [DocumentPreviewController::class, 'file'])
+        ->name('documents.preview.file');
+    Route::get('/matters/{matter}/documents/{document}/download', [DocumentPreviewController::class, 'download'])
+        ->name('documents.download');
+});
+
+// ── Spec 007 T-05: folders, filing, trash, document list ──
+// Per-matter folder tree + document filing endpoints (DOC-11/12/13/14).
+// Every route carries RequireMatterAccess BEFORE any data access; the
+// authorized matter is read from request attributes, never re-resolved.
+// Document action levels (:view < :edit < :manage) map onto the 006
+// AccessControl ladder (01-archaeology.md: EXTEND, names identical).
+//
+// Route-order note: /documents/trash and /documents/bulk/* are registered
+// BEFORE /documents/{document} so the literal segments are not swallowed
+// by the {document} placeholder.
+Route::middleware(['auth:'.config('fortify.guard')])->group(function (): void {
+    // Folders (DOC-11): tree, create/rename/move, delete empty-only.
+    Route::get('/matters/{matter}/folders', [FolderController::class, 'index'])
+        ->middleware('matter.access:view')
+        ->name('folders.index');
+    Route::post('/matters/{matter}/folders', [FolderController::class, 'store'])
+        ->middleware('matter.access:edit')
+        ->name('folders.store');
+    Route::patch('/matters/{matter}/folders/{folder}', [FolderController::class, 'update'])
+        ->middleware('matter.access:edit')
+        ->name('folders.update');
+    Route::delete('/matters/{matter}/folders/{folder}', [FolderController::class, 'destroy'])
+        ->middleware('matter.access:edit')
+        ->name('folders.destroy');
+
+    // Per-matter trash (DOC-11): :manage only.
+    Route::get('/matters/{matter}/documents/trash', [DocumentController::class, 'trash'])
+        ->middleware('matter.access:manage')
+        ->name('documents.trash');
+
+    // Bulk filing (DOC-11): move/tag/download-as-ZIP.
+    Route::post('/matters/{matter}/documents/bulk/move', [DocumentController::class, 'bulkMove'])
+        ->middleware('matter.access:edit')
+        ->name('documents.bulk.move');
+    Route::post('/matters/{matter}/documents/bulk/tag', [DocumentController::class, 'bulkTag'])
+        ->middleware('matter.access:edit')
+        ->name('documents.bulk.tag');
+    Route::post('/matters/{matter}/documents/bulk/download', [DocumentController::class, 'bulkDownload'])
+        ->middleware('matter.access:view')
+        ->name('documents.bulk.download');
+
+    // Document list (DOC-14; C-09 list half): faceted + keyword, 50/page.
+    Route::get('/matters/{matter}/documents', [DocumentController::class, 'index'])
+        ->middleware('matter.access:view')
+        ->name('documents.index');
+
+    // Saved views (per-user).
+    Route::get('/matters/{matter}/document-views', [DocumentController::class, 'indexViews'])
+        ->middleware('matter.access:view')
+        ->name('document-views.index');
+    Route::post('/matters/{matter}/document-views', [DocumentController::class, 'storeView'])
+        ->middleware('matter.access:view')
+        ->name('document-views.store');
+    Route::delete('/matters/{matter}/document-views/{view}', [DocumentController::class, 'destroyView'])
+        ->middleware('matter.access:view')
+        ->name('document-views.destroy');
+
+    // Filing (DOC-11/12/13).
+    Route::get('/matters/{matter}/documents/{document}', [DocumentController::class, 'show'])
+        ->middleware('matter.access:view')
+        ->name('documents.show');
+    Route::patch('/matters/{matter}/documents/{document}', [DocumentController::class, 'update'])
+        ->middleware('matter.access:edit')
+        ->name('documents.update');
+    Route::delete('/matters/{matter}/documents/{document}', [DocumentController::class, 'destroy'])
+        ->middleware('matter.access:manage')
+        ->name('documents.destroy');
+    Route::delete('/matters/{matter}/documents/{document}/permanent', [DocumentController::class, 'destroyPermanent'])
+        ->middleware('matter.access:manage')
+        ->name('documents.destroy.permanent');
+    Route::post('/matters/{matter}/documents/{document}/restore', [DocumentController::class, 'restore'])
+        ->middleware('matter.access:manage')
+        ->name('documents.restore');
+    Route::post('/matters/{matter}/documents/{document}/move', [DocumentController::class, 'move'])
+        ->middleware('matter.access:edit')
+        ->name('documents.move');
+});
+
+// ── Spec 007 T-09: retention policies, legal holds, disposition ──
+// (DOC-27/28/29). Admin policy/disposition/hold routes live under the
+// existing org_admin group; hold placement/release on the matter-nested
+// routes additionally requires the legal-hold role (403 otherwise).
+Route::middleware(['auth:'.config('fortify.guard'), RequireOrgAdmin::class])
+    ->prefix('admin')
+    ->name('admin.')
+    ->group(function (): void {
+        Route::get('/retention/policies', [AdminRetentionController::class, 'index'])->name('retention.policies.index');
+        Route::get('/retention/policies/create', [AdminRetentionController::class, 'create'])->name('retention.policies.create');
+        Route::post('/retention/policies', [AdminRetentionController::class, 'store'])->name('retention.policies.store');
+        Route::get('/retention/policies/{policy}', [AdminRetentionController::class, 'show'])->name('retention.policies.show');
+        Route::get('/retention/policies/{policy}/edit', [AdminRetentionController::class, 'edit'])->name('retention.policies.edit');
+        Route::patch('/retention/policies/{policy}', [AdminRetentionController::class, 'update'])->name('retention.policies.update');
+        Route::post('/retention/policies/{policy}/activate', [AdminRetentionController::class, 'activate'])->name('retention.policies.activate');
+        Route::post('/retention/policies/{policy}/simulate', [AdminRetentionController::class, 'simulate'])->name('retention.policies.simulate');
+
+        Route::get('/retention/disposition', [AdminRetentionController::class, 'dispositionIndex'])->name('retention.disposition.index');
+        Route::post('/retention/disposition', [AdminRetentionController::class, 'dispositionStore'])->name('retention.disposition.store');
+        Route::get('/retention/disposition/{entry}', [AdminRetentionController::class, 'dispositionShow'])->name('retention.disposition.show');
+        Route::post('/retention/disposition/{entry}/approve', [AdminRetentionController::class, 'dispositionApprove'])->name('retention.disposition.approve');
+        Route::post('/retention/disposition/{entry}/reject', [AdminRetentionController::class, 'dispositionReject'])->name('retention.disposition.reject');
+
+        Route::get('/retention/holds', [AdminRetentionController::class, 'holdsIndex'])->name('retention.holds.index');
+        Route::post('/retention/holds/{hold}/release', [AdminRetentionController::class, 'holdRelease'])->name('retention.holds.release');
+    });
+
+Route::middleware(['auth:'.config('fortify.guard')])->group(function (): void {
+    Route::post('/matters/{matter}/documents/{document}/hold', [DocumentHoldController::class, 'store'])
+        ->middleware('matter.access:manage')
+        ->name('documents.hold.store');
+    Route::post('/matters/{matter}/documents/{document}/hold/release', [DocumentHoldController::class, 'release'])
+        ->middleware('matter.access:manage')
+        ->name('documents.hold.release');
+    Route::get('/matters/{matter}/holds', [DocumentHoldController::class, 'matterHolds'])
+        ->middleware('matter.access:view')
+        ->name('matters.holds.index');
+    Route::post('/matters/{matter}/hold', [DocumentHoldController::class, 'matterStore'])
+        ->middleware('matter.access:manage')
+        ->name('matters.hold.store');
+});
+
+// ── Spec 007 T-07: versioning — history, rollback, diff ──
+// Immutable content versioning (DOC-18/19/20/21, 007-D06): history view,
+// "upload new version" for uploaded binaries, rollback-as-new-version,
+// and structured text diffs. Every route carries RequireMatterAccess
+// BEFORE any data access; the authorized matter is read from request
+// attributes, never re-resolved.
+//
+// Restore carries matter.access:view at the middleware so the controller
+// can audit the specific document.version.restore.denied denial event;
+// the :edit gate is enforced inside DocumentVersionController::restore.
+Route::middleware(['auth:'.config('fortify.guard')])->group(function (): void {
+    Route::get('/matters/{matter}/documents/{document}/versions', [DocumentVersionController::class, 'index'])
+        ->middleware('matter.access:view')
+        ->name('documents.versions.index');
+    Route::post('/matters/{matter}/documents/{document}/versions', [DocumentVersionController::class, 'store'])
+        ->middleware('matter.access:edit')
+        ->name('documents.versions.store');
+    Route::post('/matters/{matter}/documents/{document}/versions/{version}/restore', [DocumentVersionController::class, 'restore'])
+        ->middleware('matter.access:view')
+        ->name('documents.versions.restore');
+    Route::get('/matters/{matter}/documents/{document}/versions/{a}/diff/{b}', [DocumentVersionController::class, 'diff'])
+        ->middleware('matter.access:view')
+        ->where(['a' => '[0-9]+', 'b' => '[0-9]+'])
+        ->name('documents.versions.diff');
+});
+
+// ── Spec 007 T-08: sharing — grants, links, export ──
+// Internal document grants (viewer/commenter/editor; effective permission
+// = max(matter role, grant) resolved at read time by DocumentAccess),
+// external secure links, and AES-256 encrypted export packages
+// (DOC-24/25/26). Grant/link management requires matter :manage; export
+// requires :edit (per-document :view is re-checked inside the service).
+//
+// The anonymous /s/{token} endpoint lives in routes/share.php — its own
+// route file and middleware group (minimal surface, rate-limited) per
+// 03-contract.md §Sharing. Tokens are hashed at rest; the plaintext is
+// shown once at creation (session flash) and never logged or re-rendered.
+Route::middleware(['auth:'.config('fortify.guard')])->group(function (): void {
+    Route::get('/matters/{matter}/documents/{document}/share', [DocumentShareController::class, 'show'])
+        ->middleware('matter.access:manage')
+        ->name('documents.share');
+    Route::post('/matters/{matter}/documents/{document}/grants', [DocumentShareController::class, 'storeGrant'])
+        ->middleware('matter.access:manage')
+        ->name('documents.grants.store');
+    Route::delete('/matters/{matter}/documents/{document}/grants/{grant}', [DocumentShareController::class, 'destroyGrant'])
+        ->middleware('matter.access:manage')
+        ->name('documents.grants.destroy');
+    Route::post('/matters/{matter}/documents/{document}/links', [DocumentShareController::class, 'storeLink'])
+        ->middleware('matter.access:manage')
+        ->name('documents.links.store');
+    Route::delete('/matters/{matter}/documents/{document}/links/{link}', [DocumentShareController::class, 'destroyLink'])
+        ->middleware('matter.access:manage')
+        ->name('documents.links.destroy');
+    Route::post('/matters/{matter}/documents/export', [DocumentShareController::class, 'export'])
+        ->middleware('matter.access:edit')
+        ->name('documents.export');
+});
+
+// ── Spec 007 T-10: audit trail — activity tab + CSV export ──
+// Per-document Activity tab and matter-level document-activity CSV
+// (C-14): read models over audit_events (006-D04, no new table).
+// matter.access:view at the middleware; DocumentAccess :view on the
+// document inside the controller (T-08) — permission-denied actors get
+// nothing, never partial rows.
+//
+// The static activity/export route registers BEFORE the
+// {document}/activity placeholder route so the literal segment wins.
+Route::middleware(['auth:'.config('fortify.guard')])->group(function (): void {
+    Route::get('/matters/{matter}/documents/activity/export', [DocumentActivityController::class, 'export'])
+        ->middleware('matter.access:view')
+        ->name('documents.activity.export');
+    Route::get('/matters/{matter}/documents/{document}/activity', [DocumentActivityController::class, 'index'])
+        ->middleware('matter.access:view')
+        ->name('documents.activity');
+});
+
+require __DIR__.'/share.php';

@@ -87,6 +87,10 @@ Spacing: base unit 4px; page gutters 16px mobile / 32px desktop; card padding
 | **Stat** `<x-ui.stat>` | Big serif value over a 13px label, inside a card — matter dashboards |
 | **Modal** `<x-ui.modal>` | The only door for dialogs (confirmations, pickers). New modals go through this wrapper — never a hand-rolled dialog |
 | **Sub-nav** `<x-ui.sub-nav>` | Section tabs inside a context (e.g. matter: Overview · Documents · Drafts · Timeline). Renders under the page header — v1 has no sidebars |
+| **File dropzone** (spec 007, `documents/create.blade.php` + `document-upload.js`) | Dashed-border card ("Drop files here or"), one 44px+ primary CTA ("Choose files"), optional folder/tags pickers, then per-file progress rows: filename · size, progress bar, stage text (`Uploading…` → `Uploading chunk n of m — resumes automatically if interrupted` → `Uploaded — scanning for malware…`). Single-shot (≤100 MiB, XHR progress) and chunked (8 MiB PUTs, resume bitmap, total SHA-256 verify) are one flow — the client picks by size. Scan notice banner below (warn/info): infected → quarantine, never silently clean |
+| **Preview toolbar** (spec 007, `documents/preview.blade.php`) | Touch-sized control bar over the viewer: prev/next page, page indicator (44px input), zoom out/in + %, find-in-page, thumbnails toggle. Every target ≥44px; toolbar wraps (`flex-wrap`) on phones; thumbnail strip hides below 821px. Buttons never shrink below their label (`shrink-0`) |
+| **Version timeline** (spec 007, `documents/versions.blade.php`) | Newest-first rows: version node (vN, current distinguished), date · author, change note · size, per-row actions (Preview / Download / Diff / Restore…). Row actions are `size="sm"` + `min-h-[44px]` — compact but ≥44px. Restore requires a reason; restore creates N+1, never rewrites |
+| **Document section tabs** (spec 007 T-10, `documents/partials/doc-tabs.blade.php`) | Per-document sub-nav via `<x-ui.sub-nav>`: Preview · Versions · Share · Activity. The Share tab renders only for `:manage` actors (everyone else would 403) — tab visibility follows the same `DocumentAccess` rule as the route |
 
 ## Component discipline (the doors)
 
@@ -207,6 +211,13 @@ with the first UI feature; `tests/Architecture/` does not exist yet):
   drawer (door 5): the drawer is layout infrastructure required by the mobile
   standards — keyboard-operable, Escape-closes, focus-trapped — not an
   ad-hoc dialog.
+- `resources/views/documents/preview.blade.php`'s two toolbar widgets (door 3,
+  recorded 2026-10-08, spec 007 T-10): the page-number input (`#pv-page-input`)
+  and the find-in-document input (`#pv-find`) are inline viewer controls, not
+  form fields — `x-ui.field`'s block layout cannot serve them (it hardcodes
+  `w-full` and has no 44px minimum, so converting would break the approved
+  toolbar AND the mobile gate). Both carry `min-h-[44px]` and accessible names;
+  only these two ids are exempt.
 - Leak sentinels (door 8) are enforced by spec 001's
   `tests/Architecture/LeakSentinelTest.php` (verdict C-14), not duplicated
   per UI feature.

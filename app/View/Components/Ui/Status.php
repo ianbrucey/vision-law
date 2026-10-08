@@ -43,6 +43,17 @@ class Status extends Component
             'draft' => ['label' => 'Draft', 'tone' => 'warn'],
             'final' => ['label' => 'Final', 'tone' => 'ok'],
             'superseded' => ['label' => 'Superseded', 'tone' => 'neutral'],
+            // Spec 007 T-04: document statuses per the 007 contract
+            // (02-schema-delta.md documents.status).
+            'processing' => ['label' => 'Processing', 'tone' => 'info'],
+            'ready' => ['label' => 'Ready', 'tone' => 'ok'],
+            'quarantined' => ['label' => 'Quarantined', 'tone' => 'bad'],
+            'trash' => ['label' => 'Trash', 'tone' => 'neutral'],
+        ],
+        // Spec 007 T-04: template statuses (document_templates.status).
+        'template' => [
+            'draft' => ['label' => 'Draft', 'tone' => 'warn'],
+            'published' => ['label' => 'Published', 'tone' => 'ok'],
         ],
         'draft' => [
             'in_progress' => ['label' => 'In progress', 'tone' => 'info'],
@@ -55,6 +66,18 @@ class Status extends Component
             'accepted' => ['label' => 'Accepted', 'tone' => 'ok'],
             'revoked' => ['label' => 'Revoked', 'tone' => 'neutral'],
             'expired' => ['label' => 'Expired', 'tone' => 'warn'],
+        ],
+        // Spec 007 T-09: retention policy + disposition statuses.
+        'retention_policy' => [
+            'draft' => ['label' => 'Draft', 'tone' => 'warn'],
+            'active' => ['label' => 'Active', 'tone' => 'ok'],
+            'superseded' => ['label' => 'Superseded', 'tone' => 'neutral'],
+        ],
+        'disposition' => [
+            'pending' => ['label' => 'Pending', 'tone' => 'warn'],
+            'approved' => ['label' => 'Approved', 'tone' => 'info'],
+            'rejected' => ['label' => 'Rejected', 'tone' => 'neutral'],
+            'executed' => ['label' => 'Executed', 'tone' => 'ok'],
         ],
     ];
 
