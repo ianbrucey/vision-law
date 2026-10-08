@@ -20,6 +20,7 @@ use App\Http\Controllers\DocumentLogController;
 use App\Http\Controllers\DocumentPreviewController;
 use App\Http\Controllers\DocumentShareController;
 use App\Http\Controllers\DocumentUploadController;
+use App\Http\Controllers\DocumentVersionController;
 use App\Http\Controllers\FolderController;
 use App\Http\Controllers\InvitationController;
 use App\Http\Controllers\LinkController;
@@ -610,3 +611,29 @@ Route::middleware(['auth:'.config('fortify.guard')])->group(function (): void {
 });
 
 require __DIR__.'/share.php';
+
+// ── Spec 007 T-07: versioning — history, rollback, diff ──
+// Immutable content versioning (DOC-18/19/20/21, 007-D06): history view,
+// "upload new version" for uploaded binaries, rollback-as-new-version,
+// and structured text diffs. Every route carries RequireMatterAccess
+// BEFORE any data access; the authorized matter is read from request
+// attributes, never re-resolved.
+//
+// Restore carries matter.access:view at the middleware so the controller
+// can audit the specific document.version.restore.denied denial event;
+// the :edit gate is enforced inside DocumentVersionController::restore.
+Route::middleware(['auth:'.config('fortify.guard')])->group(function (): void {
+    Route::get('/matters/{matter}/documents/{document}/versions', [DocumentVersionController::class, 'index'])
+        ->middleware('matter.access:view')
+        ->name('documents.versions.index');
+    Route::post('/matters/{matter}/documents/{document}/versions', [DocumentVersionController::class, 'store'])
+        ->middleware('matter.access:edit')
+        ->name('documents.versions.store');
+    Route::post('/matters/{matter}/documents/{document}/versions/{version}/restore', [DocumentVersionController::class, 'restore'])
+        ->middleware('matter.access:view')
+        ->name('documents.versions.restore');
+    Route::get('/matters/{matter}/documents/{document}/versions/{a}/diff/{b}', [DocumentVersionController::class, 'diff'])
+        ->middleware('matter.access:view')
+        ->where(['a' => '[0-9]+', 'b' => '[0-9]+'])
+        ->name('documents.versions.diff');
+});
