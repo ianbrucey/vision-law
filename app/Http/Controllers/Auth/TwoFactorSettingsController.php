@@ -40,6 +40,15 @@ class TwoFactorSettingsController extends Controller
             'hasPendingSecret' => $user->two_factor_secret !== null,
             'confirmedAt' => $user->two_factor_confirmed_at,
             'recoveryCodes' => $recoveryCodes,
+            // Spec 008: the passkey section renders in every state except
+            // the recovery-codes once-display (the view gates on
+            // $recoveryCodes). Only id/label/dates ever reach the view —
+            // never key material (03-contract.md §Leak sentinels).
+            'passkeys' => $user->webAuthnCredentials()
+                ->whereEnabled()
+                ->orderBy('created_at')
+                ->get(['id', 'alias', 'created_at', 'updated_at']),
+            'hasPasskeyFactor' => $user->hasPasskeys(),
         ]);
     }
 }

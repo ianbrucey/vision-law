@@ -42,7 +42,8 @@ class RestrictToTwoFactorSetup
     /**
      * Route names reachable inside a setup-mode session (03-contract.md
      * § setup-mode allowlist): the enrollment page, its POST/DELETE
-     * actions, the QR/secret-key helpers, and logout.
+     * actions, the QR/secret-key helpers, the spec 008 passkey actions,
+     * and logout.
      *
      * @var list<string>
      */
@@ -55,6 +56,12 @@ class RestrictToTwoFactorSetup
         'two-factor.qr-code', // GET user/two-factor-qr-code
         'two-factor.qr-image', // GET user/two-factor-qr-code.svg (T-03: the <img>-able QR)
         'two-factor.secret-key', // GET user/two-factor-secret-key (manual-key fallback)
+        // Spec 008 (03-contract.md): the passkey path through enrollment —
+        // a setup-mode admin may complete setup with a passkey instead of
+        // an authenticator app (C-01/C-03).
+        'passkeys.register.options', // POST user/passkeys/register/options
+        'passkeys.register', // POST user/passkeys
+        'passkeys.destroy', // DELETE user/passkeys/{credential}
         'logout', // POST /logout
     ];
 

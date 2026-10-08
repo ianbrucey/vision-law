@@ -192,4 +192,97 @@
             </p>
         </x-ui.card>
     @endif
+
+    @if ($recoveryCodes === null)
+        {{-- ── Spec 008 · Passkeys ───────────────────────────────────────
+            Rendered in every state except the recovery-codes once-display.
+            The ceremonies run in passkey.js (008-D05); this section is
+            plain server-rendered HTML — list, label field, buttons — so
+            the mobile gate and the no-JS state stay honest. No key
+            material ever reaches this view (03-contract.md §Leak
+            sentinels): only id, label, and dates.
+        --}}
+        <x-ui.card class="max-w-[560px] mx-auto mt-8" title="Passkeys">
+            <p class="text-[14px] text-vl-mut mb-4">
+                A passkey signs you in with your fingerprint, face, or device
+                PIN — no authenticator app, no codes to type.
+                @if ($setupMode)
+                    Either path completes setup: a passkey, or the
+                    authenticator app above.
+                @endif
+            </p>
+
+            @if ($passkeys->isEmpty())
+                <p class="text-[14px] text-vl-mut mb-4">
+                    No passkeys yet.
+                </p>
+            @else
+                <div class="mb-4">
+                    @foreach ($passkeys as $passkey)
+                        <div class="flex items-center gap-2.5 py-2.5 {{ ! $loop->first ? 'border-t border-vl-line' : '' }} flex-wrap">
+                            <div class="flex-1 min-w-[180px]">
+                                <strong class="text-vl-ink block">{{ $passkey->alias ?? 'Passkey' }}</strong>
+                                <span class="text-vl-mut text-[13px]">
+                                    Added {{ fmtDate($passkey->created_at) }} · Last used {{ $passkey->updated_at->gt($passkey->created_at) ? fmtDate($passkey->updated_at) : '—' }}
+                                </span>
+                            </div>
+
+                            <form method="POST" action="{{ route('passkeys.destroy', $passkey->id) }}">
+                                @csrf
+                                @method('DELETE')
+
+                                {{-- Default size, not sm: the 390px mobile
+                                     gate (C-10) measures every action at
+                                     ≥44px; sm renders 36px tall. --}}
+                                <x-ui.button variant="secondary" type="submit">
+                                    Revoke
+                                </x-ui.button>
+                            </form>
+                        </div>
+                    @endforeach
+                </div>
+
+                <p class="text-[13px] text-vl-mut bg-vl-paper border border-vl-line rounded-[8px] px-3.5 py-2.5 mb-4">
+                    Revoking a passkey removes it immediately — revoking
+                    requires re-entering your password. If it's your only
+                    way past two-factor, you'll be asked to set up again at
+                    your next sign-in.
+                </p>
+            @endif
+
+            <x-ui.field
+                name="passkey_alias"
+                label="Passkey name"
+                type="text"
+                value=""
+                maxlength="40"
+                autocomplete="off"
+                placeholder="e.g. iPhone"
+                help="Something you'll recognize, like iPhone or Office security key."
+            />
+
+            {{-- One primary per view (UI_Standards): the TOTP flow owns the
+                 primary in the fresh/setup states; in the active state its
+                 card has none, so the passkey action takes it. --}}
+            <x-ui.button variant="{{ $enrolled ? 'primary' : 'secondary' }}" type="button" id="passkey-add" class="w-full">
+                {{ $passkeys->isEmpty() ? 'Add a passkey' : 'Add another passkey' }}
+            </x-ui.button>
+
+            <p id="passkey-unsupported" class="text-[13px] text-vl-mut mt-3" hidden>
+                This browser doesn't support passkeys — the authenticator app
+                path works everywhere.
+            </p>
+
+            <p id="passkey-error" role="alert" class="text-[13px] text-vl-bad bg-vl-bad-soft border border-vl-bad rounded-[8px] px-3.5 py-2.5 mt-3" hidden></p>
+        </x-ui.card>
+
+        <script>
+            window.__passkeyConfig = {
+                csrf: @json(csrf_token()),
+                registerOptionsUrl: @json(route('passkeys.register.options')),
+                registerUrl: @json(route('passkeys.register')),
+            };
+        </script>
+        @vite(['resources/js/passkey.js'])
+    @endif
 </x-layouts.app>

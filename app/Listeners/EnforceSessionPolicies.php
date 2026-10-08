@@ -21,7 +21,9 @@ use Illuminate\Support\Facades\DB;
  *    session to the enrollment surface (RestrictToTwoFactorSetup) until
  *    two-factor.confirm clears it. The policy itself is unchanged — admins
  *    must enroll — only the denial shape became shippable. The issuance is
- *    audited as auth.login.2fa_enrollment_required.
+ *    audited as auth.login.2fa_enrollment_required. Spec 008: a confirmed
+ *    passkey satisfies the same requirement (hasPasskeys()), since the
+ *    enrollment surface offers both paths.
  * 2. Absolute-lifetime anchor: visionlaw.login_at is stamped into the
  *    session for EnsureSessionLifetime to enforce.
  * 3. Concurrent-session limit (default 5): the oldest sessions beyond the
@@ -38,7 +40,7 @@ class EnforceSessionPolicies
             return;
         }
 
-        if ($user->hasRole('org_admin') && ! $user->hasEnabledTwoFactorAuthentication()) {
+        if ($user->hasRole('org_admin') && ! $user->hasEnabledTwoFactorAuthentication() && ! $user->hasPasskeys()) {
             $request = request();
 
             if ($request->hasSession()) {

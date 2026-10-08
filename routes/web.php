@@ -7,6 +7,8 @@ use App\Http\Controllers\Admin\TeamController as AdminTeamController;
 use App\Http\Controllers\Admin\UserController as AdminUserController;
 use App\Http\Controllers\AssignmentController;
 use App\Http\Controllers\Auth\LoginController;
+use App\Http\Controllers\Auth\PasskeyChallengeController;
+use App\Http\Controllers\Auth\PasskeyController;
 use App\Http\Controllers\Auth\PasswordResetLinkController;
 use App\Http\Controllers\Auth\RegisteredUserController;
 use App\Http\Controllers\Auth\TwoFactorChallengeController;
@@ -33,6 +35,7 @@ use App\Http\Controllers\PartyController;
 use App\Http\Controllers\SessionController;
 use App\Http\Controllers\TemplateController;
 use App\Http\Middleware\RequireOrgAdmin;
+use App\Models\User;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\Route;
 use Laravel\Fortify\Features;
@@ -87,6 +90,18 @@ Route::post('/two-factor-challenge', [TwoFactorChallengeController::class, 'stor
     ->middleware(['guest:'.config('fortify.guard'), 'throttle:10,1'])
     ->name('two-factor.login.store');
 
+// ── Spec 008: passkey half of the challenge (03-contract.md §Routes) ──
+// Guest-reachable by necessity (the caller is mid-login), guarded by the
+// challenged session inside PasskeyChallengeController — no challenged
+// session is a generic 422, never a ceremony oracle.
+Route::post('/two-factor-challenge/passkey/options', [PasskeyChallengeController::class, 'options'])
+    ->middleware(['guest:'.config('fortify.guard'), 'throttle:10,1'])
+    ->name('two-factor.passkey.options');
+
+Route::post('/two-factor-challenge/passkey', [PasskeyChallengeController::class, 'store'])
+    ->middleware(['guest:'.config('fortify.guard'), 'throttle:10,1'])
+    ->name('two-factor.passkey.store');
+
 // ── Spec 005 T-02: 2FA challenge page (005-D02) ──
 // GET two-factor-challenge, named two-factor.login — the name Fortify's
 // post-password redirect targets. The guard is Fortify's own rule: only
@@ -99,8 +114,15 @@ Route::get('/two-factor-challenge', function (TwoFactorLoginRequest $request) {
         return redirect()->route('login');
     }
 
+    $challengedUser = $request->challengedUser();
+
     return view('auth.two-factor-challenge', [
-        'email' => $request->challengedUser()->email,
+        'email' => $challengedUser->email,
+        // Spec 008: the view renders the passkey section only when the
+        // challenged user actually holds a passkey, and drops the TOTP
+        // code form for passkey-only users (03-contract.md).
+        'hasPasskey' => $challengedUser instanceof User && $challengedUser->hasPasskeys(),
+        'hasTotp' => $challengedUser instanceof User && $challengedUser->two_factor_secret !== null,
     ]);
 })->name('two-factor.login');
 
@@ -112,6 +134,24 @@ Route::get('/two-factor-challenge', function (TwoFactorLoginRequest $request) {
 Route::get('user/two-factor', [TwoFactorSettingsController::class, 'index'])
     ->middleware(['auth:'.config('fortify.guard')])
     ->name('two-factor.settings');
+
+// ── Spec 008: passkey management (03-contract.md §Routes) ──
+// Authenticated (incl. setup-mode sessions — the routes are on the
+// RestrictToTwoFactorSetup allowlist so an admin can complete setup with a
+// passkey instead of an authenticator app). Ceremonies are Laragear's
+// pipelines inside PasskeyController (008-D01); revocation carries the
+// same password.confirm gate as the 2FA disable flow.
+Route::post('user/passkeys/register/options', [PasskeyController::class, 'registerOptions'])
+    ->middleware(['auth:'.config('fortify.guard')])
+    ->name('passkeys.register.options');
+
+Route::post('user/passkeys', [PasskeyController::class, 'store'])
+    ->middleware(['auth:'.config('fortify.guard')])
+    ->name('passkeys.register');
+
+Route::delete('user/passkeys/{credential}', [PasskeyController::class, 'destroy'])
+    ->middleware(['auth:'.config('fortify.guard'), 'password.confirm'])
+    ->name('passkeys.destroy');
 
 // --- Spec 005 T-03: QR-as-image + confirm-password view ---
 // two-factor.qr-image: Fortify's two-factor.qr-code returns JSON {svg, url},
