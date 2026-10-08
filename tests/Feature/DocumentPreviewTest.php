@@ -14,6 +14,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\Storage;
+use Tests\Doubles\FakeOfficePreviewService;
 use Tests\Helpers\FixtureLoader;
 use Tests\TestCase;
 
@@ -189,7 +190,10 @@ class DocumentPreviewTest extends TestCase
         $revokedRange = $this->get($fileUrl, ['Range' => 'bytes=0-9']);
         $revokedRange->assertForbidden();
 
-        // Office document → headless-converted PDF preview renders.
+        // Office document → converted PDF preview renders. Hermetic: the
+        // base TestCase binds FakeOfficePreviewService (no soffice in CI);
+        // the inherited ensurePdf() still exercises rendition caching.
+        FakeOfficePreviewService::$failConversion = false;
         $this->actingAs($admin);
         $office = $this->post(
             $url,
@@ -219,12 +223,9 @@ class DocumentPreviewTest extends TestCase
                 ->exists()
         );
 
-        // Conversion failure → graceful state, not an error page. The
-        // docx sniffs as OOXML (valid ZIP, word/document.xml present)
-        // but its document.xml is malformed, so headless conversion
-        // fails fast and the preview degrades instead of erroring.
-        // (A container mock is ineffective here: the route caches the
-        // controller instance after the first request in the test app.)
+        // Conversion failure → graceful state, not an error page. The fake
+        // simulates the failure path (broken document or missing binaries).
+        FakeOfficePreviewService::$failConversion = true;
         $broken = $this->post(
             $url,
             ['file' => $this->uploadedFile($this->corruptDocxBytes(), 'broken.docx'), 'title' => 'Broken conv'],

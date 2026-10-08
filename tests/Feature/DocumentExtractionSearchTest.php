@@ -154,11 +154,15 @@ class DocumentExtractionSearchTest extends TestCase
         $this->assertGreaterThan(0.5, (float) $pages[0]->ocr_confidence);
         $this->assertNotEmpty($pages[0]->ocr_words);
 
-        // Per-page cost data logged (native Tesseract = $0; the provider
-        // interface leaves the door open for a paid provider).
+        // Per-page cost data logged ($0 for the fake; the provider interface
+        // leaves the door open for a paid provider).
         $cost = $document->ocr_cost;
         $this->assertIsArray($cost);
-        $this->assertSame('tesseract', $cost['provider']);
+        // The pipeline records the active provider's identity: in tests that's
+        // the FakeOcrProvider (no Tesseract binary in CI). The real
+        // provider's identity string is pinned hermetically by
+        // tests/Unit/OcrProviderNameTest.php.
+        $this->assertSame('fake', $cost['provider']);
         $this->assertSame(1, $cost['pages']);
         $this->assertEquals(0.0, $cost['estimated_cost_usd']);
         $this->assertGreaterThan(0, $cost['total_ms']);

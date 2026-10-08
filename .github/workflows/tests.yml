@@ -55,6 +55,13 @@ jobs:
         with:
           node-version: '22'
 
+      - name: Install native binaries
+        # poppler-utils (pdftotext, pdfinfo) is provisioned natively on the
+        # app server (spec 007, 007-D02) and the text-extraction tests need
+        # it. ClamAV/Tesseract/LibreOffice are faked in tests (see
+        # tests/Doubles/) — CI intentionally does not install them.
+        run: sudo apt-get update && sudo apt-get install -y poppler-utils
+
       - name: Install dependencies
         run: |
           composer install --no-interaction --prefer-dist

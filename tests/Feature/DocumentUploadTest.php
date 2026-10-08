@@ -18,6 +18,7 @@ use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Testing\TestResponse;
+use Tests\Doubles\FakeMalwareScanner;
 use Tests\Helpers\FixtureLoader;
 use Tests\TestCase;
 
@@ -312,7 +313,9 @@ class DocumentUploadTest extends TestCase
         });
 
         // Engine unreachable → upload stays `scanning`, never silently clean.
-        Config::set('document.clamav.socket', '/nonexistent/clamd-test.ctl');
+        // Hermetic: the base TestCase binds FakeMalwareScanner (no clamd in
+        // CI); the flag simulates the engine-down path.
+        FakeMalwareScanner::$unreachable = true;
         Config::set('document.ops_alert_email', 'ops@example.test');
 
         $pending = $this->post(
