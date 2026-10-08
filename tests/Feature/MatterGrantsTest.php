@@ -518,4 +518,53 @@ class MatterGrantsTest extends TestCase
         $this->assertDatabaseMissing('users', ['email' => 'wally@example.test']);
         $this->assertDatabaseMissing('users', ['email' => 'betty@example.test']);
     }
+
+    /**
+     * 006-D17 regression: the last-owner guard on the 001 grants path must
+     * honor the contract-named 'owner' grant (rank 5 per 006-D11), not just
+     * the legacy 'matter_owner' string. A matter whose only owner-level
+     * grant is 'owner' refuses its revocation (422); with a second owner in
+     * place the revocation succeeds.
+     */
+    public function test_cannot_remove_last_contract_named_owner_grant(): void
+    {
+        $loader = FixtureLoader::load();
+        $admin = $loader->user('user_admin');
+        $matter = $loader->matter('matter_001');
+        $mid = (string) $matter->getKey();
+
+        // Retire the fixture's legacy 'matter_owner' grant so the only
+        // owner-level grant left will be the contract-named 'owner' one.
+        MatterGrant::query()
+            ->where('matter_id', $matter->getKey())
+            ->where('role', 'matter_owner')
+            ->update(['expires_at' => now()->subMinute()]);
+
+        $this->actingAs($admin);
+        $created = $this->postJson("/matters/{$mid}/grants", [
+            'subject_type' => 'user',
+            'subject_id' => $loader->user('user_paralegal')->getKey(),
+            'role' => 'owner',
+        ]);
+        $created->assertStatus(201);
+        $ownerGrantId = $created->json('id');
+        $this->assertNotEmpty($ownerGrantId);
+
+        // Sole owner-level grant (contract name) → 422, untouched.
+        $this->deleteJson("/matters/{$mid}/grants/{$ownerGrantId}")
+            ->assertStatus(422)
+            ->assertJson(['code' => 'cannot_remove_last_owner']);
+        $this->assertNull(MatterGrant::findOrFail($ownerGrantId)->expires_at);
+
+        // With a second owner-level grant in place, revoking one succeeds.
+        $second = $this->postJson("/matters/{$mid}/grants", [
+            'subject_type' => 'user',
+            'subject_id' => $admin->getKey(),
+            'role' => 'matter_owner',
+        ]);
+        $second->assertStatus(201);
+
+        $this->deleteJson("/matters/{$mid}/grants/{$ownerGrantId}")->assertOk();
+        $this->assertNotNull(MatterGrant::findOrFail($ownerGrantId)->expires_at);
+    }
 }

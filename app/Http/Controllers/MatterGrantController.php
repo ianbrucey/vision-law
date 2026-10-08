@@ -193,16 +193,27 @@ class MatterGrantController extends Controller
 
     private function isActiveOwnerGrant(MatterGrant $grant, Matter $matter): bool
     {
+        // 006-D17: owner-level is a rank comparison (006-D11), not a name
+        // match — the contract-named 'owner' grant (rank 5) counts the same
+        // as legacy 'matter_owner'.
         return (string) $grant->matter_id === (string) $matter->getKey()
-            && (string) $grant->role === 'matter_owner'
+            && AccessControl::roleSatisfies($grant->role, 'matter_owner')
             && ! $this->isExpired($grant);
     }
 
     private function activeOwnerGrantCount(Matter $matter): int
     {
+        // 006-D17: count every active grant whose rank reaches owner level
+        // (006-D11) — 'owner' and 'matter_owner' are both rank 5. Derived
+        // from ROLE_RANK so a future owner-ranked name counts automatically.
+        $ownerRoles = array_keys(array_filter(
+            AccessControl::ROLE_RANK,
+            static fn (int $rank): bool => $rank >= AccessControl::ROLE_RANK['matter_owner']
+        ));
+
         return MatterGrant::query()
             ->where('matter_id', $matter->getKey())
-            ->where('role', 'matter_owner')
+            ->whereIn('role', $ownerRoles)
             ->where(function ($query): void {
                 $query->whereNull('expires_at')->orWhere('expires_at', '>', now());
             })

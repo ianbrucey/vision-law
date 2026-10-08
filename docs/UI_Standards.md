@@ -69,6 +69,14 @@ Spacing: base unit 4px; page gutters 16px mobile / 32px desktop; card padding
 | **Banner** `<x-ui.banner tone>` | Tones `info / success / warn / danger`. `warn` = privilege or confidentiality notice ("This matter is marked privileged — do not forward"); `danger` = destructive confirmation context |
 | **Chip** `<x-ui.chip tone>` | Tones `ok / warn / bad / neutral / info`. Small metadata labels — never the only signal for a status |
 | **Status** `<x-ui.status>` | Renders a matter, document, or draft status from a canonical label+tone map. **Statuses are never rendered as raw enum text** — always through this component |
+>
+> The `matter` map (spec 006 T-05, frozen 2026-10-07) — 8 lifecycle states,
+> tones per the approved mockup badge palette, color never the only signal:
+> `INTAKE`→Intake/info · `ACTIVE`→Active/ok · `DISCOVERY`→Discovery/info ·
+> `PRE_TRIAL`→Pre-trial/warn · `TRIAL_SETTLEMENT`→Trial / settlement/warn ·
+> `CLOSED`→Closed/neutral · `RETENTION_HOLD`→Retention hold/warn ·
+> `DISPOSITION`→Disposition/bad. The map extends per feature; new values are
+> recorded here first (`Status::MAP`, fail-closed to neutral "Unknown").
 | **Button** `<x-ui.button>` | Variants `primary / secondary / danger / ghost`; `size` `sm`. **One primary button per view.** `danger` only for irreversible actions, always paired with a plain-language consequence line. Cancellation is a link, never a button |
 | **Form field** `<x-ui.field>` | Uppercase 12px label above the input; optional fields marked "(optional)"; validation errors inline under the field with `old()` preserved |
 | **Select** `<x-ui.select>` · **Checkbox** `<x-ui.checkbox>` · **Textarea** `<x-ui.textarea>` | Same label/error/`old()` contract as `field`. The four are the only doors for user-facing form controls (hidden inputs exempt) |
