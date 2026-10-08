@@ -118,6 +118,9 @@ architecture tests · record build decisions in `decisions.md` · add
    restricted data ships its rules and matrix cells in the Council artifacts.
 7. **Search before building framework features** — verify the documented
    Laravel 13 API, don't trust memory.
+8. **Never touch the live database.** Workers run migrations and seeds only
+   against dedicated test databases. Running migrate:fresh, migrate:refresh,
+   or db:seed against the live vision_law database is forbidden.
 
 ## Lightweight mode
 
