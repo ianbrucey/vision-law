@@ -154,7 +154,7 @@ class MatterGrantsTest extends TestCase
         $response->assertOk()->assertJson([
             'matter_number' => 'MAT-2026-001',
             'title' => 'Sterling v. Apex Construction',
-            'status' => 'open',
+            'lifecycle_state' => 'INTAKE',
         ]);
         $this->assertNoMatterLeak($response, $loader, 'matter_001');
 

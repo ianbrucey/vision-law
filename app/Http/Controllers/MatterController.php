@@ -30,7 +30,7 @@ class MatterController extends Controller
             'id' => (string) $matter->getKey(),
             'matter_number' => $matter->matter_number,
             'title' => $matter->title,
-            'status' => $matter->status,
+            'lifecycle_state' => $matter->lifecycle_state,
         ]);
     }
 }
