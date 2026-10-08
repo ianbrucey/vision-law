@@ -16,6 +16,7 @@ use App\Http\Controllers\DocumentController;
 use App\Http\Controllers\DocumentEditorController;
 use App\Http\Controllers\DocumentLogController;
 use App\Http\Controllers\DocumentPreviewController;
+use App\Http\Controllers\DocumentShareController;
 use App\Http\Controllers\DocumentUploadController;
 use App\Http\Controllers\FolderController;
 use App\Http\Controllers\InvitationController;
@@ -531,3 +532,37 @@ Route::middleware(['auth:'.config('fortify.guard')])->group(function (): void {
         ->middleware('matter.access:edit')
         ->name('documents.move');
 });
+
+// ── Spec 007 T-08: sharing — grants, links, export ──
+// Internal document grants (viewer/commenter/editor; effective permission
+// = max(matter role, grant) resolved at read time by DocumentAccess),
+// external secure links, and AES-256 encrypted export packages
+// (DOC-24/25/26). Grant/link management requires matter :manage; export
+// requires :edit (per-document :view is re-checked inside the service).
+//
+// The anonymous /s/{token} endpoint lives in routes/share.php — its own
+// route file and middleware group (minimal surface, rate-limited) per
+// 03-contract.md §Sharing. Tokens are hashed at rest; the plaintext is
+// shown once at creation (session flash) and never logged or re-rendered.
+Route::middleware(['auth:'.config('fortify.guard')])->group(function (): void {
+    Route::get('/matters/{matter}/documents/{document}/share', [DocumentShareController::class, 'show'])
+        ->middleware('matter.access:manage')
+        ->name('documents.share');
+    Route::post('/matters/{matter}/documents/{document}/grants', [DocumentShareController::class, 'storeGrant'])
+        ->middleware('matter.access:manage')
+        ->name('documents.grants.store');
+    Route::delete('/matters/{matter}/documents/{document}/grants/{grant}', [DocumentShareController::class, 'destroyGrant'])
+        ->middleware('matter.access:manage')
+        ->name('documents.grants.destroy');
+    Route::post('/matters/{matter}/documents/{document}/links', [DocumentShareController::class, 'storeLink'])
+        ->middleware('matter.access:manage')
+        ->name('documents.links.store');
+    Route::delete('/matters/{matter}/documents/{document}/links/{link}', [DocumentShareController::class, 'destroyLink'])
+        ->middleware('matter.access:manage')
+        ->name('documents.links.destroy');
+    Route::post('/matters/{matter}/documents/export', [DocumentShareController::class, 'export'])
+        ->middleware('matter.access:edit')
+        ->name('documents.export');
+});
+
+require __DIR__.'/share.php';

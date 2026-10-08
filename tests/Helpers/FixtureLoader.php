@@ -4,6 +4,7 @@ namespace Tests\Helpers;
 
 use App\Models\Document;
 use App\Models\DocumentFolder;
+use App\Models\DocumentShare;
 use App\Models\DocumentVersion;
 use App\Models\Invitation;
 use App\Models\Matter;
@@ -50,6 +51,13 @@ class FixtureLoader
      * re-load when the invitation already existed.
      */
     private ?string $invitationToken = null;
+
+    /**
+     * Plaintext token for the expired share-link fixture (T-08). Only the
+     * SHA-256 hash is stored in the DB. Null on re-load when the share
+     * row already existed.
+     */
+    private ?string $expiredShareToken = null;
 
     /** @var array<string, mixed> */
     private array $data;
@@ -581,7 +589,8 @@ class FixtureLoader
      * T-01 loads orgs, users, matters, folders, retention policies, and
      * templates. Document rows are loaded by T-02's loadDocumentRows()
      * below (they need the upload pipeline: bytes → blob → version),
-     * shares by T-08, and matter grants are left to the 006 loader's domain.
+     * share links by T-08's loadShareRows() below, and matter grants are
+     * left to the 006 loader's domain.
      */
     public static function loadDocumentFixtures(): self
     {
@@ -715,6 +724,7 @@ class FixtureLoader
         }
 
         $this->loadDocumentRows();
+        $this->loadShareRows();
 
         app(PermissionRegistrar::class)->forgetCachedPermissions();
     }
@@ -819,6 +829,46 @@ class FixtureLoader
                 $document->delete();
             }
         }
+    }
+
+    /**
+     * Loads the `shares` rows from the canonical 007 fixtures (T-08).
+     * Idempotent: shares are matched by (document_id, version_id), so a
+     * re-load never duplicates them. The canonical fixture is an expired
+     * link — its plaintext token is exposed via expiredShareToken() so
+     * tests can prove expired links render the identical 404.
+     */
+    private function loadShareRows(): void
+    {
+        foreach ($this->list('shares') as $share) {
+            /** @var array<string, mixed> $share */
+            $document = Document::query()
+                ->where('title', (string) $share['document'])
+                ->firstOrFail();
+
+            $token = Str::random(48);
+
+            $row = DocumentShare::firstOrCreate(
+                [
+                    'document_id' => $document->getKey(),
+                    'version_id' => $document->current_version_id,
+                ],
+                [
+                    'token_hash' => hash('sha256', $token),
+                    'expires_at' => now()->addDays((int) $share['expires_in_days']),
+                    'created_by' => $this->ids['doc-user:g.grant@sterling.example'],
+                ]
+            );
+
+            if ($row->wasRecentlyCreated) {
+                $this->expiredShareToken = $token;
+            }
+        }
+    }
+
+    public function expiredShareToken(): ?string
+    {
+        return $this->expiredShareToken;
     }
 
     /**

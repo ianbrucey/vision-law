@@ -14,6 +14,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  *
  * @property CarbonInterface $expires_at
  * @property CarbonInterface|null $revoked_at
+ * @property CarbonInterface|null $password_locked_until
+ * @property int $failed_password_attempts
  */
 class DocumentShare extends Model
 {
@@ -30,6 +32,8 @@ class DocumentShare extends Model
         'password_hash',
         'allow_download',
         'revoked_at',
+        'failed_password_attempts',
+        'password_locked_until',
         'created_by',
     ];
 
@@ -41,6 +45,7 @@ class DocumentShare extends Model
         return [
             'expires_at' => 'datetime',
             'revoked_at' => 'datetime',
+            'password_locked_until' => 'datetime',
             'allow_download' => 'boolean',
         ];
     }
@@ -76,5 +81,17 @@ class DocumentShare extends Model
     public function isUsable(): bool
     {
         return $this->revoked_at === null && $this->expires_at->isFuture();
+    }
+
+    /**
+     * 5 wrong passwords lock the link for 15 minutes (007 T-08, DOC-25).
+     * A locked link still resolves (its token is valid) and surfaces 429
+     * share_locked_out — only expired/revoked/unknown tokens share the
+     * identical 404.
+     */
+    public function isLockedOut(): bool
+    {
+        return $this->password_locked_until !== null
+            && $this->password_locked_until->isFuture();
     }
 }

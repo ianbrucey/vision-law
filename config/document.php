@@ -25,6 +25,11 @@ return [
     // Quarantined bytes are never served back by DocumentStore::get().
     'quarantine_prefix' => env('DOCUMENT_QUARANTINE_PREFIX', 'quarantine'),
 
+    // Prefix (relative to the disk root) where disposition-archive
+    // (007 T-09) moves blob bytes. Cold bytes stay retrievable through
+    // the store but previews are disabled for archived documents.
+    'cold_prefix' => env('DOCUMENT_COLD_PREFIX', 'cold'),
+
     // Staging area for chunked-upload chunks (007-D05); T-02 owns the
     // session lifecycle, T-01 lays the config.
     'staging_prefix' => env('DOCUMENT_STAGING_PREFIX', 'staging'),
@@ -101,6 +106,26 @@ return [
 
     'libreoffice' => [
         'binary' => env('LIBREOFFICE_BINARY', 'soffice'),
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Sharing: grants, links, export (007 T-08, DOC-24/25/26)
+    |--------------------------------------------------------------------------
+    */
+
+    'sharing' => [
+        // External links: default/max expiry (days).
+        'link_expiry_default_days' => (int) env('DOCUMENT_SHARE_EXPIRY_DEFAULT_DAYS', 7),
+        'link_expiry_max_days' => (int) env('DOCUMENT_SHARE_EXPIRY_MAX_DAYS', 30),
+        // Minimum link password length (matches the app password policy).
+        'link_password_min_length' => 12,
+        // Wrong-password lockout: attempts → lockout minutes.
+        'link_lockout_attempts' => 5,
+        'link_lockout_minutes' => 15,
+        // Export packages.
+        'export_password_min_length' => 12,
+        'export_max_documents' => 200,
     ],
 
 ];
