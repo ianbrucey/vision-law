@@ -1,6 +1,6 @@
 # 008 — Passkey authentication (WebAuthn) — Strategic brief
 
-**Status:** DRAFT — awaiting Ian Bruce approval (drafted 2026-10-08 at Ian's request to pull passkeys forward from the ROADMAP "Deferred from v1" list)
+**Status:** APPROVED by Ian Bruce, 2026-10-08 (brief approved as drafted; council resolves O-02/O-03/O-04 per the brief's framing before Plan)
 **Author:** Lotus (orchestrator)
 **Date:** 2026-10-08
 
