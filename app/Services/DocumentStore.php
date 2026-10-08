@@ -52,4 +52,17 @@ interface DocumentStore
      * flag the row. Quarantined bytes are never served by get().
      */
     public function quarantine(DocumentBlob $blob): void;
+
+    /**
+     * Move the blob's bytes to the cold-storage (archive) prefix and
+     * flag the row (007 T-10; the physical move lived in
+     * RetentionService::archiveBlob before the freeze). Archived bytes
+     * remain retrievable through get(); preview is disabled for
+     * archived blobs at the controller layer.
+     *
+     * Idempotent: an already-archived blob is a no-op.
+     *
+     * @throws DocumentStoreException when the move fails.
+     */
+    public function archive(DocumentBlob $blob): void;
 }

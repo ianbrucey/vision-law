@@ -101,7 +101,7 @@
                             <form method="POST" action="{{ route('documents.grants.destroy', [$matter, $document, $grant]) }}" onsubmit="return confirm('Remove this grant?');">
                                 @csrf
                                 @method('DELETE')
-                                <x-ui.button variant="danger" size="sm" type="submit">Remove</x-ui.button>
+                                <x-ui.button variant="danger" size="sm" type="submit" class="min-h-[44px]">Remove</x-ui.button>
                             </form>
                         </li>
                     @endforeach
@@ -143,7 +143,7 @@
                                 <th class="py-2 pr-4 font-bold">Version</th>
                                 <th class="py-2 pr-4 font-bold">Protection</th>
                                 <th class="py-2 pr-4 font-bold">Download</th>
-                                <th class="py-2 font-bold"><span class="sr-only">Actions</span></th>
+                                <th class="py-2 font-bold relative"><span class="sr-only">Actions</span></th>
                             </tr>
                         </thead>
                         <tbody class="divide-y divide-vl-line">
@@ -167,7 +167,7 @@
                                             <form method="POST" action="{{ route('documents.links.destroy', [$matter, $document, $link]) }}" onsubmit="return confirm('Revoke this link immediately?');">
                                                 @csrf
                                                 @method('DELETE')
-                                                <x-ui.button variant="danger" size="sm" type="submit">Revoke</x-ui.button>
+                                                <x-ui.button variant="danger" size="sm" type="submit" class="min-h-[44px]">Revoke</x-ui.button>
                                             </form>
                                         @endif
                                     </td>

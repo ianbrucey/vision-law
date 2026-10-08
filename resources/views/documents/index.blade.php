@@ -22,8 +22,8 @@
             @if ($canManage)
                 <x-ui.button variant="secondary" :href="route('documents.trash', $matter)">Trash</x-ui.button>
             @endif
-            @if ($canEdit && \Illuminate\Support\Facades\Route::has('documents.upload'))
-                <x-ui.button variant="primary" :href="route('documents.upload', $matter)">Add documents</x-ui.button>
+            @if ($canEdit && \Illuminate\Support\Facades\Route::has('documents.upload.form'))
+                <x-ui.button variant="primary" :href="route('documents.upload.form', $matter)">Add documents</x-ui.button>
             @endif
         </x-slot>
     </x-ui.page-header>
@@ -268,17 +268,17 @@
                                 <td class="whitespace-nowrap text-vl-mut">{{ fmtDate($doc->updated_at) }}</td>
                                 <td class="whitespace-nowrap">
                                     @if (\Illuminate\Support\Facades\Route::has('documents.preview'))
-                                        <x-ui.button size="sm" :href="route('documents.preview', ['matter' => $matter->getKey(), 'document' => $doc->getKey()])">Preview</x-ui.button>
+                                        <x-ui.button size="sm" class="min-h-[44px]" :href="route('documents.preview', ['matter' => $matter->getKey(), 'document' => $doc->getKey()])">Preview</x-ui.button>
                                     @endif
                                     @if (\Illuminate\Support\Facades\Route::has('documents.versions.index'))
-                                        <x-ui.button size="sm" :href="route('documents.versions.index', ['matter' => $matter->getKey(), 'document' => $doc->getKey()])">Versions</x-ui.button>
+                                        <x-ui.button size="sm" class="min-h-[44px]" :href="route('documents.versions.index', ['matter' => $matter->getKey(), 'document' => $doc->getKey()])">Versions</x-ui.button>
                                     @endif
                                     @if ($canManage)
                                         <form method="POST" action="{{ route('documents.destroy', ['matter' => $matter->getKey(), 'document' => $doc->getKey()]) }}"
                                               class="inline" onsubmit="return confirm('Move this document to trash?')">
                                             @csrf
                                             @method('DELETE')
-                                            <x-ui.button size="sm" variant="danger" type="submit">Trash</x-ui.button>
+                                            <x-ui.button size="sm" class="min-h-[44px]" variant="danger" type="submit">Trash</x-ui.button>
                                         </form>
                                     @endif
                                 </td>

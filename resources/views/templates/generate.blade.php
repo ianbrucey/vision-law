@@ -30,7 +30,7 @@
                 @php
                     $fname = "fields[{$field['name']}]";
                     $fvalue = old("fields.{$field['name']}", $prefilled[$field['name']] ?? null);
-                    $flabel = $field['label'];
+                    $flabel = $field['label'] ?? ucwords(str_replace('_', ' ', (string) ($field['name'] ?? 'field')));
                     $ftype = $field['type'] ?? 'text';
                     $freq = $field['required'] ?? false;
                     $fhelp = in_array($ftype, ['matter_field', 'party'], true) ? 'Pre-filled from the matter record.' : null;

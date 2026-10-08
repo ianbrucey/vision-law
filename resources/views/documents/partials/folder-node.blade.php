@@ -36,14 +36,14 @@
                     <x-ui.select name="parent_id" label="Parent folder" :options="$parentOptions"
                                  :value="(string) ($folder->parent_id ?? '')" class="mb-0!" />
                     <div class="flex gap-2">
-                        <x-ui.button type="submit" size="sm">Save</x-ui.button>
+                        <x-ui.button type="submit" size="sm" class="min-h-[44px]">Save</x-ui.button>
                     </div>
                 </form>
                 <form method="POST" action="{{ route('folders.destroy', ['matter' => $matter->getKey(), 'folder' => $folder->getKey()]) }}"
                       class="mt-2" onsubmit="return confirm('Delete this folder? Only empty folders can be deleted.')">
                     @csrf
                     @method('DELETE')
-                    <x-ui.button type="submit" variant="danger" size="sm">Delete folder</x-ui.button>
+                    <x-ui.button type="submit" variant="danger" size="sm" class="min-h-[44px]">Delete folder</x-ui.button>
                 </form>
             </details>
         </div>

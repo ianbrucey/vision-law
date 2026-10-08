@@ -112,6 +112,13 @@ class VisionUiTest extends TestCase
             if (str_starts_with($relative, 'components/ui/')) {
                 return false;
             }
+            // Spec 007 T-10 exemption (docs/UI_Standards.md): the preview
+            // toolbar's page-number and find inputs are viewer widgets, not
+            // form fields. Only these two ids are exempt.
+            if ($relative === 'documents/preview.blade.php'
+                && preg_match('/id="pv-(page-input|find)"/', $line)) {
+                return false;
+            }
             if (preg_match('/<select[\s>]/i', $line) || preg_match('/<textarea[\s>]/i', $line)) {
                 return true;
             }

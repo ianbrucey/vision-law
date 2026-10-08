@@ -13,6 +13,7 @@ use App\Http\Controllers\Auth\TwoFactorChallengeController;
 use App\Http\Controllers\Auth\TwoFactorQrCodeImageController;
 use App\Http\Controllers\Auth\TwoFactorSettingsController;
 use App\Http\Controllers\CommentController;
+use App\Http\Controllers\DocumentActivityController;
 use App\Http\Controllers\DocumentController;
 use App\Http\Controllers\DocumentEditorController;
 use App\Http\Controllers\DocumentHoldController;
@@ -435,6 +436,12 @@ Route::middleware(['auth:'.config('fortify.guard')])->group(function (): void {
 // create content); chunk-session routes additionally require session
 // ownership (enforced in DocumentUploadController: 403 + audit otherwise).
 Route::middleware(['auth:'.config('fortify.guard')])->group(function (): void {
+    // 007 T-10: the upload form (05-ui.md §02, mockup §02) — registered
+    // here, ahead of documents.show, so the literal /upload wins over
+    // the {document} placeholder.
+    Route::get('/matters/{matter}/documents/upload', [DocumentUploadController::class, 'create'])
+        ->middleware('matter.access:edit')
+        ->name('documents.upload.form');
     Route::post('/matters/{matter}/documents/upload', [DocumentUploadController::class, 'store'])
         ->middleware('matter.access:edit')
         ->name('documents.upload');
@@ -593,6 +600,32 @@ Route::middleware(['auth:'.config('fortify.guard')])->group(function (): void {
         ->name('matters.hold.store');
 });
 
+// ── Spec 007 T-07: versioning — history, rollback, diff ──
+// Immutable content versioning (DOC-18/19/20/21, 007-D06): history view,
+// "upload new version" for uploaded binaries, rollback-as-new-version,
+// and structured text diffs. Every route carries RequireMatterAccess
+// BEFORE any data access; the authorized matter is read from request
+// attributes, never re-resolved.
+//
+// Restore carries matter.access:view at the middleware so the controller
+// can audit the specific document.version.restore.denied denial event;
+// the :edit gate is enforced inside DocumentVersionController::restore.
+Route::middleware(['auth:'.config('fortify.guard')])->group(function (): void {
+    Route::get('/matters/{matter}/documents/{document}/versions', [DocumentVersionController::class, 'index'])
+        ->middleware('matter.access:view')
+        ->name('documents.versions.index');
+    Route::post('/matters/{matter}/documents/{document}/versions', [DocumentVersionController::class, 'store'])
+        ->middleware('matter.access:edit')
+        ->name('documents.versions.store');
+    Route::post('/matters/{matter}/documents/{document}/versions/{version}/restore', [DocumentVersionController::class, 'restore'])
+        ->middleware('matter.access:view')
+        ->name('documents.versions.restore');
+    Route::get('/matters/{matter}/documents/{document}/versions/{a}/diff/{b}', [DocumentVersionController::class, 'diff'])
+        ->middleware('matter.access:view')
+        ->where(['a' => '[0-9]+', 'b' => '[0-9]+'])
+        ->name('documents.versions.diff');
+});
+
 // ── Spec 007 T-08: sharing — grants, links, export ──
 // Internal document grants (viewer/commenter/editor; effective permission
 // = max(matter role, grant) resolved at read time by DocumentAccess),
@@ -625,30 +658,22 @@ Route::middleware(['auth:'.config('fortify.guard')])->group(function (): void {
         ->name('documents.export');
 });
 
-require __DIR__.'/share.php';
-
-// ── Spec 007 T-07: versioning — history, rollback, diff ──
-// Immutable content versioning (DOC-18/19/20/21, 007-D06): history view,
-// "upload new version" for uploaded binaries, rollback-as-new-version,
-// and structured text diffs. Every route carries RequireMatterAccess
-// BEFORE any data access; the authorized matter is read from request
-// attributes, never re-resolved.
+// ── Spec 007 T-10: audit trail — activity tab + CSV export ──
+// Per-document Activity tab and matter-level document-activity CSV
+// (C-14): read models over audit_events (006-D04, no new table).
+// matter.access:view at the middleware; DocumentAccess :view on the
+// document inside the controller (T-08) — permission-denied actors get
+// nothing, never partial rows.
 //
-// Restore carries matter.access:view at the middleware so the controller
-// can audit the specific document.version.restore.denied denial event;
-// the :edit gate is enforced inside DocumentVersionController::restore.
+// The static activity/export route registers BEFORE the
+// {document}/activity placeholder route so the literal segment wins.
 Route::middleware(['auth:'.config('fortify.guard')])->group(function (): void {
-    Route::get('/matters/{matter}/documents/{document}/versions', [DocumentVersionController::class, 'index'])
+    Route::get('/matters/{matter}/documents/activity/export', [DocumentActivityController::class, 'export'])
         ->middleware('matter.access:view')
-        ->name('documents.versions.index');
-    Route::post('/matters/{matter}/documents/{document}/versions', [DocumentVersionController::class, 'store'])
-        ->middleware('matter.access:edit')
-        ->name('documents.versions.store');
-    Route::post('/matters/{matter}/documents/{document}/versions/{version}/restore', [DocumentVersionController::class, 'restore'])
+        ->name('documents.activity.export');
+    Route::get('/matters/{matter}/documents/{document}/activity', [DocumentActivityController::class, 'index'])
         ->middleware('matter.access:view')
-        ->name('documents.versions.restore');
-    Route::get('/matters/{matter}/documents/{document}/versions/{a}/diff/{b}', [DocumentVersionController::class, 'diff'])
-        ->middleware('matter.access:view')
-        ->where(['a' => '[0-9]+', 'b' => '[0-9]+'])
-        ->name('documents.versions.diff');
+        ->name('documents.activity');
 });
+
+require __DIR__.'/share.php';

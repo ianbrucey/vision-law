@@ -6,10 +6,11 @@ use App\Exceptions\AccessDeniedException;
 use App\Models\Document;
 use App\Models\DocumentBlob;
 use App\Models\DocumentVersion;
+use App\Models\LegalHold;
 use App\Models\Matter;
 use App\Models\User;
-use App\Services\AccessControl;
 use App\Services\AuditLogger;
+use App\Services\DocumentAccess;
 use App\Services\DocumentSignedUrl;
 use App\Services\DocumentStore;
 use App\Services\OfficePreviewService;
@@ -59,7 +60,34 @@ class DocumentPreviewController extends Controller
             abort(404);
         }
 
+        // 007 T-10: document-level authorization (T-08's DocumentAccess)
+        // at the HTTP layer — effective permission = max(matter role,
+        // document grant), re-read fresh on every request so revocation
+        // takes effect immediately. Denials audit document.access.denied:
+        // 404 when the actor must not learn the document exists, 403
+        // when it is visible but the permission is insufficient.
+        try {
+            DocumentAccess::authorize($actor, 'view', $doc);
+        } catch (AccessDeniedException $e) {
+            $this->auditDenied($actor, $matterModel, $doc, null, 'forbidden');
+            abort(response()->json(['code' => 'forbidden'], $e->httpStatus));
+        }
+
         $this->denyIfQuarantined($doc, $actor, $matterModel, 'document.access.denied');
+
+        // 007 T-10: active legal holds surface visibly on the preview
+        // page (T-09 exposed matters.holds.index; the banner integrates
+        // it here). Document-level holds plus matter-level holds that
+        // also block this document's destruction.
+        $holds = LegalHold::query()
+            ->active()
+            ->where('matter_id', $matterModel->getKey())
+            ->where(fn ($query) => $query
+                ->where('document_id', $doc->getKey())
+                ->orWhereNull('document_id'))
+            ->with('creator:id,name')
+            ->orderBy('created_at')
+            ->get();
 
         $version = $doc->currentVersion;
         if (! $version instanceof DocumentVersion) {
@@ -99,6 +127,11 @@ class DocumentPreviewController extends Controller
                 'initialPage' => max(1, $request->integer('page', 1)),
                 'highlight' => mb_substr($request->string('highlight')->toString(), 0, 200),
             ],
+            'holds' => $holds,
+            // The Share tab is only reachable for :manage actors (T-08
+            // grants/links require matter :manage; DocumentAccess caps
+            // grants below manage, so this is exactly the share audience).
+            'canShare' => DocumentAccess::can($actor, 'manage', $doc),
         ]);
     }
 
@@ -212,10 +245,13 @@ class DocumentPreviewController extends Controller
         }
 
         // Permission re-checked from scratch on EVERY request (revocation
-        // kills outstanding URLs). Any denial → 403: the presenter held a
-        // valid signature, so the document is known to them.
+        // kills outstanding URLs) through T-08's DocumentAccess — the HTTP
+        // layer enforces the same effective-permission rule as the service
+        // layer (007 T-10; phase exit criterion "permission-denied users get
+        // nothing"). Any denial → 403: the presenter held a valid signature,
+        // so the document is known to them.
         try {
-            AccessControl::authorize($actor, 'view', $matterModel);
+            DocumentAccess::authorize($actor, 'view', $doc);
         } catch (AccessDeniedException) {
             $this->auditDenied($actor, $matterModel, $doc, null, 'forbidden');
             abort(response()->json(['code' => 'forbidden'], 403));
@@ -246,6 +282,12 @@ class DocumentPreviewController extends Controller
     {
         $blob = $version->blob;
         if (! $blob instanceof DocumentBlob) {
+            return ['mode' => 'unavailable', 'blob' => null, 'mime' => null];
+        }
+
+        // 007 T-10: archived blobs are cold storage — preview disabled
+        // (graceful "preview unavailable" state, contract §Documents).
+        if ($blob->archived) {
             return ['mode' => 'unavailable', 'blob' => null, 'mime' => null];
         }
 

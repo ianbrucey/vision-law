@@ -14,7 +14,6 @@ use App\Models\User;
 use Carbon\CarbonInterface;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Storage;
 
 /**
  * Retention policies, flagging, and the disposition queue (007 T-09,
@@ -711,8 +710,11 @@ class RetentionService
             foreach ($document->versions()->with('blob')->cursor() as $version) {
                 $blob = $version->blob;
 
+                // 007 T-10: the physical move lives in
+                // DocumentStore::archive() (LocalDocumentStore) — the
+                // store abstraction owns every byte move (007-D01).
                 if ($blob instanceof DocumentBlob) {
-                    self::archiveBlob($blob);
+                    app(DocumentStore::class)->archive($blob);
                 }
             }
 
@@ -765,45 +767,6 @@ class RetentionService
             ])->save();
 
             self::auditDispositionDecided($actor, $entry->refresh(), 'executed');
-        });
-    }
-
-    /**
-     * Move one blob's bytes to the cold-storage prefix and flag the row.
-     * Preview is disabled for archived blobs (the document status flips
-     * to 'archived'); bytes remain retrievable through the store.
-     *
-     * The physical move lives here — not in LocalDocumentStore — because
-     * T-03 owns that file on this branch; it moves into
-     * DocumentStore::archive() at the T-10 freeze.
-     *
-     * @throws RetentionException 500 archive_failed
-     */
-    protected static function archiveBlob(DocumentBlob $blob): void
-    {
-        $blob = $blob->fresh() ?? $blob;
-
-        if ($blob->archived) {
-            return;
-        }
-
-        $sha = (string) $blob->sha256;
-        $coldPath = trim((string) config('document.cold_prefix', 'cold'), '/')
-            .'/'.substr($sha, 0, 2).'/'.substr($sha, 2, 2).'/'.$sha;
-
-        $disk = Storage::disk((string) config('document.disk', 'documents'));
-
-        DB::transaction(function () use ($blob, $disk, $coldPath): void {
-            if (! $disk->move((string) $blob->storage_path, $coldPath)) {
-                throw new RetentionException(500, 'archive_failed', [
-                    'blob_id' => (string) $blob->getKey(),
-                ]);
-            }
-
-            $blob->forceFill([
-                'storage_path' => $coldPath,
-                'archived' => true,
-            ])->save();
         });
     }
 

@@ -134,6 +134,38 @@ class LocalDocumentStore implements DocumentStore
     }
 
     /**
+     * Move one blob's bytes to the cold-storage prefix and flag the row
+     * (007 T-10 — moved here from RetentionService::archiveBlob at the
+     * freeze; controllers/jobs never touch Storage directly). Idempotent:
+     * an already-archived blob is a no-op. Bytes stay retrievable via
+     * get(); preview is disabled for archived blobs at the controller
+     * layer (DocumentPreviewController::resolvePreviewTarget).
+     */
+    public function archive(DocumentBlob $blob): void
+    {
+        $blob = $blob->fresh() ?? $blob;
+
+        if ($blob->archived) {
+            return;
+        }
+
+        $sha = (string) $blob->sha256;
+        $coldPath = trim((string) config('document.cold_prefix', 'cold'), '/')
+            .'/'.substr($sha, 0, 2).'/'.substr($sha, 2, 2).'/'.$sha;
+
+        DB::transaction(function () use ($blob, $coldPath, $sha) {
+            if (! $this->disk()->move((string) $blob->storage_path, $coldPath)) {
+                throw new DocumentStoreException("Failed to archive blob {$sha}");
+            }
+
+            $blob->forceFill([
+                'storage_path' => $coldPath,
+                'archived' => true,
+            ])->save();
+        });
+    }
+
+    /**
      * MIME is sniffed from the bytes (DOC-01) — never trusted from the
      * client-supplied extension. Container-aware (T-03): OOXML/OLE
      * refinement so Office documents land on their real MIME.

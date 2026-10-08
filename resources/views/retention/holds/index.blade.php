@@ -40,7 +40,7 @@
                         <th>Reason</th>
                         <th>Placed by</th>
                         <th>Placed</th>
-                        <th><span class="sr-only">Actions</span></th>
+                        <th class="relative"><span class="sr-only">Actions</span></th>
                     </tr>
                 </x-slot>
                 <x-slot name="body">

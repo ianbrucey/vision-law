@@ -10,7 +10,8 @@
     Expects: $matter, $document, $version, $previewMode
              (pdf|image|text|unavailable), $fileUrl, $downloadUrl,
              $pageCount, $metadata (extracted metadata array),
-             $initialPage (search deep-link, 007 T-06), $highlight.
+             $initialPage (search deep-link, 007 T-06), $highlight,
+             $holds (active LegalHold rows, 007 T-10), $canShare (bool).
 --}}
 <x-layouts.app title="Preview · {{ $document->title }} · Vision Law">
     <x-ui.page-header
@@ -24,6 +25,24 @@
             <x-ui.button variant="primary" :href="$downloadUrl" download>Download</x-ui.button>
         </x-slot>
     </x-ui.page-header>
+
+    @include('documents.partials.doc-tabs', ['activeTab' => 'preview'])
+
+    {{-- 007 T-10: active legal holds surface visibly (T-09 exposed the
+         data via matters.holds.index; the banner integrates it here). --}}
+    @if (($holds ?? collect())->isNotEmpty())
+        <x-ui.banner tone="warn" title="Legal hold — destruction blocked" class="mt-4">
+            Hard delete, version purge, and archival are blocked while a hold is active.
+            <ul class="mt-1.5 space-y-1">
+                @foreach ($holds as $hold)
+                    <li>
+                        {{ $hold->reason }}
+                        <span class="text-vl-mut">— placed by {{ $hold->creator?->name ?? 'unknown' }}, {{ $hold->created_at->format('M j, Y') }}{{ $hold->document_id ? '' : ' (matter-wide)' }}</span>
+                    </li>
+                @endforeach
+            </ul>
+        </x-ui.banner>
+    @endif
 
     <x-ui.card class="mb-4">
         <h2 class="font-serif text-[19px] text-vl-ink leading-snug break-words">{{ $document->title }}</h2>
@@ -60,7 +79,7 @@
                         aria-label="Find in document">
                     <x-ui.button id="pv-find-next" aria-label="Next match">↓</x-ui.button>
                 </div>
-                <x-ui.button id="pv-thumbs" variant="ghost" aria-pressed="true">Thumbnails</x-ui.button>
+                <x-ui.button id="pv-thumbs" variant="ghost" aria-pressed="true" class="shrink-0">Thumbnails</x-ui.button>
             </div>
             <div id="pv-find-status" class="hidden px-3 py-1.5 text-[13px] text-vl-mut border-b border-vl-line" role="status"></div>
             <div class="flex">

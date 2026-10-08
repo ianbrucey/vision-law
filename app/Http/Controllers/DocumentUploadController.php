@@ -9,8 +9,10 @@ use App\Models\UploadSession;
 use App\Models\User;
 use App\Services\AuditLogger;
 use App\Services\ChunkedUploadService;
+use App\Services\DocumentFolderService;
 use App\Services\DocumentIngestService;
 use App\Services\DocumentUploadException;
+use Illuminate\Contracts\View\View;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\UploadedFile;
@@ -36,6 +38,32 @@ use Illuminate\Support\Str;
  */
 class DocumentUploadController extends Controller
 {
+    /**
+     * Upload form (007 T-10; 05-ui.md §02, mockup §02). The dropzone posts
+     * single-shot uploads (≤100 MiB) to documents.upload and drives the
+     * chunked session protocol (007-D05) for larger files — one flow,
+     * per the mockup. The matter's folder tree feeds the folder picker.
+     */
+    public function create(Request $request): View
+    {
+        $matter = $this->authorizedMatter($request);
+
+        return view('documents.create', [
+            'matter' => $matter,
+            'folders' => DocumentFolderService::tree($matter),
+            'uploadConfig' => [
+                'uploadUrl' => route('documents.upload', [$matter->getKey()]),
+                'initUrl' => route('documents.uploads.init', [$matter->getKey()]),
+                'sessionUrlTemplate' => route('documents.uploads.show', [$matter->getKey(), 'SESSION']),
+                'chunkUrlTemplate' => route('documents.uploads.chunk', [$matter->getKey(), 'SESSION', 'N']),
+                'completeUrlTemplate' => route('documents.uploads.complete', [$matter->getKey(), 'SESSION']),
+                'maxSingleBytes' => (int) config('document.max_single_upload_bytes'),
+                'chunkBytes' => (int) config('document.chunk_size_bytes'),
+                'csrf' => csrf_token(),
+            ],
+        ]);
+    }
+
     /**
      * Single-shot upload (C-01): stream bytes with a running SHA-256,
      * reject >100 MiB with 413 before anything is stored, sniff MIME from

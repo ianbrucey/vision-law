@@ -67,13 +67,13 @@
                                 <td class="whitespace-nowrap">
                                     <form method="POST" action="{{ route('documents.restore', ['matter' => $matter->getKey(), 'document' => $doc->getKey()]) }}" class="inline">
                                         @csrf
-                                        <x-ui.button size="sm" type="submit">Restore</x-ui.button>
+                                        <x-ui.button size="sm" type="submit" class="min-h-[44px]">Restore</x-ui.button>
                                     </form>
                                     <form method="POST" action="{{ route('documents.destroy.permanent', ['matter' => $matter->getKey(), 'document' => $doc->getKey()]) }}"
                                           class="inline" onsubmit="return confirm('Permanently delete this document and all its versions? This cannot be undone.')">
                                         @csrf
                                         @method('DELETE')
-                                        <x-ui.button size="sm" variant="danger" type="submit">Delete permanently</x-ui.button>
+                                        <x-ui.button size="sm" variant="danger" type="submit" class="min-h-[44px]">Delete permanently</x-ui.button>
                                     </form>
                                 </td>
                             </tr>

@@ -69,7 +69,7 @@
         <h2 class="font-bold text-[15px] mb-3">Version history</h2>
         <x-ui.table>
             <x-slot name="head">
-                <tr><th>Version</th><th>Status</th><th>Period</th><th>Disposition</th><th>Updated</th><th><span class="sr-only">Actions</span></th></tr>
+                <tr><th>Version</th><th>Status</th><th>Period</th><th>Disposition</th><th>Updated</th><th class="relative"><span class="sr-only">Actions</span></th></tr>
             </x-slot>
             <x-slot name="body">
             @foreach ($versions as $version)
