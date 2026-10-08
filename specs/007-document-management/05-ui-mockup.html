@@ -1,0 +1,327 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Vision Law — spec 007 mockup · Document management</title>
+<style>
+/* MOBILE-FIRST: base styles are the 390px phone layout. Desktop widens at the bottom. */
+:root{
+  --vl-ink:#1F2A37; --vl-ink-2:#31404F; --vl-brass:#9A6823; --vl-brass-soft:#F6EED9;
+  --vl-paper:#F7F8FA; --vl-card:#FFFFFF; --vl-line:#E3E8EE; --vl-mut:#5B687C;
+  --vl-ok:#2F7D4F; --vl-ok-soft:#E6F2E9; --vl-bad:#B23B3B; --vl-bad-soft:#FBE8E8;
+  --vl-info:#285F8A; --vl-info-soft:#E7EFF6;
+  --r-card:10px; --r-in:8px;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--vl-paper);color:var(--vl-ink);
+  font:16px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
+h1,h2,h3,.serif{font-family:Georgia,"Times New Roman",serif;font-weight:600}
+.mocknav{position:sticky;top:0;z-index:50;background:var(--vl-ink);color:#fff;
+  padding:10px 14px;display:flex;gap:14px;align-items:center;font-size:14px;flex-wrap:wrap}
+.mocknav a{color:#cfe0f4;text-decoration:none;border-bottom:2px solid transparent;padding:6px 2px;min-height:44px;display:inline-flex;align-items:center}
+.mocknav a:hover{border-color:var(--vl-brass)}
+.mocknav .tag{margin-left:auto;font-size:12px;color:#9fb3c8;border:1px solid #3a4a5c;border-radius:999px;padding:2px 10px}
+section.screen{max-width:1120px;margin:0 auto;padding:28px 16px 8px}
+.eyebrow{font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--vl-brass);font-weight:700;margin:0 0 6px}
+.screen h2{font-size:24px;margin:0 0 6px}
+.screen .lede{color:var(--vl-mut);max-width:640px;margin:0 0 16px;font-size:15px}
+.card{background:var(--vl-card);border:1px solid var(--vl-line);border-radius:var(--r-card);
+  padding:16px;margin:0 0 14px}
+.card h3{margin:0 0 10px;font-size:18px}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;border-radius:var(--r-in);
+  padding:12px 18px;font-size:15px;font-weight:600;cursor:pointer;border:1px solid transparent;
+  text-decoration:none;min-height:44px}
+.btn-primary{background:var(--vl-ink);color:#fff;width:100%}
+.btn-secondary{background:#fff;color:var(--vl-ink);border-color:var(--vl-line);width:100%}
+.btn-danger{background:var(--vl-bad);color:#fff}
+.btn-sm{padding:8px 12px;font-size:13px;min-height:44px}
+.field{margin:0 0 14px}
+.field label{display:block;font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--vl-mut);
+  font-weight:700;margin:0 0 6px}
+.field input,.field select{width:100%;padding:12px;font-size:16px;border:1px solid var(--vl-line);
+  border-radius:var(--r-in);background:#fff;color:var(--vl-ink);min-height:44px}
+.field .hint{font-size:13px;color:var(--vl-mut);margin-top:5px}
+.chip{display:inline-flex;align-items:center;font-size:13px;font-weight:600;border-radius:999px;
+  padding:8px 14px;background:#fff;border:1px solid var(--vl-line);color:var(--vl-ink-2);min-height:44px;margin:0 6px 6px 0}
+.chip.on{background:var(--vl-ink);color:#fff;border-color:var(--vl-ink)}
+.st{display:inline-block;font-size:12px;font-weight:700;border-radius:999px;padding:3px 10px;white-space:nowrap}
+.st-ready{background:var(--vl-ok-soft);color:var(--vl-ok)}
+.st-proc{background:var(--vl-brass-soft);color:var(--vl-brass)}
+.st-quar{background:var(--vl-bad-soft);color:var(--vl-bad)}
+.st-hold{background:#EDE7F6;color:#5B3FA0}
+/* doc cards (phone) become table rows on desktop */
+.doc{border:1px solid var(--vl-line);border-radius:var(--r-card);background:#fff;padding:14px;margin:0 0 10px}
+.doc .t{font-weight:700;font-size:16px;margin:0 0 2px}
+.doc .m{font-size:13px;color:var(--vl-mut);margin:0 0 8px}
+.doc .row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.doc .acts{display:flex;gap:8px;margin-top:10px}
+.doc .acts .btn-sm{flex:1}
+/* dropzone */
+.drop{border:2px dashed var(--vl-line);border-radius:var(--r-card);background:#fff;padding:32px 16px;
+  text-align:center;margin:0 0 14px}
+.drop h3{margin:0 0 6px}
+.drop p{color:var(--vl-mut);font-size:14px;margin:0 0 14px}
+.prog{height:10px;background:var(--vl-paper);border-radius:999px;overflow:hidden;margin:10px 0 4px}
+.prog i{display:block;height:100%;background:var(--vl-info);border-radius:999px}
+.upl{border:1px solid var(--vl-line);border-radius:var(--r-card);background:#fff;padding:12px 14px;margin:0 0 10px;font-size:14px}
+.upl .fn{font-weight:600}
+.upl .st-line{font-size:13px;color:var(--vl-mut)}
+/* preview */
+.pv{background:#2b3542;border-radius:var(--r-card);overflow:hidden;margin:0 0 14px}
+.pv .bar{display:flex;gap:4px;align-items:center;padding:8px 10px;background:#1F2A37;color:#fff;flex-wrap:wrap}
+.pv .bar button{background:#31404F;color:#fff;border:none;border-radius:6px;min-width:44px;min-height:44px;font-size:15px;cursor:pointer}
+.pv .bar .pg{font-size:13px;color:#cfe0f4;margin:0 6px}
+.pv .page{background:#fff;margin:12px;border-radius:4px;padding:28px 24px;min-height:220px;font-family:Georgia,serif;font-size:14px;line-height:1.7}
+.pv .page .cap{text-align:center;font-variant:small-caps;letter-spacing:.06em;font-size:12px;color:#555;margin-bottom:12px}
+/* version timeline */
+.ver{display:flex;gap:12px;padding:12px 0;border-bottom:1px solid var(--vl-line)}
+.ver:last-child{border-bottom:none}
+.ver .n{flex:0 0 44px;height:44px;border-radius:50%;background:var(--vl-paper);border:1px solid var(--vl-line);
+  display:flex;align-items:center;justify-content:center;font-weight:700;font-size:14px}
+.ver.cur .n{background:var(--vl-ink);color:#fff;border-color:var(--vl-ink)}
+.ver .b{flex:1;font-size:14px}
+.ver .b .note{color:var(--vl-mut);font-size:13px}
+.ver .acts{display:flex;gap:6px;margin-top:8px;flex-wrap:wrap}
+/* modal */
+.mback{position:fixed;inset:0;background:rgba(31,42,55,.55);display:flex;align-items:flex-end;justify-content:center;z-index:100}
+.modal{background:#fff;border-radius:14px 14px 0 0;max-width:520px;width:100%;padding:20px;max-height:92vh;overflow:auto}
+.modal h3{margin:0 0 8px;font-size:20px}
+.modal p{color:var(--vl-mut);font-size:14px;margin:0 0 14px}
+.linkrow{display:flex;gap:8px}
+.linkrow input{flex:1;font-family:ui-monospace,Menlo,monospace;font-size:13px;padding:12px;border:1px solid var(--vl-line);border-radius:8px;min-height:44px}
+.note{font-size:13px;color:var(--vl-mut);background:var(--vl-paper);border:1px solid var(--vl-line);
+  border-radius:8px;padding:10px 14px;margin:12px 0 0}
+.banner{border-radius:var(--r-card);padding:12px 16px;margin:0 0 14px;font-size:14px;border:1px solid}
+.banner strong{display:block;margin-bottom:2px}
+.banner.info{background:var(--vl-info-soft);border-color:#c3d6e6}
+.banner.bad{background:var(--vl-bad-soft);border-color:#eec3c3}
+.toolbar{display:flex;gap:8px;margin:0 0 14px;flex-wrap:wrap}
+.toolbar .btn-primary,.toolbar .btn-secondary{width:auto;flex:1}
+.searchbar{display:flex;gap:8px;margin:0 0 10px}
+.searchbar input{flex:1;padding:12px;font-size:16px;border:1px solid var(--vl-line);border-radius:8px;min-height:44px}
+footer{max-width:1120px;margin:32px auto;padding:0 16px 40px;color:var(--vl-mut);font-size:12px}
+/* DESKTOP: widen, two-column where it helps */
+@media(min-width:900px){
+  section.screen{padding:36px 20px 8px}
+  .screen h2{font-size:30px}
+  .btn-primary,.btn-secondary{width:auto}
+  .cols{display:grid;grid-template-columns:260px 1fr;gap:20px;align-items:start}
+  .facets{position:sticky;top:70px}
+  .mback{align-items:center;padding:20px}
+  .modal{border-radius:12px}
+  .doc .acts .btn-sm{flex:0}
+}
+</style>
+</head>
+<body>
+
+<nav class="mocknav" aria-label="Mockup sections">
+  <strong>spec 007 mockup</strong>
+  <a href="#s-list">Documents</a>
+  <a href="#s-upload">Upload</a>
+  <a href="#s-preview">Preview</a>
+  <a href="#s-versions">Versions</a>
+  <a href="#s-share">Share</a>
+  <span class="tag">SYNTHETIC DATA ONLY · phone-first</span>
+</nav>
+
+<!-- ══════════ 1 · DOCUMENT LIST ══════════ -->
+<section class="screen" id="s-list">
+  <p class="eyebrow">01 · Documents · Sterling v. Apex Construction</p>
+  <h2>Documents</h2>
+  <p class="lede">Phone-first: search, filter chips, and cards. On desktop the cards become a table and the chips become a sidebar.</p>
+
+  <div class="searchbar">
+    <input type="search" placeholder="Search title, filename, tags, or content…" aria-label="Search documents">
+  </div>
+  <div role="group" aria-label="Filters">
+    <span class="chip on">All</span><span class="chip">Pleadings</span><span class="chip">Discovery</span>
+    <span class="chip">PDF</span><span class="chip">Needs OCR</span><span class="chip">Flagged</span>
+  </div>
+
+  <div class="cols">
+    <div class="facets card" style="display:none" aria-hidden="true"></div>
+    <div>
+      <div class="doc">
+        <p class="t">Complaint — filed stamp</p>
+        <p class="m">complaint-filed.pdf · 14 pages · v3 · G. Grant · Oct 6, 2026</p>
+        <div class="row"><span class="st st-ready">Ready</span><span class="chip" style="min-height:0;padding:2px 10px">Pleadings</span></div>
+        <div class="acts">
+          <a class="btn btn-secondary btn-sm" href="#s-preview">Preview</a>
+          <a class="btn btn-secondary btn-sm" href="#s-versions">Versions</a>
+        </div>
+      </div>
+      <div class="doc">
+        <p class="t">Deposition outline (scanned)</p>
+        <p class="m">depo-outline-scan.pdf · 22 pages · OCR complete · P. Paralegal</p>
+        <div class="row"><span class="st st-ready">Ready</span><span class="chip" style="min-height:0;padding:2px 10px">Discovery</span></div>
+        <div class="acts">
+          <a class="btn btn-secondary btn-sm" href="#s-preview">Preview</a>
+          <a class="btn btn-secondary btn-sm" href="#s-versions">Versions</a>
+        </div>
+      </div>
+      <div class="doc">
+        <p class="t">Site photos</p>
+        <p class="m">site-photos.tiff · 6 pages · OCR in progress…</p>
+        <div class="row"><span class="st st-proc">Processing</span><span class="chip" style="min-height:0;padding:2px 10px">Discovery</span></div>
+      </div>
+      <div class="doc">
+        <p class="t">Privileged strategy memo</p>
+        <p class="m">strategy-memo.pdf · under legal hold</p>
+        <div class="row"><span class="st st-hold">Legal hold</span></div>
+        <div class="acts">
+          <a class="btn btn-secondary btn-sm" href="#s-preview">Preview</a>
+        </div>
+      </div>
+      <div class="doc">
+        <p class="t">Suspicious attachment</p>
+        <p class="m">invoice.exe.pdf · quarantined by malware scan</p>
+        <div class="row"><span class="st st-quar">Quarantined</span></div>
+      </div>
+      <p class="note">Quarantined documents are never previewable or downloadable. Trash, holds, and restricted documents follow the same card pattern with their status chips.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════ 2 · UPLOAD ══════════ -->
+<section class="screen" id="s-upload">
+  <p class="eyebrow">02 · Upload</p>
+  <h2>Add documents</h2>
+  <p class="lede">One flow for single and chunked uploads — the phone's share sheet and camera land here too.</p>
+
+  <div class="drop">
+    <h3>Drop files here or</h3>
+    <p>PDF, Word, Excel, images up to 100 MB each — larger files upload in resumable chunks automatically.</p>
+    <a class="btn btn-primary" href="#s-upload">Choose files</a>
+  </div>
+
+  <div class="upl">
+    <div class="fn">expert-report.pdf · 84 MB</div>
+    <div class="prog"><i style="width:62%"></i></div>
+    <div class="st-line">Uploading chunk 8 of 13 — resumes automatically if interrupted</div>
+  </div>
+  <div class="upl">
+    <div class="fn">contract-final.pdf · 2 MB</div>
+    <div class="prog"><i style="width:100%"></i></div>
+    <div class="st-line">Scanning for malware… → extracting text… → <strong>Ready</strong></div>
+  </div>
+
+  <div class="banner info">
+    <strong>Every file is scanned before it's available</strong>
+    Infected files go to quarantine and are never previewable. If the scanner is unreachable, uploads wait — nothing is ever silently marked clean.
+  </div>
+</section>
+
+<!-- ══════════ 3 · PREVIEW ══════════ -->
+<section class="screen" id="s-preview">
+  <p class="eyebrow">03 · Preview · Complaint — filed stamp · v3</p>
+  <h2>Preview</h2>
+  <p class="lede">Page navigation, zoom, and find-in-page — all touch-sized. Access re-checked on every page load.</p>
+
+  <div class="pv">
+    <div class="bar" role="toolbar" aria-label="Preview controls">
+      <button aria-label="Previous page">‹</button>
+      <span class="pg">Page 3 of 14</span>
+      <button aria-label="Next page">›</button>
+      <button aria-label="Zoom out">−</button>
+      <button aria-label="Zoom in">+</button>
+      <button aria-label="Find in document" style="margin-left:auto">Find</button>
+    </div>
+    <div class="page">
+      <p class="cap">Superior Court of Fulton County · State of Georgia</p>
+      <p><strong>STERLING MANUFACTURING CO.,</strong><br>Plaintiff,<br>v.<br><strong>APEX CONSTRUCTION, INC.,</strong><br>Defendant.</p>
+      <p style="font-size:12px;color:#555">…page text with <mark>matched search terms highlighted</mark> when opened from search…</p>
+    </div>
+  </div>
+  <div class="toolbar">
+    <a class="btn btn-secondary" href="#s-versions">Versions</a>
+    <a class="btn btn-secondary" href="#s-share">Share</a>
+  </div>
+</section>
+
+<!-- ══════════ 4 · VERSIONS ══════════ -->
+<section class="screen" id="s-versions">
+  <p class="eyebrow">04 · Version history · Complaint — filed stamp</p>
+  <h2>Versions</h2>
+  <p class="lede">Every change is a new immutable version. Rollback creates a new version — history is never rewritten.</p>
+
+  <div class="card">
+    <div class="ver cur">
+      <div class="n">v3</div>
+      <div class="b"><strong>Current</strong> · Oct 6, 2026 · G. Grant
+        <div class="note">Added certificate of service · 214 KB</div>
+        <div class="acts">
+          <button class="btn btn-secondary btn-sm" type="button">Preview</button>
+          <button class="btn btn-secondary btn-sm" type="button">Download</button>
+          <button class="btn btn-secondary btn-sm" type="button">Diff vs v2</button>
+        </div>
+      </div>
+    </div>
+    <div class="ver">
+      <div class="n">v2</div>
+      <div class="b">Oct 2, 2026 · G. Grant
+        <div class="note">Corrected defendant address · 211 KB</div>
+        <div class="acts">
+          <button class="btn btn-secondary btn-sm" type="button">Preview</button>
+          <button class="btn btn-secondary btn-sm" type="button">Download</button>
+          <button class="btn btn-secondary btn-sm" type="button">Restore</button>
+        </div>
+      </div>
+    </div>
+    <div class="ver">
+      <div class="n">v1</div>
+      <div class="b">Sep 28, 2026 · P. Paralegal
+        <div class="note">Initial upload · 209 KB</div>
+        <div class="acts">
+          <button class="btn btn-secondary btn-sm" type="button">Preview</button>
+          <button class="btn btn-secondary btn-sm" type="button">Download</button>
+          <button class="btn btn-secondary btn-sm" type="button">Restore</button>
+        </div>
+      </div>
+    </div>
+  </div>
+  <p class="note">Restoring v1 creates v4 with v1's exact bytes and requires a reason — the audit trail shows the full chain.</p>
+</section>
+
+<!-- ══════════ 5 · SHARE ══════════ -->
+<section class="screen" id="s-share">
+  <p class="eyebrow">05 · Share · Complaint — filed stamp</p>
+  <h2>Share</h2>
+  <p class="lede">Internal grants and external links from one place. Every access is audited.</p>
+
+  <div class="card">
+    <h3>Secure link</h3>
+    <div class="field">
+      <label for="sh-exp">Expires</label>
+      <select id="sh-exp"><option>7 days</option><option>24 hours</option><option>30 days</option></select>
+    </div>
+    <div class="field">
+      <label for="sh-pw">Password <span style="text-transform:none;letter-spacing:0;font-weight:400">(optional)</span></label>
+      <input id="sh-pw" type="password" placeholder="Leave blank for link-only access">
+      <div class="hint">Five wrong attempts lock the link for 15 minutes.</div>
+    </div>
+    <button class="btn btn-primary" type="button">Create link</button>
+    <div class="note">The link is shown once for copy-paste. It opens the pinned version — newer versions don't leak through an old link.</div>
+  </div>
+
+  <div class="card">
+    <h3>People with access</h3>
+    <div class="ver">
+      <div class="n" style="font-size:12px">GG</div>
+      <div class="b"><strong>G. Grant</strong> · matter owner<div class="note">Full access via matter role</div></div>
+    </div>
+    <div class="ver">
+      <div class="n" style="font-size:12px">OC</div>
+      <div class="b"><strong>O. Counsel</strong> · outside counsel<div class="note">Viewer on this document · expires Oct 20</div></div>
+    </div>
+  </div>
+</section>
+
+<footer>
+  Vision Law · spec 007 mockup · synthetic data only · no real client information ·
+  Designed phone-first (390px); verified at desktop (1440px). All touch targets ≥ 44px; no horizontal page scroll.
+</footer>
+
+</body>
+</html>
