@@ -47,6 +47,15 @@ return [
             'report' => false,
         ],
 
+        'documents' => [
+            'driver' => 'local',
+            // Blob bytes for the DocumentStore (007, 007-D01). Outside the
+            // web root; paths never leave LocalDocumentStore.
+            'root' => env('DOCUMENT_STORAGE_PATH', storage_path('app/documents')),
+            'throw' => true,
+            'report' => false,
+        ],
+
         's3' => [
             'driver' => 's3',
             'key' => env('AWS_ACCESS_KEY_ID'),

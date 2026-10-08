@@ -2,6 +2,7 @@
 
 namespace Tests\Helpers;
 
+use App\Models\DocumentFolder;
 use App\Models\Invitation;
 use App\Models\Matter;
 use App\Models\MatterComment;
@@ -15,6 +16,7 @@ use App\Models\Team;
 use App\Models\User;
 use Carbon\CarbonInterface;
 use Database\Seeders\PermissionMatrixSeeder;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Laravel\Fortify\RecoveryCode;
 use PragmaRX\Google2FA\Google2FA;
@@ -563,5 +565,165 @@ class FixtureLoader
     public function adversarialCaseIds(): array
     {
         return array_column($this->list('adversarial_cases'), 'id');
+    }
+
+    /**
+     * Loads specs/007-document-management/04-fixtures.json — the SINGLE
+     * canonical fixture definition for document management (007 T-01).
+     * Self-contained and idempotent: orgs/users/matters overlap with the
+     * 001/006 fixtures and are found via firstOrCreate, never duplicated.
+     *
+     * T-01 loads orgs, users, matters, folders, retention policies, and
+     * templates. Document rows are deferred to T-02 (they need the upload
+     * pipeline: bytes → blob → version), shares to T-08, and matter grants
+     * are left to the 006 loader's domain.
+     */
+    public static function loadDocumentFixtures(): self
+    {
+        $loader = new self(base_path('specs/007-document-management/04-fixtures.json'));
+        $loader->runDocumentFixtures();
+
+        return $loader;
+    }
+
+    private function runDocumentFixtures(): void
+    {
+        foreach ($this->list('organizations') as $org) {
+            $model = Organization::firstOrCreate(
+                ['slug' => $org['slug']],
+                ['name' => $org['name']]
+            );
+
+            PermissionMatrixSeeder::seedFor($model);
+
+            $this->ids['doc-org:'.$org['slug']] = (string) $model->getKey();
+        }
+
+        $guard = (string) config('auth.defaults.guard', 'web');
+
+        foreach ($this->list('users') as $user) {
+            $orgId = $this->ids['doc-org:'.$user['org']];
+
+            $model = User::firstOrCreate(
+                ['org_id' => $orgId, 'email' => $user['email']],
+                [
+                    'name' => $user['name'],
+                    // The 'hashed' cast hashes this on set.
+                    'password' => self::DEFAULT_PASSWORD,
+                ]
+            );
+
+            if ($model->email_verified_at === null) {
+                $model->forceFill(['email_verified_at' => now()])->save();
+            }
+
+            $role = Role::where('org_id', $orgId)
+                ->where('name', $user['roles'][0])
+                ->where('guard_name', $guard)
+                ->firstOrFail();
+
+            $model->assignRole($role);
+
+            $this->ids['doc-user:'.$user['email']] = (string) $model->getKey();
+        }
+
+        foreach ($this->list('matters') as $matter) {
+            $orgId = $this->ids['doc-org:'.$matter['org']];
+
+            $model = Matter::firstOrCreate(
+                [
+                    'org_id' => $orgId,
+                    'matter_number' => $matter['number'],
+                ],
+                [
+                    'title' => $matter['title'],
+                    'lifecycle_state' => 'INTAKE',
+                    'matter_type' => 'other',
+                    'client_name' => $matter['title'],
+                ]
+            );
+
+            $this->ids['doc-matter:'.$matter['number']] = (string) $model->getKey();
+        }
+
+        foreach ($this->list('folders') as $folder) {
+            $matter = Matter::findOrFail($this->ids['doc-matter:'.$folder['matter']]);
+
+            DocumentFolder::firstOrCreate(
+                [
+                    'org_id' => $matter->org_id,
+                    'matter_id' => $matter->getKey(),
+                    'name' => $folder['name'],
+                ]
+            );
+        }
+
+        foreach ($this->list('retention_policies') as $policy) {
+            $orgId = $this->ids['doc-org:'.$policy['org']];
+
+            $exists = DB::table('retention_policies')
+                ->where('org_id', $orgId)
+                ->where('name', $policy['name'])
+                ->exists();
+
+            if (! $exists) {
+                DB::table('retention_policies')->insert([
+                    'id' => (string) Str::uuid(),
+                    'org_id' => $orgId,
+                    'name' => $policy['name'],
+                    'category' => $policy['category'],
+                    // Value comes from our own canonical fixture file.
+                    'retention_period' => DB::raw("INTERVAL '".$policy['retention_period']."'"),
+                    'trigger' => $policy['trigger'],
+                    'disposition' => $policy['disposition'],
+                    'legal_basis' => 'Fixture policy — synthetic data.',
+                    'version' => 1,
+                    'status' => $policy['status'],
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ]);
+            }
+        }
+
+        foreach ($this->list('templates') as $template) {
+            $orgId = $this->ids['doc-org:'.$template['org']];
+
+            $exists = DB::table('document_templates')
+                ->where('org_id', $orgId)
+                ->where('name', $template['name'])
+                ->exists();
+
+            if (! $exists) {
+                DB::table('document_templates')->insert([
+                    'id' => (string) Str::uuid(),
+                    'org_id' => $orgId,
+                    'name' => $template['name'],
+                    'body_html' => '<p>Fixture template — synthetic.</p>',
+                    'field_definitions' => json_encode($template['fields'] ?? [], JSON_THROW_ON_ERROR),
+                    'version' => 1,
+                    'status' => $template['status'],
+                    'created_by' => $this->ids['doc-user:g.grant@sterling.example'],
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ]);
+            }
+        }
+
+        app(PermissionRegistrar::class)->forgetCachedPermissions();
+    }
+
+    public function docOrg(string $slug): Organization
+    {
+        return Organization::findOrFail($this->id('doc-org:'.$slug));
+    }
+
+    public function docUser(string $email): User
+    {
+        return User::findOrFail($this->id('doc-user:'.$email));
+    }
+
+    public function docMatter(string $number): Matter
+    {
+        return Matter::findOrFail($this->id('doc-matter:'.$number));
     }
 }
