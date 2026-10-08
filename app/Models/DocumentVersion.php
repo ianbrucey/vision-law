@@ -42,6 +42,7 @@ class DocumentVersion extends Model
         'restored_from_version_id',
         'processing_status',
         'page_count',
+        'original_filename',
         'created_by',
     ];
 

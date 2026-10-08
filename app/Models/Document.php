@@ -57,6 +57,8 @@ class Document extends Model
         'current_version_id',
         'status',
         'metadata_status',
+        'metadata',
+        'needs_ocr',
         'retention_flagged_at',
         'created_by',
         'template_id',
@@ -83,6 +85,8 @@ class Document extends Model
             // text[] column: Laravel's 'array' cast writes JSON, which
             // Postgres rejects — the custom cast speaks array literals.
             'tags' => PostgresTextArray::class,
+            'metadata' => 'array',
+            'needs_ocr' => 'boolean',
             'retention_flagged_at' => 'datetime',
             'draft_updated_at' => 'datetime',
         ];

@@ -15,6 +15,7 @@ use App\Http\Controllers\CommentController;
 use App\Http\Controllers\DocumentController;
 use App\Http\Controllers\DocumentEditorController;
 use App\Http\Controllers\DocumentLogController;
+use App\Http\Controllers\DocumentPreviewController;
 use App\Http\Controllers\DocumentUploadController;
 use App\Http\Controllers\FolderController;
 use App\Http\Controllers\InvitationController;
@@ -434,6 +435,23 @@ Route::middleware(['auth:'.config('fortify.guard')])->group(function (): void {
     Route::delete('/matters/{matter}/documents/uploads/{session}', [DocumentUploadController::class, 'cancel'])
         ->middleware('matter.access:edit')
         ->name('documents.uploads.cancel');
+});
+
+// ── Spec 007 T-03: metadata, previews, download ──
+// Preview page + signed-URL byte serving + exact-bytes download
+// (DOC-04/05/06/07/08). The page route carries matter.access:view; the
+// byte routes (preview/file, download) are authorized by HMAC-signed
+// URLs (15-min, scoped to the user) with permission re-checked on every
+// request — including range requests — so revoked access kills
+// outstanding URLs. Quarantined documents → 403 'quarantined'.
+Route::middleware(['auth:'.config('fortify.guard')])->group(function (): void {
+    Route::get('/matters/{matter}/documents/{document}/preview', [DocumentPreviewController::class, 'show'])
+        ->middleware('matter.access:view')
+        ->name('documents.preview');
+    Route::get('/matters/{matter}/documents/{document}/preview/file', [DocumentPreviewController::class, 'file'])
+        ->name('documents.preview.file');
+    Route::get('/matters/{matter}/documents/{document}/download', [DocumentPreviewController::class, 'download'])
+        ->name('documents.download');
 });
 
 // ── Spec 007 T-05: folders, filing, trash, document list ──

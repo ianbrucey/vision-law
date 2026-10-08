@@ -31,6 +31,8 @@ class DocumentIngestService
     public function __construct(
         private readonly DocumentStore $store,
         private readonly MalwareScanner $scanner,
+        private readonly MetadataExtractor $extractor,
+        private readonly MimeSniffer $sniffer,
     ) {}
 
     /**
@@ -75,6 +77,13 @@ class DocumentIngestService
             $documentStatus = 'processing';
         }
 
+        // T-03 (DOC-04): technical metadata extraction. Never throws;
+        // failure yields metadata_status 'partial' and the document
+        // stays usable. Runs before the version insert because
+        // document_versions is DB-immutable (007-D06): page_count must
+        // be final at insert time.
+        $extraction = $this->extractor->extractBytes($bytes, $mime);
+
         $document = DB::transaction(function () use (
             $matter,
             $actor,
@@ -86,6 +95,7 @@ class DocumentIngestService
             $versionStatus,
             $documentStatus,
             $scan,
+            $extraction,
         ): Document {
             $document = Document::create([
                 'org_id' => $matter->org_id,
@@ -96,6 +106,9 @@ class DocumentIngestService
                 'tags' => $meta['tags'] ?? [],
                 'kind' => $kind,
                 'status' => $documentStatus,
+                'metadata_status' => $extraction->status,
+                'metadata' => $extraction->toArray(),
+                'needs_ocr' => $extraction->needsOcr,
                 'created_by' => $actor->getKey(),
             ]);
 
@@ -103,6 +116,8 @@ class DocumentIngestService
                 'version_number' => 1,
                 'blob_id' => $blob->getKey(),
                 'processing_status' => $versionStatus,
+                'page_count' => $extraction->pageCount,
+                'original_filename' => $meta['filename'] ?? null,
                 'created_by' => $actor->getKey(),
             ]);
 
@@ -141,6 +156,111 @@ class DocumentIngestService
         });
 
         return $document->fresh() ?? $document;
+    }
+
+    /**
+     * "Upload new version" entry point (007 T-07, DOC-19/C-07): run the
+     * full ingest pipeline (MIME sniff, allowlist, ClamAV scan, metadata
+     * extraction) and append version N+1 through DocumentVersioningService.
+     * Byte-identical uploads are a no-op (no new version); infected bytes
+     * quarantine like v1 ingest.
+     *
+     * The versioning service is resolved via the container (rather than
+     * constructor injection) so this method stays a clean, self-contained
+     * addition.
+     *
+     * @param  array{change_note?: ?string, filename?: ?string}  $meta
+     *
+     * @throws DocumentUploadException
+     */
+    public function ingestNewVersion(
+        Document $document,
+        Matter $matter,
+        User $actor,
+        string $bytes,
+        array $meta = [],
+    ): VersionIngestOutcome {
+        $mime = $this->sniffMime($bytes);
+
+        if (! $this->mimeAllowed($mime)) {
+            throw new DocumentUploadException(
+                'mime_not_allowed',
+                422,
+                "MIME type {$mime} is not accepted for upload."
+            );
+        }
+
+        $sha256 = hash('sha256', $bytes);
+
+        $current = $document->currentVersion()->first();
+        $currentSha = $current?->blob()->first()?->sha256;
+
+        if ($current !== null && $currentSha !== null && hash_equals($currentSha, $sha256)) {
+            // Byte-identical upload → no-op with notice (DOC-18/C-10): no
+            // new version, no audit row, no pipeline work.
+            return VersionIngestOutcome::duplicate($document, $current);
+        }
+
+        $scan = $this->scanner->scanBytes($bytes);
+
+        $versioning = app(DocumentVersioningService::class);
+
+        if ($scan->status === ScanStatus::INFECTED) {
+            $version = $versioning->createVersion($document, $actor, $bytes, [
+                'change_note' => $meta['change_note'] ?? null,
+                'processing_status' => 'failed',
+                'original_filename' => $meta['filename'] ?? null,
+                'mime' => $mime,
+            ], $matter);
+
+            $blob = $version->blob()->firstOrFail();
+            $this->store->quarantine($blob);
+            $document->update(['status' => 'quarantined']);
+
+            AuditLogger::log('document.quarantined', $actor, [
+                'actor_id' => (string) $actor->getKey(),
+                'document_id' => (string) $document->getKey(),
+                'version_id' => (string) $version->getKey(),
+                'size' => strlen($bytes),
+                'mime' => $mime,
+                'signature' => $scan->signature,
+            ], $matter);
+
+            $this->notifyQuarantine($matter, $actor, $document, $scan->signature);
+
+            return VersionIngestOutcome::quarantined($document->fresh() ?? $document, $version);
+        }
+
+        // T-03 (DOC-04): technical metadata extraction. Never throws;
+        // failure yields metadata_status 'partial' and the document stays
+        // usable. Runs before the version insert because
+        // document_versions is DB-immutable (007-D06).
+        $extraction = $this->extractor->extractBytes($bytes, $mime);
+
+        $version = $versioning->createVersion($document, $actor, $bytes, [
+            'change_note' => $meta['change_note'] ?? null,
+            'processing_status' => $scan->status === ScanStatus::UNAVAILABLE ? 'scanning' : 'ready',
+            'page_count' => $extraction->pageCount,
+            'original_filename' => $meta['filename'] ?? null,
+            'mime' => $mime,
+        ], $matter);
+
+        if ($version->processing_status === 'scanning') {
+            $document->update(['status' => 'processing']);
+        }
+
+        if ($scan->status === ScanStatus::CLEAN) {
+            AuditLogger::log('document.scanned', $actor, [
+                'actor_id' => (string) $actor->getKey(),
+                'document_id' => (string) $document->getKey(),
+                'version_id' => (string) $version->getKey(),
+                'size' => strlen($bytes),
+                'mime' => $mime,
+                'verdict' => 'clean',
+            ], $matter);
+        }
+
+        return VersionIngestOutcome::created($document->fresh() ?? $document, $version);
     }
 
     /**
@@ -198,10 +318,10 @@ class DocumentIngestService
 
     private function sniffMime(string $bytes): string
     {
-        $finfo = new \finfo(FILEINFO_MIME_TYPE);
-        $mime = $finfo->buffer($bytes);
-
-        return $mime === false ? 'application/octet-stream' : $mime;
+        // Container-aware sniffing (T-03): plain finfo reports OOXML as
+        // application/zip and legacy Office as x-ole-storage, neither of
+        // which is on the allowlist. The client extension is never used.
+        return $this->sniffer->sniff($bytes);
     }
 
     private function mimeAllowed(string $mime): bool

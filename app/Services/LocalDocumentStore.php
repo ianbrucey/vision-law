@@ -22,6 +22,10 @@ use Psr\Http\Message\StreamInterface;
  */
 class LocalDocumentStore implements DocumentStore
 {
+    public function __construct(
+        private readonly MimeSniffer $sniffer,
+    ) {}
+
     public function put(string $contents, array $meta = []): DocumentBlob
     {
         $sha256 = hash('sha256', $contents);
@@ -131,14 +135,12 @@ class LocalDocumentStore implements DocumentStore
 
     /**
      * MIME is sniffed from the bytes (DOC-01) — never trusted from the
-     * client-supplied extension.
+     * client-supplied extension. Container-aware (T-03): OOXML/OLE
+     * refinement so Office documents land on their real MIME.
      */
     private function sniffMime(string $contents): string
     {
-        $finfo = new \finfo(FILEINFO_MIME_TYPE);
-        $mime = $finfo->buffer($contents);
-
-        return $mime === false ? 'application/octet-stream' : $mime;
+        return $this->sniffer->sniff($contents);
     }
 
     /**
