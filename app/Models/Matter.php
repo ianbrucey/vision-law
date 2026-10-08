@@ -2,7 +2,9 @@
 
 namespace App\Models;
 
+use App\Services\AccessControl;
 use Carbon\CarbonInterface;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -94,6 +96,56 @@ class Matter extends Model
     protected static function booted(): void
     {
         //
+    }
+
+    /**
+     * "My Matters" scoping (03-contract.md; C-08, C-10): the org's matters
+     * the actor may see — every org matter for org_admin, otherwise only
+     * matters with a valid (unexpired, recognized-role) direct or team
+     * grant. Applied BEFORE pagination so ungranted matters are excluded
+     * entirely, never merely hidden on later pages.
+     *
+     * Mirrors the T-02 index scoping in MatterController@index (kept as-is;
+     * this scope is the reusable form for search and future callers).
+     *
+     * @param  Builder<$this>  $query
+     * @return Builder<$this>
+     */
+    public function scopeAccessibleBy(Builder $query, User $actor): Builder
+    {
+        $query->where('matters.org_id', $actor->org_id);
+
+        if ($actor->hasRole('org_admin')) {
+            return $query;
+        }
+
+        $actorId = $actor->getKey();
+        $knownRoles = array_keys(AccessControl::ROLE_RANK);
+
+        return $query->where(function ($scope) use ($actorId, $knownRoles): void {
+            $scope->whereExists(function ($exists) use ($actorId, $knownRoles): void {
+                $exists->selectRaw('1')
+                    ->from('matter_grants')
+                    ->whereColumn('matter_grants.matter_id', 'matters.id')
+                    ->where('matter_grants.user_id', $actorId)
+                    ->whereIn('matter_grants.role', $knownRoles)
+                    ->where(function ($valid): void {
+                        $valid->whereNull('matter_grants.expires_at')
+                            ->orWhere('matter_grants.expires_at', '>', now());
+                    });
+            })->orWhereExists(function ($exists) use ($actorId, $knownRoles): void {
+                $exists->selectRaw('1')
+                    ->from('matter_grants')
+                    ->join('team_user', 'team_user.team_id', '=', 'matter_grants.team_id')
+                    ->whereColumn('matter_grants.matter_id', 'matters.id')
+                    ->where('team_user.user_id', $actorId)
+                    ->whereIn('matter_grants.role', $knownRoles)
+                    ->where(function ($valid): void {
+                        $valid->whereNull('matter_grants.expires_at')
+                            ->orWhere('matter_grants.expires_at', '>', now());
+                    });
+            });
+        });
     }
 
     /**

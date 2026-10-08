@@ -32,13 +32,24 @@ class AccessControl
     /**
      * Matter role hierarchy, least → most permissive (03-contract.md).
      *
+     * 006-D11 reconciles the contract's assignment roles with the legacy
+     * T-02 names: 'owner' is the contract name for 'matter_owner' (same
+     * rank), and 'outside_counsel' sits between viewer and editor so
+     * Ticket 6 can pin :comment at outside_counsel (view+comment, no edit)
+     * without changing any T-02 authorization. Only the relative order
+     * matters — roleSatisfies() compares by name lookup.
+     *
      * @var array<string, int>
      */
     public const ROLE_RANK = [
         'viewer' => 1,
-        'editor' => 2,
-        'matter_admin' => 3,
-        'matter_owner' => 4,
+        'outside_counsel' => 2,
+        'editor' => 3,
+        'matter_admin' => 4,
+        'matter_owner' => 5,
+        // Contract alias of matter_owner (03-contract.md Requests &
+        // validation; 04-fixtures.json already stores this name).
+        'owner' => 5,
     ];
 
     /**

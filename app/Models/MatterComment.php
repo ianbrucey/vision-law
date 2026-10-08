@@ -38,6 +38,15 @@ class MatterComment extends Model
     protected $touches = ['matter'];
 
     /**
+     * Microsecond precision (006-D15): the MAT-16 unread comparison
+     * (comment created_at vs last_read_at) needs sub-second timestamps;
+     * the default 'Y-m-d H:i:s' format would truncate them on write.
+     *
+     * @var string
+     */
+    protected $dateFormat = 'Y-m-d H:i:s.u';
+
+    /**
      * @return array<string, string>
      */
     protected function casts(): array

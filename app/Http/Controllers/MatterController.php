@@ -231,6 +231,50 @@ class MatterController extends Controller
     }
 
     /**
+     * Permission-scoped matter search (spec 006 T-04; MAT-15, C-10).
+     *
+     * Trigram similarity across title / matter_number / client_name / party
+     * names, plus structured filters AND-combined. Permission scoping
+     * (Matter::accessibleBy) applies BEFORE pagination — ungranted matters
+     * are excluded entirely.
+     */
+    public function search(Request $request): JsonResponse
+    {
+        $actor = $this->actor($request);
+
+        /** @var array{q?: string|null, state?: string|null, type?: string|null, assignee?: string|null, client?: string|null, updated_since?: string|null} $validated */
+        $validated = $request->validate([
+            'q' => ['nullable', 'string', 'max:500'],
+            'state' => ['nullable', 'string', Rule::in(Matter::LIFECYCLE_STATES)],
+            'type' => ['nullable', 'string', Rule::in(Matter::MATTER_TYPES)],
+            'assignee' => ['nullable', 'uuid'],
+            'client' => ['nullable', 'string', 'max:255'],
+            'updated_since' => ['nullable', 'date'],
+        ]);
+
+        $page = MatterService::searchMatters($actor, $validated['q'] ?? null, [
+            'state' => $validated['state'] ?? null,
+            'type' => $validated['type'] ?? null,
+            'assignee' => $validated['assignee'] ?? null,
+            'client' => $validated['client'] ?? null,
+            'updated_since' => $validated['updated_since'] ?? null,
+        ]);
+
+        return response()->json([
+            'data' => $page->getCollection()
+                ->map(fn (Matter $matter): array => $this->resource($matter))
+                ->values()
+                ->all(),
+            'meta' => [
+                'current_page' => $page->currentPage(),
+                'per_page' => $page->perPage(),
+                'total' => $page->total(),
+                'last_page' => $page->lastPage(),
+            ],
+        ]);
+    }
+
+    /**
      * 006-D03: attorney, org_admin, paralegal only. Denials are audited as
      * matter.access.denied (contract §Error catalog).
      *

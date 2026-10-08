@@ -4,15 +4,20 @@ use App\Http\Controllers\Admin\AuditEventController as AdminAuditEventController
 use App\Http\Controllers\Admin\InvitationController as AdminInvitationController;
 use App\Http\Controllers\Admin\TeamController as AdminTeamController;
 use App\Http\Controllers\Admin\UserController as AdminUserController;
+use App\Http\Controllers\AssignmentController;
 use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\Auth\PasswordResetLinkController;
 use App\Http\Controllers\Auth\RegisteredUserController;
 use App\Http\Controllers\Auth\TwoFactorChallengeController;
 use App\Http\Controllers\Auth\TwoFactorQrCodeImageController;
 use App\Http\Controllers\Auth\TwoFactorSettingsController;
+use App\Http\Controllers\CommentController;
+use App\Http\Controllers\DocumentLogController;
 use App\Http\Controllers\InvitationController;
+use App\Http\Controllers\LinkController;
 use App\Http\Controllers\MatterController;
 use App\Http\Controllers\MatterGrantController;
+use App\Http\Controllers\PartyController;
 use App\Http\Controllers\SessionController;
 use App\Http\Middleware\RequireOrgAdmin;
 use Illuminate\Pagination\LengthAwarePaginator;
@@ -229,6 +234,71 @@ Route::middleware(['auth:'.config('fortify.guard')])->group(function (): void {
     Route::get('/matters/{matter}/summary', [MatterController::class, 'summary'])
         ->middleware('matter.access:view')
         ->name('matters.summary');
+});
+
+// === 006 matter routes — Tickets 3/4 ===
+// Spec 006 T-03/T-04 own this section: parties, comments, links, document
+// log, assignments, search, timeline reads. Appended AFTER T-02's
+// `// === 006 matter routes ===` section — do not scatter 006 routes
+// elsewhere.
+//
+// Action levels: the contract pins :comment/:edit/:manage, which Ticket 6
+// adds to AccessControl. Until then: :update (editor+) stands in for :edit
+// and :grant (matter_admin+, ≈ manage per the contract) stands in for
+// :manage — EXCEPT comments (006-D13): those routes carry :view at the
+// middleware and enforce the contract in CommentController, because a
+// viewer must still edit their own comment within 24h and outside_counsel
+// (ranked between viewer and editor per 006-D11) may comment — both
+// impossible under a pure :update gate.
+//
+// Search lives at GET /search/matters (006-D12): /matters/{matter} is
+// registered earlier in this file and would swallow /matters/search.
+Route::middleware(['auth:'.config('fortify.guard')])->group(function (): void {
+    Route::get('/search/matters', [MatterController::class, 'search'])->name('search.matters');
+
+    Route::post('/matters/{matter}/parties', [PartyController::class, 'store'])
+        ->middleware('matter.access:update')
+        ->name('matters.parties.store');
+    Route::delete('/matters/{matter}/parties/{party}', [PartyController::class, 'destroy'])
+        ->middleware('matter.access:update')
+        ->name('matters.parties.destroy');
+
+    Route::post('/matters/{matter}/comments', [CommentController::class, 'store'])
+        ->middleware('matter.access:view')
+        ->name('matters.comments.store');
+    Route::patch('/matters/{matter}/comments/{comment}', [CommentController::class, 'update'])
+        ->middleware('matter.access:view')
+        ->name('matters.comments.update');
+    Route::delete('/matters/{matter}/comments/{comment}', [CommentController::class, 'destroy'])
+        ->middleware('matter.access:view')
+        ->name('matters.comments.destroy');
+    Route::post('/matters/{matter}/timeline/read', [CommentController::class, 'markRead'])
+        ->middleware('matter.access:view')
+        ->name('matters.timeline.read');
+
+    Route::get('/matters/{matter}/links', [LinkController::class, 'index'])
+        ->middleware('matter.access:view')
+        ->name('matters.links.index');
+    Route::post('/matters/{matter}/links', [LinkController::class, 'store'])
+        ->middleware('matter.access:update')
+        ->name('matters.links.store');
+    Route::delete('/matters/{matter}/links/{link}', [LinkController::class, 'destroy'])
+        ->middleware('matter.access:update')
+        ->name('matters.links.destroy');
+
+    Route::post('/matters/{matter}/document-log', [DocumentLogController::class, 'store'])
+        ->middleware('matter.access:update')
+        ->name('matters.document-log.store');
+    Route::patch('/matters/{matter}/document-log/{log}', [DocumentLogController::class, 'update'])
+        ->middleware('matter.access:update')
+        ->name('matters.document-log.update');
+
+    Route::post('/matters/{matter}/assignments', [AssignmentController::class, 'store'])
+        ->middleware('matter.access:grant')
+        ->name('matters.assignments.store');
+    Route::delete('/matters/{matter}/assignments/{grant}', [AssignmentController::class, 'destroy'])
+        ->middleware('matter.access:grant')
+        ->name('matters.assignments.destroy');
 });
 
 // ── Ticket 6: matter grants (backend only, no Blade per 001-D06) ──

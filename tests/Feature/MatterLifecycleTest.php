@@ -142,11 +142,14 @@ class MatterLifecycleTest extends TestCase
         $this->assertNotSoftDeleted('matters', ['id' => $matterId]);
 
         // "My Matters": the viewer (no grants) sees an empty list; the
-        // attorney sees the two matters they created (auto owner grants).
+        // attorney sees the two matters they created (auto owner grants)
+        // PLUS matter-1 and matter-2, where the fixture 'owner' grants are
+        // honored end-to-end since 006-D11 (previously those role strings
+        // were silently ignored by the authorization layer).
         $this->actingAs($viewer);
         $this->getJson('/matters')->assertOk()->assertJsonPath('meta.total', 0);
         $this->actingAs($attorney);
-        $this->getJson('/matters')->assertOk()->assertJsonPath('meta.total', 2);
+        $this->getJson('/matters')->assertOk()->assertJsonPath('meta.total', 4);
 
         // Restore window: deleted > 30d ago → 422 restore_window_expired.
         $this->actingAs($admin);
