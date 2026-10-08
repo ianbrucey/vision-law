@@ -11,15 +11,15 @@ use Illuminate\Http\Exceptions\HttpResponseException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
-use Laravel\Fortify\Events\TwoFactorAuthenticationFailed;
-use Laravel\Fortify\Events\ValidTwoFactorAuthenticationCodeProvided;
-use Laravel\Fortify\Fortify;
 use Laragear\WebAuthn\Assertion\Creator\AssertionCreation;
 use Laragear\WebAuthn\Assertion\Creator\AssertionCreator;
 use Laragear\WebAuthn\Assertion\Validator\AssertionValidation;
 use Laragear\WebAuthn\Assertion\Validator\AssertionValidator;
 use Laragear\WebAuthn\Enums\UserVerification;
 use Laragear\WebAuthn\Exceptions\AssertionException;
+use Laravel\Fortify\Events\TwoFactorAuthenticationFailed;
+use Laravel\Fortify\Events\ValidTwoFactorAuthenticationCodeProvided;
+use Laravel\Fortify\Fortify;
 use Throwable;
 
 /**
