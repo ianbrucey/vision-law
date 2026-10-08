@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Exceptions\MatterStateException;
+use App\Models\AuditEvent;
 use App\Models\Matter;
 use App\Models\User;
 use App\Policies\MatterPolicy;
@@ -23,11 +24,7 @@ use Illuminate\Validation\Rule;
  * authorized matter rides on the request attributes); the controller never
  * re-resolves it.
  *
- * Action-level note: the contract pins :edit/:manage, which Ticket 6 adds
- * to AccessControl. Until then the routes below use the EXISTING levels —
- * :update (editor+) for edit/update and :grant (matter_admin+, ≈ manage per
- * the contract) for destroy/transition/close. Ticket 6 renames these
- * middleware parameters when the new levels land.
+ * Action levels: :view < :comment < :edit < :manage (grant ≈ manage).
  */
 class MatterController extends Controller
 {
@@ -228,6 +225,74 @@ class MatterController extends Controller
         $matter = $this->authorizedMatter($request);
 
         return response()->json(MatterService::statusSummary($matter, $this->actor($request)));
+    }
+
+    /**
+     * Immutable activity feed (spec 006 C-07; 006-D04). A read model over
+     * audit_events — no separate table. Newest-first, filterable by event
+     * type (?type=) and actor (?actor=), paginated. Authorization is :view:
+     * the feed only ever surfaces rows for a matter the actor may already
+     * see, so it cannot widen access. Denial probes (matter.access.denied)
+     * appear here for the same reason — they are this matter's own audit
+     * rows.
+     */
+    public function feed(Request $request): JsonResponse
+    {
+        $matter = $this->authorizedMatter($request);
+
+        /** @var array{type?: string|null, actor?: string|null, per_page?: int|null} $validated */
+        $validated = $request->validate([
+            'type' => ['nullable', 'string', 'max:200'],
+            'actor' => ['nullable', 'uuid'],
+            'per_page' => ['nullable', 'integer', 'min:1', 'max:100'],
+        ]);
+
+        $query = AuditEvent::query()
+            ->with('actor')
+            ->where('org_id', $matter->org_id)
+            ->where('matter_id', $matter->getKey())
+            ->orderByDesc('created_at')
+            ->orderByDesc('id');
+
+        if (($validated['type'] ?? null) !== null) {
+            $query->where('event', $validated['type']);
+        }
+
+        if (($validated['actor'] ?? null) !== null) {
+            $query->where('actor_id', $validated['actor']);
+        }
+
+        $page = $query->paginate($validated['per_page'] ?? 25);
+
+        return response()->json([
+            'data' => $page->getCollection()
+                ->map(fn (AuditEvent $event): array => $this->feedResource($event))
+                ->values()
+                ->all(),
+            'meta' => [
+                'current_page' => $page->currentPage(),
+                'per_page' => $page->perPage(),
+                'total' => $page->total(),
+                'last_page' => $page->lastPage(),
+            ],
+        ]);
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function feedResource(AuditEvent $event): array
+    {
+        return [
+            'id' => (string) $event->getKey(),
+            'event' => $event->event,
+            'actor' => $event->actor_id !== null ? [
+                'id' => (string) $event->actor_id,
+                'name' => $event->actor?->name,
+            ] : null,
+            'created_at' => $event->created_at?->toIso8601String(),
+            'payload' => $event->payload,
+        ];
     }
 
     /**

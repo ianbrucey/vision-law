@@ -54,15 +54,27 @@ class AccessControl
 
     /**
      * Minimum matter role for each authorize() action (03-contract.md
-     * §Domain service methods; §Routes pins :grant at matter_admin+).
+     * §Domain service methods; §Routes).
+     *
+     * The contract's action ladder: view < comment < edit < manage
+     * (03-contract.md §Routes; Ticket 6). 'comment' pins at
+     * outside_counsel per 006-D11 (view+comment, no edit); 'manage'
+     * shares 'grant''s floor (matter_admin) — the contract equates
+     * them (grant ≈ manage).
      *
      * @var array<string, string>
      */
     public const ACTION_MIN_ROLE = [
         'view' => 'viewer',
+        'comment' => 'outside_counsel',
+        'edit' => 'editor',
+        'manage' => 'matter_admin',
+        'admin' => 'matter_owner',
+        // Deprecated T-02 placeholders, kept as aliases (identical floors)
+        // so older route registrations keep working: :update ≡ :edit,
+        // :grant ≡ :manage.
         'update' => 'editor',
         'grant' => 'matter_admin',
-        'admin' => 'matter_owner',
     ];
 
     /**

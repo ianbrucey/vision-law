@@ -2,7 +2,6 @@
 
 namespace App\Http\Controllers;
 
-use App\Exceptions\AccessDeniedException;
 use App\Models\Matter;
 use App\Models\MatterComment;
 use App\Models\User;
@@ -21,14 +20,13 @@ use Illuminate\Support\Str;
  * - DELETE /matters/{matter}/comments/{comment}       → destroy (tombstone; author or manage)
  * - POST   /matters/{matter}/timeline/read            → markRead (read marker; no audit row)
  *
- * Authorization (006-D13): the contract's :comment/:manage levels land in
- * Ticket 6. Until then these routes carry matter.access:view at the
- * middleware and enforce the contract rules here:
- *   store   — effective role ≥ outside_counsel (the :comment floor; a pure
- *             viewer may not comment);
- *   update  — the author within 24h, or effective role ≥ matter_admin
- *             (≈ :manage);
- *   destroy — the author, or effective role ≥ matter_admin (≈ :manage).
+ * Authorization (006-D13, Ticket 6): store carries matter.access:comment
+ * at the middleware (effective role ≥ outside_counsel; a pure viewer may
+ * not comment). update and destroy carry matter.access:view at the
+ * middleware — the contract's "author (24h) or :manage" rule needs the
+ * comment row, so the author-or-manage check stays here:
+ *   update  — the author within 24h, or effective role ≥ :manage;
+ *   destroy — the author, or effective role ≥ :manage.
  * Denials are 403 {code:"forbidden"} — the matter is visible, the role is
  * not sufficient.
  */
@@ -39,7 +37,8 @@ class CommentController extends Controller
         $matter = $this->authorizedMatter($request);
         $actor = $this->actor($request);
 
-        $this->requireCommentLevel($matter, $actor);
+        // :comment is enforced by RequireMatterAccess before this runs
+        // (Ticket 6) — behavior identical to the former in-controller check.
 
         /** @var array{body: string, parent_id?: string|null} $validated */
         $validated = $request->validate([
@@ -110,23 +109,11 @@ class CommentController extends Controller
         ]);
     }
 
-    /**
-     * @throws AccessDeniedException never — aborts 403 directly
-     */
-    private function requireCommentLevel(Matter $matter, User $actor): void
-    {
-        $effective = AccessControl::effectiveMatterRole($actor, $matter);
-
-        if (! AccessControl::roleSatisfies($effective, 'outside_counsel')) {
-            abort(response()->json(['code' => 'forbidden'], 403));
-        }
-    }
-
     private function isManager(Matter $matter, User $actor): bool
     {
         return AccessControl::roleSatisfies(
             AccessControl::effectiveMatterRole($actor, $matter),
-            'matter_admin'
+            AccessControl::ACTION_MIN_ROLE['manage']
         );
     }
 

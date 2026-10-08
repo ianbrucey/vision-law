@@ -200,9 +200,8 @@ Route::middleware(['auth:'.config('fortify.guard'), RequireOrgAdmin::class.':aud
 // scatter 006 routes elsewhere.
 //
 // Auth note: every route requires authentication. Matter-scoped routes use
-// RequireMatterAccess with the EXISTING action levels (Ticket 6 adds
-// :comment/:edit/:manage — until then :update (editor+) and :grant
-// (matter_admin+, ≈ manage per the contract) stand in). POST
+// RequireMatterAccess with the contract action levels (Ticket 6):
+// :view < :comment < :edit < :manage (grant ≈ manage). POST
 // /matters/{matter}/restore resolves soft-deleted rows, which
 // RequireMatterAccess cannot see, so it carries no matter middleware — the
 // controller enforces org_admin + same-org scoping before any data access.
@@ -215,21 +214,21 @@ Route::middleware(['auth:'.config('fortify.guard')])->group(function (): void {
         ->middleware('matter.access:view')
         ->name('matters.show');
     Route::get('/matters/{matter}/edit', [MatterController::class, 'edit'])
-        ->middleware('matter.access:update')
+        ->middleware('matter.access:edit')
         ->name('matters.edit');
     Route::patch('/matters/{matter}', [MatterController::class, 'update'])
-        ->middleware('matter.access:update')
+        ->middleware('matter.access:edit')
         ->name('matters.update');
     Route::delete('/matters/{matter}', [MatterController::class, 'destroy'])
-        ->middleware('matter.access:grant')
+        ->middleware('matter.access:manage')
         ->name('matters.destroy');
     Route::post('/matters/{matter}/restore', [MatterController::class, 'restore'])
         ->name('matters.restore');
     Route::post('/matters/{matter}/transition', [MatterController::class, 'transition'])
-        ->middleware('matter.access:grant')
+        ->middleware('matter.access:manage')
         ->name('matters.transition');
     Route::post('/matters/{matter}/close', [MatterController::class, 'close'])
-        ->middleware('matter.access:grant')
+        ->middleware('matter.access:manage')
         ->name('matters.close');
     Route::get('/matters/{matter}/summary', [MatterController::class, 'summary'])
         ->middleware('matter.access:view')
@@ -242,14 +241,13 @@ Route::middleware(['auth:'.config('fortify.guard')])->group(function (): void {
 // `// === 006 matter routes ===` section — do not scatter 006 routes
 // elsewhere.
 //
-// Action levels: the contract pins :comment/:edit/:manage, which Ticket 6
-// adds to AccessControl. Until then: :update (editor+) stands in for :edit
-// and :grant (matter_admin+, ≈ manage per the contract) stands in for
-// :manage — EXCEPT comments (006-D13): those routes carry :view at the
-// middleware and enforce the contract in CommentController, because a
-// viewer must still edit their own comment within 24h and outside_counsel
-// (ranked between viewer and editor per 006-D11) may comment — both
-// impossible under a pure :update gate.
+// Action levels (Ticket 6): :view < :comment < :edit < :manage
+// (grant ≈ manage). Comment routes: store carries :comment at the
+// middleware (the 006-D13 floor moved out of the controller); update and
+// destroy keep :view at the middleware because the contract's "author
+// (24h) or :manage" rule needs the comment row — a viewer must still edit
+// their own comment within 24h, which a pure middleware gate cannot
+// express — so the author-or-manage check stays in CommentController.
 //
 // Search lives at GET /search/matters (006-D12): /matters/{matter} is
 // registered earlier in this file and would swallow /matters/search.
@@ -257,14 +255,14 @@ Route::middleware(['auth:'.config('fortify.guard')])->group(function (): void {
     Route::get('/search/matters', [MatterController::class, 'search'])->name('search.matters');
 
     Route::post('/matters/{matter}/parties', [PartyController::class, 'store'])
-        ->middleware('matter.access:update')
+        ->middleware('matter.access:edit')
         ->name('matters.parties.store');
     Route::delete('/matters/{matter}/parties/{party}', [PartyController::class, 'destroy'])
-        ->middleware('matter.access:update')
+        ->middleware('matter.access:edit')
         ->name('matters.parties.destroy');
 
     Route::post('/matters/{matter}/comments', [CommentController::class, 'store'])
-        ->middleware('matter.access:view')
+        ->middleware('matter.access:comment')
         ->name('matters.comments.store');
     Route::patch('/matters/{matter}/comments/{comment}', [CommentController::class, 'update'])
         ->middleware('matter.access:view')
@@ -280,24 +278,24 @@ Route::middleware(['auth:'.config('fortify.guard')])->group(function (): void {
         ->middleware('matter.access:view')
         ->name('matters.links.index');
     Route::post('/matters/{matter}/links', [LinkController::class, 'store'])
-        ->middleware('matter.access:update')
+        ->middleware('matter.access:edit')
         ->name('matters.links.store');
     Route::delete('/matters/{matter}/links/{link}', [LinkController::class, 'destroy'])
-        ->middleware('matter.access:update')
+        ->middleware('matter.access:edit')
         ->name('matters.links.destroy');
 
     Route::post('/matters/{matter}/document-log', [DocumentLogController::class, 'store'])
-        ->middleware('matter.access:update')
+        ->middleware('matter.access:edit')
         ->name('matters.document-log.store');
     Route::patch('/matters/{matter}/document-log/{log}', [DocumentLogController::class, 'update'])
-        ->middleware('matter.access:update')
+        ->middleware('matter.access:edit')
         ->name('matters.document-log.update');
 
     Route::post('/matters/{matter}/assignments', [AssignmentController::class, 'store'])
-        ->middleware('matter.access:grant')
+        ->middleware('matter.access:manage')
         ->name('matters.assignments.store');
     Route::delete('/matters/{matter}/assignments/{grant}', [AssignmentController::class, 'destroy'])
-        ->middleware('matter.access:grant')
+        ->middleware('matter.access:manage')
         ->name('matters.assignments.destroy');
 });
 
@@ -349,3 +347,14 @@ Route::get('/_patterns', function () {
         'toastDemos' => $toastDemos,
     ]);
 })->middleware('auth:'.config('fortify.guard'))->name('patterns');
+// === 006 matter routes — Ticket 6 ===
+// Spec 006 T-06 owns this section: the immutable activity feed (C-07;
+// 006-D04 — a read model over audit_events, newest-first, filterable by
+// type/actor, paginated). Authorization is :view — every actor who can see
+// the matter can read its feed; the feed never reveals more than the
+// matter's own audit rows.
+Route::middleware(['auth:'.config('fortify.guard')])->group(function (): void {
+    Route::get('/matters/{matter}/feed', [MatterController::class, 'feed'])
+        ->middleware('matter.access:view')
+        ->name('matters.feed');
+});

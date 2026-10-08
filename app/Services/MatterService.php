@@ -215,7 +215,14 @@ class MatterService
     {
         self::denyIfClosed($matter, $actor, 'matter.delete');
 
-        $isOwner = AccessControl::effectiveMatterRole($actor, $matter) === 'matter_owner';
+        // 006-D11: 'owner' is the contract name for 'matter_owner' (same
+        // rank) — compare by rank, not by stored string, so contract-named
+        // owner grants satisfy the owner check (Ticket 6 matrix caught the
+        // strict comparison denying them).
+        $isOwner = AccessControl::roleSatisfies(
+            AccessControl::effectiveMatterRole($actor, $matter),
+            'matter_owner'
+        );
 
         if (! $actor->hasRole('org_admin') && ! $isOwner) {
             AuditLogger::log('matter.access.denied', $actor, [
