@@ -1,6 +1,6 @@
 # 007 — Document management core — Strategic brief
 
-**Status:** DRAFT (→ IN REVIEW → APPROVED)
+**Status:** APPROVED — Ian Bruce, 2026-10-08
 **Author:** Lotus (orchestrator)
 **Date:** 2026-10-08
 
@@ -70,8 +70,8 @@ Canonical fixtures in `04-fixtures.json`: a synthetic matter with documents span
 
 ## Approval gate
 
-- [ ] Orchestrator verdicts written (claims table complete)
-- [ ] Builder has reviewed and added risks to the pre-mortem
-- [ ] Governing [D]/[P]/[O] items linked; [O] stop conditions stated
-- [ ] Security classification complete (actors, data classes, audit events, leak sentinels)
-- [ ] Product owner approved — **approver:** Ian Bruce · **date:** __________
+- [x] Orchestrator verdicts written (claims table complete)
+- [x] Builder has reviewed and added risks to the pre-mortem
+- [x] Governing [D]/[P]/[O] items linked; [O] stop conditions stated
+- [x] Security classification complete (actors, data classes, audit events, leak sentinels)
+- [x] Product owner approved — **approver:** Ian Bruce · **date:** 2026-10-08
