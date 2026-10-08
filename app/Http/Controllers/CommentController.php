@@ -9,6 +9,7 @@ use App\Services\AccessControl;
 use App\Services\MatterService;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 
@@ -32,7 +33,7 @@ use Illuminate\Support\Str;
  */
 class CommentController extends Controller
 {
-    public function store(Request $request): JsonResponse
+    public function store(Request $request): JsonResponse|RedirectResponse
     {
         $matter = $this->authorizedMatter($request);
         $actor = $this->actor($request);
@@ -48,10 +49,18 @@ class CommentController extends Controller
 
         $comment = MatterService::addComment($matter, $validated, $actor);
 
+        // T-05: the timeline tab's comment form posts here as HTML.
+        if (! $request->wantsJson()) {
+            return redirect()->back()->with('toast', [
+                'tone' => 'ok',
+                'message' => 'Comment posted.',
+            ]);
+        }
+
         return response()->json($this->resource($comment->load('author')), 201);
     }
 
-    public function update(Request $request, string $matter, string $comment): JsonResponse
+    public function update(Request $request, string $matter, string $comment): JsonResponse|RedirectResponse
     {
         $matterModel = $this->authorizedMatter($request);
         $actor = $this->actor($request);
@@ -71,10 +80,18 @@ class CommentController extends Controller
 
         $updated = MatterService::editComment($matterModel, $commentModel, $validated['body'], $actor, $asManager);
 
+        // T-05: the timeline tab's inline comment edit form posts here.
+        if (! $request->wantsJson()) {
+            return redirect()->back()->with('toast', [
+                'tone' => 'ok',
+                'message' => 'Comment updated.',
+            ]);
+        }
+
         return response()->json($this->resource($updated->load('author')));
     }
 
-    public function destroy(Request $request, string $matter, string $comment): JsonResponse
+    public function destroy(Request $request, string $matter, string $comment): JsonResponse|RedirectResponse
     {
         $matterModel = $this->authorizedMatter($request);
         $actor = $this->actor($request);
@@ -88,6 +105,14 @@ class CommentController extends Controller
         }
 
         MatterService::deleteComment($matterModel, $commentModel, $actor);
+
+        // T-05: the timeline tab's comment delete form posts here as HTML.
+        if (! $request->wantsJson()) {
+            return redirect()->back()->with('toast', [
+                'tone' => 'ok',
+                'message' => 'Comment deleted.',
+            ]);
+        }
 
         return response()->json($this->resource($commentModel->load('author')));
     }

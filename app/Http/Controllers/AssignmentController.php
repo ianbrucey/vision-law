@@ -8,6 +8,7 @@ use App\Models\User;
 use App\Services\MatterService;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
@@ -27,7 +28,7 @@ use Illuminate\Validation\Rule;
  */
 class AssignmentController extends Controller
 {
-    public function store(Request $request): JsonResponse
+    public function store(Request $request): JsonResponse|RedirectResponse
     {
         $matter = $this->authorizedMatter($request);
         $actor = $this->actor($request);
@@ -51,10 +52,19 @@ class AssignmentController extends Controller
             $actor
         );
 
+        // T-05: HTML form posts redirect back with a toast; the toast names
+        // the consequence (the grantee), never anything confidential.
+        if (! $request->wantsJson()) {
+            return redirect()->back()->with('toast', [
+                'tone' => 'ok',
+                'message' => "Access granted to {$grant->user?->name}.",
+            ]);
+        }
+
         return response()->json($this->resource($grant->load('user')), 201);
     }
 
-    public function destroy(Request $request, string $matter, string $grant): JsonResponse
+    public function destroy(Request $request, string $matter, string $grant): JsonResponse|RedirectResponse
     {
         $matterModel = $this->authorizedMatter($request);
         $actor = $this->actor($request);
@@ -62,6 +72,15 @@ class AssignmentController extends Controller
         $grantModel = $this->resolveGrant($matterModel, $grant);
 
         MatterService::unassignUser($matterModel, $grantModel, $actor);
+
+        // T-05: the team tab's revoke form posts here as HTML (destructive
+        // pattern: consequence line lives in the modal, toast confirms).
+        if (! $request->wantsJson()) {
+            return redirect()->back()->with('toast', [
+                'tone' => 'ok',
+                'message' => 'Access revoked.',
+            ]);
+        }
 
         return response()->json([
             'id' => (string) $grantModel->getKey(),

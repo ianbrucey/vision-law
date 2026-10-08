@@ -227,7 +227,7 @@ class UiComponentsTest extends TestCase
         $this->assertStringContainsString('Body', Blade::render('<x-ui.banner tone="info">Body</x-ui.banner>'));
         $this->assertStringContainsString('<dl', Blade::render('<x-ui.kv :items="$items" />', ['items' => [['label' => 'L', 'value' => 'V']]]));
         $this->assertStringContainsString('14', Blade::render('<x-ui.stat value="14" label="Open matters" />'));
-        $this->assertStringContainsString('Active', Blade::render('<x-ui.status type="matter" value="active" />'));
+        $this->assertStringContainsString('Active', Blade::render('<x-ui.status type="matter" value="ACTIVE" />'));
     }
 
     public function test_page_header_renders_single_h1_with_slots(): void

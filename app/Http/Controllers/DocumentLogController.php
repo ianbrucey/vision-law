@@ -8,6 +8,7 @@ use App\Models\User;
 use App\Services\MatterService;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
@@ -26,7 +27,7 @@ use Illuminate\Validation\ValidationException;
  */
 class DocumentLogController extends Controller
 {
-    public function store(Request $request): JsonResponse
+    public function store(Request $request): JsonResponse|RedirectResponse
     {
         $matter = $this->authorizedMatter($request);
         $actor = $this->actor($request);
@@ -42,6 +43,16 @@ class DocumentLogController extends Controller
         ]);
 
         $log = MatterService::logDocument($matter, $validated, $actor);
+
+        // T-05: the documents tab's log-item form posts here as HTML.
+        // Append-only: there is deliberately no edit/delete UI for core
+        // fields — corrections are new rows (03-contract.md).
+        if (! $request->wantsJson()) {
+            return redirect()->back()->with('toast', [
+                'tone' => 'ok',
+                'message' => 'Document log entry recorded.',
+            ]);
+        }
 
         return response()->json($this->resource($log), 201);
     }

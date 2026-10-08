@@ -9,6 +9,7 @@ use App\Services\AccessControl;
 use App\Services\MatterService;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
@@ -85,7 +86,7 @@ class LinkController extends Controller
         return response()->json(['data' => $data]);
     }
 
-    public function store(Request $request): JsonResponse
+    public function store(Request $request): JsonResponse|RedirectResponse
     {
         $matter = $this->authorizedMatter($request);
         $actor = $this->actor($request);
@@ -99,10 +100,18 @@ class LinkController extends Controller
 
         $link = MatterService::addLink($matter, $validated, $actor);
 
+        // T-05: the team tab's link form posts here as HTML.
+        if (! $request->wantsJson()) {
+            return redirect()->back()->with('toast', [
+                'tone' => 'ok',
+                'message' => 'Matter link added.',
+            ]);
+        }
+
         return response()->json($this->resource($link, (string) $matter->getKey()), $link->wasRecentlyCreated ? 201 : 200);
     }
 
-    public function destroy(Request $request, string $matter, string $link): JsonResponse
+    public function destroy(Request $request, string $matter, string $link): JsonResponse|RedirectResponse
     {
         $matterModel = $this->authorizedMatter($request);
         $actor = $this->actor($request);
@@ -110,6 +119,14 @@ class LinkController extends Controller
         $linkModel = $this->resolveLink($matterModel, $link);
 
         MatterService::removeLink($matterModel, $linkModel, $actor);
+
+        // T-05: the team tab's unlink form posts here as HTML.
+        if (! $request->wantsJson()) {
+            return redirect()->back()->with('toast', [
+                'tone' => 'ok',
+                'message' => 'Matter link removed.',
+            ]);
+        }
 
         return response()->json(['id' => (string) $linkModel->getKey()]);
     }

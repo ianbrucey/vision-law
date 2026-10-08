@@ -24,12 +24,20 @@ class Status extends Component
      * @var array<string, array<string, array{label: string, tone: string}>>
      */
     public const MAP = [
+        // Spec 006 T-05: the 8 lifecycle states (Matter::LIFECYCLE_STATES,
+        // 03-contract.md §Lifecycle transition table). Tones follow the
+        // approved 05-ui-mockup.html badge palette, mapped onto the five
+        // <x-ui.chip> tones — color is never the only signal, every badge
+        // pairs its tone with a text label.
         'matter' => [
-            'open' => ['label' => 'Open', 'tone' => 'info'],
-            'active' => ['label' => 'Active', 'tone' => 'ok'],
-            'on_hold' => ['label' => 'On hold', 'tone' => 'warn'],
-            'closed' => ['label' => 'Closed', 'tone' => 'neutral'],
-            'archived' => ['label' => 'Archived', 'tone' => 'neutral'],
+            'INTAKE' => ['label' => 'Intake', 'tone' => 'info'],
+            'ACTIVE' => ['label' => 'Active', 'tone' => 'ok'],
+            'DISCOVERY' => ['label' => 'Discovery', 'tone' => 'info'],
+            'PRE_TRIAL' => ['label' => 'Pre-trial', 'tone' => 'warn'],
+            'TRIAL_SETTLEMENT' => ['label' => 'Trial / settlement', 'tone' => 'warn'],
+            'CLOSED' => ['label' => 'Closed', 'tone' => 'neutral'],
+            'RETENTION_HOLD' => ['label' => 'Retention hold', 'tone' => 'warn'],
+            'DISPOSITION' => ['label' => 'Disposition', 'tone' => 'bad'],
         ],
         'document' => [
             'draft' => ['label' => 'Draft', 'tone' => 'warn'],

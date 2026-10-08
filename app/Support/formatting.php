@@ -1,6 +1,7 @@
 <?php
 
 declare(strict_types=1);
+use Carbon\CarbonImmutable;
 
 /*
  * Vision Law formatting helpers — the only door for dates, times, and money
@@ -37,6 +38,26 @@ if (! function_exists('fmtDT')) {
         $date = $value instanceof DateTimeInterface ? $value : new DateTimeImmutable($value);
 
         return $date->format('M j, Y g:i A');
+    }
+}
+
+if (! function_exists('fmtRelative')) {
+    /**
+     * Relative time for display (e.g. "2 hours ago"). 05-ui.md (spec 006):
+     * timestamps render absolute + relative; this is the relative half —
+     * always paired with fmtDate()/fmtDT(), never alone.
+     */
+    function fmtRelative(DateTimeInterface|string|null $value): string
+    {
+        if ($value === null || $value === '') {
+            return '';
+        }
+
+        $date = $value instanceof DateTimeInterface
+            ? CarbonImmutable::instance($value)
+            : CarbonImmutable::parse($value);
+
+        return $date->diffForHumans();
     }
 }
 
