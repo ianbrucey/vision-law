@@ -22,6 +22,12 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
+        // Production serves behind Caddy on loopback (TLS terminates
+        // there). Trust its forwarded scheme/host so generated URLs,
+        // redirects, secure cookies and the WebAuthn origin use https
+        // on the public domain instead of the internal http hop.
+        $middleware->trustProxies(at: ['127.0.0.1']);
+
         // T-06: matter-route authorization (RequireMatterAccess:<action>)
         // runs before any data access on /matters/* routes.
         $middleware->alias([
