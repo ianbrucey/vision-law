@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Http\Middleware\RestrictToTwoFactorSetup;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Testing\TestResponse;
+use PragmaRX\Google2FA\Google2FA;
 use Tests\Helpers\FixtureLoader;
 use Tests\TestCase;
 
@@ -14,9 +15,10 @@ use Tests\TestCase;
  *
  * Fixtures: specs/010-app-home/04-fixtures.json via
  * FixtureLoader::loadHomeFixtures() — the single canonical graph (010-D06).
- * C-02 is BLOCKED (010-CONFLICT-01, decision 010-D03) — its test is
- * delivered skipped-with-reason, verdict NOT GREEN, rather than passing
- * silently or breaking the protected 003/005 assertions.
+ * C-02 was resolved by the product owner (010-D03 resolution, Ian Bruce
+ * 2026-10-15): spec 010 supersedes 003-D02 for the login redirect, the
+ * two pinned assertions in the 003/005 suites were re-pinned under a
+ * recorded exception, and the claim's test runs un-skipped.
  */
 class AppHomeTest extends TestCase
 {
@@ -48,22 +50,38 @@ class AppHomeTest extends TestCase
     /** C-02: login lands on /home; logout still lands on /. */
     public function test_login_redirects_to_home_logout_to_landing(): void
     {
-        $this->markTestSkipped(
-            'C-02 BLOCKED by 010-CONFLICT-01 (02-council.md, 010-D03): the brief orders the login '
-            .'redirect changed to /home AND the 003 tests unchanged and green, but '
-            .'PublicSiteAuthTest::test_login_with_valid_credentials_authenticates and the unmodifiable '
-            .'TwoFactorScreensTest::test_non_admin_without_2fa_logs_in_normally both assert '
-            .'POST /login → /. The assertions below are the brief\'s, ready to enable with the '
-            .'recorded decision.'
-        );
+        // Resolved 2026-10-15 (010-D03 resolution): 010 supersedes 003-D02
+        // for the login redirect; Fortify's redirects.login is '/home'.
 
-        // The brief's assertions (unreachable while C-02 is blocked):
+        // Plain door (no second factor): POST /login lands on /home.
+        $attorney = $this->loader->user('user-home-attorney');
+        $this->post('/login', [
+            'email' => (string) $attorney->email,
+            'password' => FixtureLoader::DEFAULT_PASSWORD,
+        ])->assertRedirect('/home');
+        $this->assertAuthenticatedAs($attorney);
+
+        $this->post(route('logout'))->assertRedirect('/');
+        $this->assertGuest();
+
+        // The full flow for a confirmed-TOTP user (the home admin): the
+        // credential POST goes to the two-factor challenge, and completing
+        // the challenge lands on /home too — TwoFactorLoginResponse reads
+        // the same redirects.login value.
+        $admin = $this->loader->user('user-home-admin');
         $this->post('/login', [
             'email' => 'h.admin@acme.example',
             'password' => FixtureLoader::DEFAULT_PASSWORD,
+        ])->assertRedirect(route('two-factor.login'));
+
+        $secret = decrypt($admin->refresh()->two_factor_secret);
+        $this->post(route('two-factor.login.store'), [
+            'code' => (new Google2FA)->getCurrentOtp($secret),
         ])->assertRedirect('/home');
+        $this->assertAuthenticatedAs($admin);
 
         $this->post(route('logout'))->assertRedirect('/');
+        $this->assertGuest();
     }
 
     /** C-03: dashboard v1 from existing data only. */

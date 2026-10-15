@@ -147,7 +147,7 @@ class PublicSiteAuthTest extends TestCase
             'password' => FixtureLoader::DEFAULT_PASSWORD,
         ]);
 
-        $response->assertRedirect('/');
+        $response->assertRedirect('/home');
         $this->assertAuthenticatedAs($user);
     }
 

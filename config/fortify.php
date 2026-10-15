@@ -137,10 +137,17 @@ return [
     | registrations land on the sign-in page (the verification toast is
     | flashed by the RegisterResponse binding in AppServiceProvider).
     |
+    | Spec 010 supersedes 003-D02 for the login redirect only (010-D03
+    | resolution, decided by Ian Bruce 2026-10-15): the app home has
+    | shipped, so completed logins land on '/home'. This one value governs
+    | both Fortify login responses (LoginResponse and
+    | TwoFactorLoginResponse). Logouts still land on '/', and the
+    | registration redirect is unchanged.
+    |
     */
 
     'redirects' => [
-        'login' => '/',
+        'login' => '/home',
         'logout' => '/',
         'password-confirmation' => null,
         'register' => '/login',
