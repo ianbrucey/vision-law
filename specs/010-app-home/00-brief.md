@@ -1,6 +1,6 @@
 # 010 — App home & authenticated shell — Strategic brief
 
-**Status:** DRAFT — awaiting Ian Bruce approval
+**Status:** APPROVED — Ian Bruce, 2026-10-15
 **Author:** Lotus (orchestrator)
 **Date:** 2026-10-15
 **Origin:** Ian's first real login (2026-10-15). After 2FA enrollment he landed on the public landing page with no navigation into the app and no way to sign out. Verification against the live codebase confirmed the report and found the root cause (see Archaeology seed). This is the "app home" spec that decision 003-D02 explicitly deferred to: *"until the app home ships in its own spec, logins and logouts land on the public landing page."*
