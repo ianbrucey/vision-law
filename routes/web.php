@@ -27,6 +27,7 @@ use App\Http\Controllers\DocumentTextController;
 use App\Http\Controllers\DocumentUploadController;
 use App\Http\Controllers\DocumentVersionController;
 use App\Http\Controllers\FolderController;
+use App\Http\Controllers\HomeController;
 use App\Http\Controllers\InvitationController;
 use App\Http\Controllers\LinkController;
 use App\Http\Controllers\MatterController;
@@ -245,6 +246,19 @@ Route::middleware(['auth:'.config('fortify.guard'), RequireOrgAdmin::class.':aud
             ->middleware('password.confirm')
             ->name('audit-events.export');
     });
+
+// === 010 app home ===
+// Spec 010 T-02: the authenticated app home (dashboard v1). Setup-mode
+// sessions stay confined by RestrictToTwoFactorSetup — `home` is
+// deliberately NOT on its allowlist (C-08). The route is named app.home,
+// NOT home, as defense in depth: Laravel's RedirectIfAuthenticated
+// default resolves to a route named — or pathed — dashboard/home, and
+// the app pins that redirect explicitly in FortifyServiceProvider
+// (010-D10) so adding this route cannot retarget the 003-pinned
+// guest-page redirects.
+Route::middleware(['auth:'.config('fortify.guard')])->group(function (): void {
+    Route::get('/home', [HomeController::class, 'index'])->name('app.home');
+});
 
 // === 006 matter routes ===
 // Spec 006 T-02 owns this section: matter CRUD + lifecycle (index, create,

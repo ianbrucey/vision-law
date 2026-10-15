@@ -17,13 +17,16 @@ use App\Models\Organization;
 use App\Models\Role;
 use App\Models\Team;
 use App\Models\User;
+use App\Services\AuditLogger;
 use App\Services\DocumentIngestService;
 use App\Services\DocumentStore;
 use App\Services\MalwareScanner;
 use Carbon\CarbonInterface;
 use Database\Seeders\PermissionMatrixSeeder;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
+use Laragear\WebAuthn\Models\WebAuthnCredential;
 use Laravel\Fortify\RecoveryCode;
 use PragmaRX\Google2FA\Google2FA;
 use Spatie\Permission\PermissionRegistrar;
@@ -898,5 +901,157 @@ class FixtureLoader
         }
 
         return $seed.str_repeat('z', 512);
+    }
+
+    /**
+     * Loads specs/010-app-home/04-fixtures.json — the SINGLE canonical
+     * fixture definition for the app home (010 T-01). Reuses the 006
+     * runner's organization/user/matter/grant handlers and adds the three
+     * types the home dashboard needs: two_factor (confirmed TOTP for the
+     * security card), passkey (one enabled webauthn credential), and
+     * audit_event (activity rows written through AuditLogger so the hash
+     * chain stays valid; the optional "at" offset is applied by stepping
+     * test-now so ordering is deterministic).
+     */
+    public static function loadHomeFixtures(): self
+    {
+        $loader = new self(base_path('specs/010-app-home/04-fixtures.json'));
+        $loader->runHomeFixtures();
+
+        return $loader;
+    }
+
+    private function runHomeFixtures(): void
+    {
+        foreach ($this->data['fixtures'] ?? [] as $item) {
+            /** @var array<string, mixed> $item */
+            switch ($item['type']) {
+                case 'organization':
+                    $this->loadMatterOrg($item);
+                    break;
+                case 'user':
+                    $this->loadMatterUser($item);
+                    break;
+                case 'two_factor':
+                    $this->applyHomeTwoFactor($item);
+                    break;
+                case 'passkey':
+                    $this->applyHomePasskey($item);
+                    break;
+                case 'matter':
+                    $this->loadMatterMatter($item);
+                    $this->applyHomeMatterTimestamps($item);
+                    break;
+                case 'grant':
+                    $this->loadMatterGrant(
+                        $this->ids[$item['org']],
+                        $this->ids[$item['matter']],
+                        $item
+                    );
+                    break;
+                case 'audit_event':
+                    $this->loadHomeAuditEvent($item);
+                    break;
+                default:
+                    throw new \RuntimeException("Unknown 010 fixture type: {$item['type']}");
+            }
+        }
+
+        $this->flushPendingLinks();
+
+        app(PermissionRegistrar::class)->forgetCachedPermissions();
+    }
+
+    /**
+     * @param  array<string, mixed>  $item
+     */
+    private function applyHomeTwoFactor(array $item): void
+    {
+        $user = $this->user((string) $item['user']);
+
+        if ($user->two_factor_confirmed_at !== null) {
+            return;
+        }
+
+        // Mirrors the 001 loader's fixture MFA enrollment (synthetic
+        // values; Fortify encrypts these columns itself).
+        $user->forceFill([
+            'two_factor_secret' => encrypt((new Google2FA)->generateSecretKey()),
+            'two_factor_recovery_codes' => encrypt(json_encode(
+                array_map(fn () => RecoveryCode::generate(), range(1, 8)),
+                JSON_THROW_ON_ERROR
+            )),
+            'two_factor_confirmed_at' => now(),
+        ])->save();
+    }
+
+    /**
+     * @param  array<string, mixed>  $item
+     */
+    private function applyHomePasskey(array $item): void
+    {
+        $user = $this->user((string) $item['user']);
+
+        if ($user->webAuthnCredentials()->exists()) {
+            return;
+        }
+
+        // The Laragear model is fully guarded — forceFill is the fixture
+        // path (the public_key cast still encrypts on set).
+        $credential = new WebAuthnCredential;
+        $credential->forceFill([
+            'id' => Str::random(43),
+            'user_id' => (string) Str::uuid(),
+            'alias' => (string) ($item['alias'] ?? 'Fixture passkey'),
+            'counter' => 0,
+            'rp_id' => 'vision.justicequest.pro',
+            'origin' => 'https://vision.justicequest.pro',
+            'public_key' => 'fixture-public-key',
+        ]);
+        $user->webAuthnCredentials()->save($credential);
+    }
+
+    /**
+     * @param  array<string, mixed>  $item
+     */
+    private function applyHomeMatterTimestamps(array $item): void
+    {
+        if (! isset($item['updated_at'])) {
+            return;
+        }
+
+        $updatedAt = $this->parseRelativeTime((string) $item['updated_at']);
+
+        $this->matter((string) $item['id'])->forceFill([
+            'created_at' => $updatedAt->copy()->subDays(7),
+            'updated_at' => $updatedAt,
+        ])->save();
+    }
+
+    /**
+     * @param  array<string, mixed>  $item
+     */
+    private function loadHomeAuditEvent(array $item): void
+    {
+        $actor = $this->user((string) $item['actor']);
+        $matter = $this->matter((string) $item['matter']);
+        /** @var array<string, mixed> $payload */
+        $payload = is_array($item['payload'] ?? null) ? $item['payload'] : [];
+
+        if (! isset($item['at'])) {
+            AuditLogger::log((string) $item['event'], $actor, $payload, $matter);
+
+            return;
+        }
+
+        // Step test-now to the fixture offset so AuditLogger stamps the
+        // row at the declared time; always restore real time afterwards.
+        Carbon::setTestNow($this->parseRelativeTime((string) $item['at']));
+
+        try {
+            AuditLogger::log((string) $item['event'], $actor, $payload, $matter);
+        } finally {
+            Carbon::setTestNow();
+        }
     }
 }
