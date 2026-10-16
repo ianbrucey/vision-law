@@ -14,6 +14,7 @@ use App\Http\Responses\RecoveryCodesGeneratedResponse as AppRecoveryCodesGenerat
 use App\Http\Responses\TwoFactorConfirmedResponse as AppTwoFactorConfirmedResponse;
 use App\Listeners\AuthEventSubscriber;
 use App\Listeners\RevokeSessionsOnPasswordReset;
+use App\Services\LoginAttemptService;
 use Illuminate\Auth\Events\PasswordReset;
 use Illuminate\Auth\Events\Registered;
 use Illuminate\Auth\Listeners\SendEmailVerificationNotification;
@@ -33,6 +34,8 @@ use Laravel\Fortify\Fortify;
  * - Custom login pipeline: lockout check → credential validation (with the
  *   email-verification gate and failure counting) → 2FA redirect → login
  *   completion. Replaces Fortify's default pipeline (C-01, C-03).
+ * - Spec 005 addendum (2026-10-15): accounts on the
+ *   TWO_FACTOR_EXEMPT_EMAILS allowlist skip the 2FA redirect step only.
  * - 10 backup codes on 2FA enrollment instead of Fortify's 8 (C-06).
  * - Auth event listeners: verification mail, session revocation on password
  *   reset, audit + brute-force bookkeeping (C-01, C-03, C-04, C-06).
@@ -66,12 +69,37 @@ class FortifyServiceProvider extends ServiceProvider
         Fortify::updateUserPasswordsUsing(UpdateUserPassword::class);
         Fortify::resetUserPasswordsUsing(ResetUserPassword::class);
 
-        Fortify::authenticateThrough(fn (Request $request) => [
-            EnsureLoginNotLockedOut::class,
-            AttemptLogin::class,
-            RedirectIfTwoFactorAuthenticatable::class,
-            CompleteLogin::class,
-        ]);
+        Fortify::authenticateThrough(function (Request $request): array {
+            $pipeline = [
+                EnsureLoginNotLockedOut::class,
+                AttemptLogin::class,
+                RedirectIfTwoFactorAuthenticatable::class,
+                CompleteLogin::class,
+            ];
+
+            // Spec 005 addendum (decided by Ian Bruce, 2026-10-15):
+            // accounts on the TWO_FACTOR_EXEMPT_EMAILS allowlist
+            // (config: fortify.two_factor_exempt_emails) skip the
+            // per-login two-factor challenge. Only the challenge step is
+            // omitted — the lockout guard and credential validation
+            // always run, and the account's 2FA enrollment itself is
+            // untouched. For every non-exempt login the pipeline is
+            // exactly the one above, in the original order.
+            $email = LoginAttemptService::normalizeEmail(
+                (string) $request->input(Fortify::username())
+            );
+
+            $exemptEmails = config('fortify.two_factor_exempt_emails', []);
+
+            if ($email !== '' && is_array($exemptEmails) && in_array($email, $exemptEmails, true)) {
+                $pipeline = array_values(array_filter(
+                    $pipeline,
+                    static fn (string $action): bool => $action !== RedirectIfTwoFactorAuthenticatable::class
+                ));
+            }
+
+            return $pipeline;
+        });
 
         // C-01: verification mail on registration.
         Event::listen(Registered::class, SendEmailVerificationNotification::class);
