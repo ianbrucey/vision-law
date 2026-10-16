@@ -157,6 +157,36 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Two-Factor Login Challenge Exemptions
+    |--------------------------------------------------------------------------
+    |
+    | Spec 005 addendum (decided by Ian Bruce, 2026-10-15): accounts whose
+    | email appears here skip the per-login two-factor challenge. The list
+    | is sourced from the TWO_FACTOR_EXEMPT_EMAILS env var (comma-separated)
+    | so the exemption is granted and revoked by configuration alone — no
+    | code change. An absent or empty env value means no exemptions, and
+    | the login pipeline behaves exactly as it did before this key existed.
+    |
+    | Scope is deliberately narrow: only the challenge step of the login
+    | pipeline is skipped. The account's 2FA enrollment stays in place,
+    | the org-admin enrollment mandate and setup-mode restriction (005)
+    | are untouched, and credential validation plus the brute-force
+    | lockout still run for every login, exempt or not.
+    |
+    | Values are normalized here — trimmed, lowercased, empties dropped —
+    | so the list is canonical even when the config is cached; the login
+    | pipeline compares the submitted username against it
+    | case-insensitively.
+    |
+    */
+
+    'two_factor_exempt_emails' => array_values(array_filter(array_map(
+        static fn (string $email): string => strtolower(trim($email)),
+        explode(',', (string) env('TWO_FACTOR_EXEMPT_EMAILS', ''))
+    ))),
+
+    /*
+    |--------------------------------------------------------------------------
     | Features
     |--------------------------------------------------------------------------
     |
