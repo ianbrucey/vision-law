@@ -244,7 +244,7 @@ class TwoFactorScreensTest extends TestCase
         $this->post('/login', [
             'email' => (string) $attorney->email,
             'password' => FixtureLoader::DEFAULT_PASSWORD,
-        ])->assertRedirect('/');
+        ])->assertRedirect('/home');
 
         $this->assertAuthenticatedAs($attorney);
         $this->assertFalse((bool) session(RestrictToTwoFactorSetup::SESSION_KEY));

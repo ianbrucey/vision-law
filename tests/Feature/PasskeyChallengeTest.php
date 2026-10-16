@@ -124,7 +124,7 @@ class PasskeyChallengeTest extends TestCase
 
         $this->postJson(route('two-factor.passkey.store'), $authenticator->assert($options))
             ->assertOk()
-            ->assertJsonPath('redirect', url('/'));
+            ->assertJsonPath('redirect', url('/home'));
 
         // Same post-login state as the TOTP path: authenticated, login
         // stamped, counters cleared (the next login starts clean).
@@ -161,7 +161,7 @@ class PasskeyChallengeTest extends TestCase
         $this->loginToChallenge($user);
 
         $this->post(route('two-factor.login.store'), ['recovery_code' => $code])
-            ->assertRedirect('/');
+            ->assertRedirect('/home');
         $this->assertAuthenticatedAs($user);
 
         // Single use: the code was consumed.
@@ -266,7 +266,7 @@ class PasskeyChallengeTest extends TestCase
             ->assertSee('6-digit code');
         $this->post(route('two-factor.login.store'), [
             'code' => (new Google2FA)->getCurrentOtp($secret),
-        ])->assertRedirect('/');
+        ])->assertRedirect('/home');
         $this->assertAuthenticatedAs($user);
 
         // Path 2: the passkey completes it too.

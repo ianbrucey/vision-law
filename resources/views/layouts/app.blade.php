@@ -10,6 +10,12 @@
            nav (primary nav links — inline on desktop, drawer on phones),
            org (org switcher), userMenu (user menu),
            footer (optional footer link row).
+
+    Spec 010 (C-05): when a page does not furnish nav / org / userMenu, the
+    layout renders the standard chrome itself — <x-app.nav>, the signed-in
+    user's organization name, and <x-app.user-menu> (top bar + drawer) — so
+    every app page carries working navigation and sign-out by default.
+    Page-provided slots still win.
     Props: title (string, default "Vision Law") — the <title>.
 
     The whole page lives inside one x-data scope: that is what makes Alpine
@@ -36,12 +42,20 @@
             <span class="font-serif text-[17px] tracking-[0.02em] shrink-0">Vision Law</span>
             @isset($org)
                 <span class="text-[13px] text-white/70 hidden min-[821px]:inline">{{ $org }}</span>
+            @else
+                {{-- Spec 010 C-05: default org label — the signed-in user's organization. --}}
+                @auth
+                    <span class="text-[13px] text-white/70 hidden min-[821px]:inline">{{ auth()->user()->organization?->name }}</span>
+                @endauth
             @endisset
             @isset($nav)
                 <nav aria-label="Primary" class="hidden min-[821px]:flex items-center gap-1 ml-2">{{ $nav }}</nav>
+            @else
+                {{-- Spec 010 C-05: default primary nav when the page does not furnish one. --}}
+                <nav aria-label="Primary" class="hidden min-[821px]:flex items-center gap-1 ml-2"><x-app.nav /></nav>
             @endisset
             <div class="ml-auto text-[13px] text-white/80 flex items-center gap-3">
-                @isset($userMenu){{ $userMenu }}@endisset
+                @isset($userMenu){{ $userMenu }}@else<x-app.user-menu />@endisset
             </div>
         </div>
     </header>
@@ -58,7 +72,14 @@
             </div>
             @isset($nav)
                 <nav aria-label="Primary">{{ $nav }}</nav>
+            @else
+                {{-- Spec 010 C-05/C-10: the standard nav collapses into the drawer. --}}
+                <nav aria-label="Primary"><x-app.nav /></nav>
             @endisset
+            @unless (isset($userMenu))
+                {{-- Spec 010 C-05/C-06: drawer user block (name, security, sign out). --}}
+                <x-app.user-menu context="drawer" />
+            @endunless
         </aside>
     </div>
 

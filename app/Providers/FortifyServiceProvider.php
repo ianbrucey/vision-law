@@ -17,6 +17,7 @@ use App\Listeners\RevokeSessionsOnPasswordReset;
 use Illuminate\Auth\Events\PasswordReset;
 use Illuminate\Auth\Events\Registered;
 use Illuminate\Auth\Listeners\SendEmailVerificationNotification;
+use Illuminate\Auth\Middleware\RedirectIfAuthenticated;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\ServiceProvider;
@@ -87,5 +88,14 @@ class FortifyServiceProvider extends ServiceProvider
         // registered in routes/web.php. No auth logic changes -- the POST
         // backend stays Fortify's.
         Fortify::confirmPasswordView('auth.confirm-password');
+
+        // Spec 010 (010-D10): pin where signed-in users are sent when they
+        // hit a guest page (/login, /register). Laravel's
+        // RedirectIfAuthenticated default resolves to a route named — or
+        // pathed — 'dashboard'/'home'; spec 010 adds GET /home, which
+        // would silently retarget that default to /home. The app's
+        // contract (003-D02, reaffirmed by 010-D01) is the public landing:
+        // signed-in users land on '/', whose header is auth-aware (C-07).
+        RedirectIfAuthenticated::redirectUsing(fn (Request $request): string => '/');
     }
 }

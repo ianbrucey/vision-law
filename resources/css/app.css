@@ -204,6 +204,21 @@
         background-color: var(--vl-paper);
     }
 
+    /* Spec 010: the landing header's sign-out (an x-ui.button ghost)
+       restyled for the dark marketing nav (003-D01 surface) — the
+       vl-bar-toggle pattern: a scoped override beats the variant's
+       light-surface colors. */
+    .vl-public-nav .vl-signout,
+    .vl-public-nav .vl-signout:hover {
+        color: var(--vl-dark-text);
+        background-color: transparent;
+        border-color: transparent;
+    }
+
+    .vl-public-nav .vl-signout:hover {
+        color: #fff;
+    }
+
     .vl-card.vl-card-flush {
         padding: 0;
     }
