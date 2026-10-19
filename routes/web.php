@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Admin\AuditEventController as AdminAuditEventController;
 use App\Http\Controllers\Admin\InvitationController as AdminInvitationController;
+use App\Http\Controllers\Admin\ReminderController as AdminReminderController;
 use App\Http\Controllers\Admin\RetentionController as AdminRetentionController;
 use App\Http\Controllers\Admin\TeamController as AdminTeamController;
 use App\Http\Controllers\Admin\UserController as AdminUserController;
@@ -250,6 +251,17 @@ Route::middleware(['auth:'.config('fortify.guard'), RequireOrgAdmin::class.':aud
         Route::get('/audit-events/export', [AdminAuditEventController::class, 'export'])
             ->middleware('password.confirm')
             ->name('audit-events.export');
+    });
+
+// === 009 calendaring — Batch 3b (T-09 reminder ops) ===
+// Org-admin ops view over the delivery ledger + replay of dead /
+// failed rows. Scoped to the admin's org in the controller.
+Route::middleware(['auth:'.config('fortify.guard'), RequireOrgAdmin::class])
+    ->prefix('admin')
+    ->name('admin.')
+    ->group(function (): void {
+        Route::get('/reminders', [AdminReminderController::class, 'index'])->name('reminders.index');
+        Route::post('/reminders/{delivery}/replay', [AdminReminderController::class, 'replay'])->name('reminders.replay');
     });
 
 // === 010 app home ===

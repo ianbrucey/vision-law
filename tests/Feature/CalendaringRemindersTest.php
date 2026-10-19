@@ -11,6 +11,7 @@ use App\Models\ReminderPreference;
 use App\Notifications\ReminderNotification;
 use App\Services\Calendaring\Channels\EmailChannel;
 use App\Services\Calendaring\Channels\ReminderChannel;
+use App\Services\Calendaring\DeliveryService;
 use App\Services\Calendaring\ItemService;
 use App\Services\Calendaring\ReminderPlanner;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -563,5 +564,173 @@ class CalendaringRemindersTest extends TestCase
         $this->assertSame($internal->title, $note->data['item_title'] ?? null);
 
         Carbon::setTestNow();
+    }
+
+    public function test_reminder_pipeline_is_idempotent_under_failure(): void
+    {
+        $attorney = $this->loader->user('user-attorney');
+        $paralegal = $this->loader->user('user-paralegal');
+        $admin = $this->loader->user('user-admin');
+        $soft = $this->loader->calendarItem('item-soft-deadline');
+        $taskA = $this->loader->calendarItem('item-task-a');
+        $taskB = $this->loader->calendarItem('item-task-b');
+
+        // Deterministic preferences: no quiet window, no digest.
+        ReminderPreference::query()->where('user_id', $paralegal->getKey())->update([
+            'quiet_start' => null, 'quiet_end' => null, 'digest_enabled' => false,
+        ]);
+
+        // A channel double keyed by the delivery idempotency key:
+        // it records at most ONE provider send per key and returns
+        // success for an already-seen key without sending again.
+        $makeDouble = fn () => new class implements ReminderChannel
+        {
+            /** @var array<string, bool> */
+            public array $sentKeys = [];
+
+            public int $providerSends = 0;
+
+            public string $behavior = 'succeed';
+
+            public function send(ReminderDelivery $delivery): string
+            {
+                $key = $delivery->idempotency_key;
+                if (isset($this->sentKeys[$key])) {
+                    return 'provider-'.$key;
+                }
+                if ($this->behavior === 'fail') {
+                    throw new \RuntimeException('Provider down');
+                }
+                $this->sentKeys[$key] = true;
+                $this->providerSends++;
+                if ($this->behavior === 'timeout') {
+                    throw new \RuntimeException('Provider timeout after send');
+                }
+
+                return 'provider-'.$key;
+            }
+        };
+
+        $forceDue = function ($item): string {
+            ReminderDelivery::query()->where('item_id', $item->getKey())
+                ->where('status', 'pending')
+                ->update(['scheduled_for' => now()->subMinute()]);
+            $row = ReminderDelivery::query()->where('item_id', $item->getKey())
+                ->where('status', 'pending')->firstOrFail();
+
+            return (string) $row->getKey();
+        };
+
+        // ── (1) Timeout after send ───────────────────────────────
+        ReminderPlanner::setPolicy($soft, [[
+            'offset_minutes' => 0, 'channels' => ['in_app'], 'recipients' => ['assignee'],
+            'criticality' => 'standard', 'label' => 'Timeout leg',
+        ]], $attorney);
+        $timeoutId = $forceDue($soft);
+
+        $double = $makeDouble();
+        $double->behavior = 'timeout';
+        app()->instance('calendaring.channel.in_app', $double);
+
+        Artisan::call('reminders:dispatch');
+        $row = ReminderDelivery::findOrFail($timeoutId);
+        $this->assertSame(1, $double->providerSends, 'provider recorded the send before timing out');
+        $this->assertSame('pending', $row->status);
+        $this->assertSame(1, (int) $row->attempts);
+
+        // Retry (backoff bypassed by making the retry due): the
+        // double returns success for the seen key WITHOUT a second
+        // provider send.
+        ReminderDelivery::query()->whereKey($timeoutId)->update(['next_attempt_at' => now()->subMinute()]);
+        Artisan::call('reminders:dispatch');
+
+        $row = ReminderDelivery::findOrFail($timeoutId);
+        $this->assertSame(1, $double->providerSends, 'exactly one provider send for the key');
+        $this->assertSame('sent', $row->status);
+
+        // ── (2) Worker restart: stale claim is reclaimed ─────────
+        ReminderPlanner::setPolicy($taskA, [[
+            'offset_minutes' => 0, 'channels' => ['in_app'], 'recipients' => ['assignee'],
+            'criticality' => 'standard', 'label' => 'Restart leg',
+        ]], $attorney);
+        $restartId = $forceDue($taskA);
+
+        $double2 = $makeDouble();
+        app()->instance('calendaring.channel.in_app', $double2);
+
+        // Leave the row claimed by a dead worker 15 minutes ago.
+        ReminderDelivery::query()->whereKey($restartId)->update([
+            'status' => 'claimed',
+            'updated_at' => now()->subMinutes(15),
+        ]);
+
+        Artisan::call('reminders:dispatch');
+
+        $row = ReminderDelivery::findOrFail($restartId);
+        $this->assertSame('sent', $row->status, 'stale claim reclaimed and delivered');
+        $this->assertSame(1, $double2->providerSends, 'still exactly one provider send for its key');
+
+        // ── (3) Dead letter + admin replay ───────────────────────
+        ReminderPlanner::setPolicy($taskB, [[
+            'offset_minutes' => 0, 'channels' => ['in_app'], 'recipients' => ['user:'.(string) $paralegal->getKey()],
+            'criticality' => 'standard', 'label' => 'Dead leg',
+        ]], $attorney);
+        $deadId = $forceDue($taskB);
+
+        $double3 = $makeDouble();
+        $double3->behavior = 'fail';
+        app()->instance('calendaring.channel.in_app', $double3);
+
+        $service = app(DeliveryService::class);
+        for ($i = 0; $i < DeliveryService::MAX_ATTEMPTS; $i++) {
+            $service->deliver(ReminderDelivery::findOrFail($deadId));
+        }
+        $row = ReminderDelivery::findOrFail($deadId);
+        $this->assertSame('dead', $row->status, 'row is dead after the attempt budget');
+        $this->assertSame(DeliveryService::MAX_ATTEMPTS, (int) $row->attempts);
+        $this->assertSame(0, $double3->providerSends);
+
+        // Ops view: org admin sees the dead row filtered by status;
+        // a non-admin is refused.
+        $this->actingAs($attorney)->get(route('admin.reminders.index'))->assertStatus(403);
+        $opsJson = $this->actingAs($admin)->getJson(route('admin.reminders.index', ['status' => 'dead']));
+        $opsJson->assertOk();
+        $deadListed = collect($opsJson->json('deliveries'))->firstWhere('id', $deadId);
+        $this->assertNotNull($deadListed, 'ops view lists the dead delivery');
+        $this->assertSame($taskB->title, $deadListed['item_title'] ?? null);
+        $this->assertSame('in_app', $deadListed['channel'] ?? null);
+        $this->assertSame(DeliveryService::MAX_ATTEMPTS, $deadListed['attempts'] ?? null);
+        $this->assertNotNull($deadListed['last_error'] ?? null);
+        $this->actingAs($admin)->get(route('admin.reminders.index', ['status' => 'dead']))
+            ->assertOk()->assertSee($taskB->title)->assertSee('dead');
+
+        // Replay via the ops route: pending again, attempts kept.
+        $this->actingAs($admin)->postJson(route('admin.reminders.replay', $deadId))->assertOk();
+        $row = ReminderDelivery::findOrFail($deadId);
+        $this->assertSame('pending', $row->status);
+        $this->assertSame(DeliveryService::MAX_ATTEMPTS, (int) $row->attempts, 'attempts preserved for the record');
+        $this->assertNull($row->next_attempt_at);
+        $this->assertTrue(AuditEvent::query()->where('event', 'calendar.reminder.replayed')
+            ->where('payload->delivery_id', $deadId)->exists());
+
+        // A non-replayable row is refused.
+        $this->actingAs($admin)->postJson(route('admin.reminders.replay', $deadId))->assertStatus(422);
+
+        $double3->behavior = 'succeed';
+        Artisan::call('reminders:dispatch');
+        $row = ReminderDelivery::findOrFail($deadId);
+        $this->assertSame('sent', $row->status);
+        $this->assertSame(1, $double3->providerSends, 'exactly one provider send after replay');
+
+        // ── (4) Duplicate dispatch ───────────────────────────────
+        Artisan::call('reminders:dispatch');
+        $deliveriesAfterFirst = ReminderDelivery::count();
+        $notesAfterFirst = $paralegal->fresh()->notifications()->count();
+        $sendsAfterFirst = $double3->providerSends;
+
+        Artisan::call('reminders:dispatch');
+        $this->assertSame($deliveriesAfterFirst, ReminderDelivery::count(), 'no duplicate deliveries');
+        $this->assertSame($notesAfterFirst, $paralegal->fresh()->notifications()->count(), 'no duplicate notifications');
+        $this->assertSame($sendsAfterFirst, $double3->providerSends, 'no duplicate provider sends');
     }
 }
