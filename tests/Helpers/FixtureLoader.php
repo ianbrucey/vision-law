@@ -2,11 +2,18 @@
 
 namespace Tests\Helpers;
 
+use App\Models\CalendarFeed;
+use App\Models\CalendarItem;
+use App\Models\CalendarShare;
+use App\Models\ChecklistItem;
+use App\Models\DeadlineTemplate;
+use App\Models\DeadlineTemplateVersion;
 use App\Models\Document;
 use App\Models\DocumentFolder;
 use App\Models\DocumentShare;
 use App\Models\DocumentVersion;
 use App\Models\Invitation;
+use App\Models\ItemAttendee;
 use App\Models\Matter;
 use App\Models\MatterComment;
 use App\Models\MatterDocumentLog;
@@ -14,10 +21,15 @@ use App\Models\MatterGrant;
 use App\Models\MatterLink;
 use App\Models\MatterParty;
 use App\Models\Organization;
+use App\Models\ReminderPolicy;
+use App\Models\ReminderPreference;
 use App\Models\Role;
+use App\Models\TaskDependency;
 use App\Models\Team;
 use App\Models\User;
 use App\Services\AuditLogger;
+use App\Services\Calendaring\RecurrenceService;
+use App\Services\Calendaring\ReminderPlanner;
 use App\Services\DocumentIngestService;
 use App\Services\DocumentStore;
 use App\Services\MalwareScanner;
@@ -61,6 +73,16 @@ class FixtureLoader
      * row already existed.
      */
     private ?string $expiredShareToken = null;
+
+    /**
+     * Plaintext 009 feed/share tokens (T-14). Only the SHA-256 hash is
+     * stored in the DB; the plain value is kept here so tests can call
+     * the public token URLs. Null on re-load when the row already
+     * existed.
+     *
+     * @var array<string, string|null>
+     */
+    private array $calendaringTokens = [];
 
     /** @var array<string, mixed> */
     private array $data;
@@ -112,6 +134,14 @@ class FixtureLoader
      * @var list<array{org_id: string, matter_id: string, related: string, link_type: string, note: ?string}>
      */
     private array $pendingLinks = [];
+
+    /**
+     * Calendar dependency edges (009 T-04): depends_on targets are
+     * resolved in a post-pass after every calendar item exists.
+     *
+     * @var list<array{successor_id: string, predecessor_key: string}>
+     */
+    private array $pendingCalendarDependencies = [];
 
     private function runMatterFixtures(): void
     {
@@ -536,7 +566,11 @@ class FixtureLoader
     {
         $admin = User::where('org_id', $orgId)
             ->whereHas('roles', fn ($query) => $query->where('name', 'org_admin'))
-            ->firstOrFail();
+            ->first();
+
+        // 009 fixtures: the rival org has no org_admin user — fall back to
+        // any user in the org as the recorded granter.
+        $admin ??= User::where('org_id', $orgId)->firstOrFail();
 
         return (string) $admin->getKey();
     }
@@ -1026,6 +1060,481 @@ class FixtureLoader
             'created_at' => $updatedAt->copy()->subDays(7),
             'updated_at' => $updatedAt,
         ])->save();
+    }
+
+    /**
+     * Loads specs/009-calendaring/04-fixtures.json — the SINGLE canonical
+     * fixture definition for calendaring (009 T-01).
+     *
+     * Base types are persisted; reminder_preference is wired in
+     * T-06; deadline_template is wired in T-10 (009); calendar_feed /
+     * guest_share are wired in T-14 (009); golden_cases are read from
+     * the JSON directly by the engine test.
+     */
+    public static function loadCalendaringFixtures(): self
+    {
+        $loader = new self(base_path('specs/009-calendaring/04-fixtures.json'));
+        $loader->runCalendaringFixtures();
+
+        return $loader;
+    }
+
+    private function runCalendaringFixtures(): void
+    {
+        foreach ($this->data['fixtures'] ?? [] as $item) {
+            /** @var array<string, mixed> $item */
+            switch ($item['type']) {
+                case 'organization':
+                    $this->loadMatterOrg($item);
+                    break;
+                case 'user':
+                    $this->loadMatterUser($item);
+                    break;
+                case 'matter':
+                    $this->loadMatterMatter($item);
+                    if (isset($item['restricted'])) {
+                        $this->matter((string) $item['id'])->forceFill([
+                            'restricted' => (bool) $item['restricted'],
+                        ])->save();
+                    }
+                    break;
+                case 'grant':
+                    $this->loadMatterGrant(
+                        $this->ids[$item['org']],
+                        $this->ids[$item['matter']],
+                        $item
+                    );
+                    break;
+                case 'calendar_item':
+                    $this->loadCalendaringItem($item);
+                    break;
+                case 'reminder_preference':
+                    $this->loadCalendaringReminderPreference($item);
+                    break;
+                case 'deadline_template':
+                    $this->loadCalendaringDeadlineTemplate($item);
+                    break;
+                case 'calendar_feed':
+                    $this->loadCalendaringFeed($item);
+                    break;
+                case 'guest_share':
+                    $this->loadCalendaringShare($item);
+                    break;
+                case 'golden_cases':
+                    // Golden cases are read from the JSON directly by the
+                    // engine test — record the symbolic id only.
+                    $this->ids[(string) $item['id']] = (string) Str::uuid();
+                    break;
+                default:
+                    throw new \RuntimeException("Unknown 009 fixture type: {$item['type']}");
+            }
+        }
+
+        $this->flushPendingCalendarDependencies();
+        $this->flushPendingLinks();
+
+        app(PermissionRegistrar::class)->forgetCachedPermissions();
+    }
+
+    private function flushPendingCalendarDependencies(): void
+    {
+        foreach ($this->pendingCalendarDependencies as $edge) {
+            $successor = CalendarItem::findOrFail($edge['successor_id']);
+            TaskDependency::firstOrCreate(
+                [
+                    'predecessor_item_id' => $this->ids[$edge['predecessor_key']],
+                    'successor_item_id' => (string) $successor->getKey(),
+                ],
+                [
+                    'org_id' => (string) $successor->org_id,
+                    'matter_id' => (string) $successor->matter_id,
+                ]
+            );
+        }
+
+        $this->pendingCalendarDependencies = [];
+    }
+
+    public function calendarItem(string $key): CalendarItem
+    {
+        return CalendarItem::findOrFail($this->id($key));
+    }
+
+    public function calendarFeed(string $key): CalendarFeed
+    {
+        return CalendarFeed::findOrFail($this->id($key));
+    }
+
+    public function calendarShare(string $key): CalendarShare
+    {
+        return CalendarShare::findOrFail($this->id($key));
+    }
+
+    /**
+     * Plain token for a 009 feed/share fixture (T-14), or null when the
+     * row pre-existed this load and its token is unknowable.
+     */
+    public function calendaringToken(string $key): ?string
+    {
+        return $this->calendaringTokens[$key] ?? null;
+    }
+
+    /**
+     * T-14 (009): persist a fixture calendar_feed. The plain token is
+     * generated at load, only its sha256 hash is stored, and the plain
+     * value is exposed via calendaringToken().
+     *
+     * @param  array<string, mixed>  $item
+     */
+    private function loadCalendaringFeed(array $item): void
+    {
+        $userId = $this->ids[(string) $item['user']];
+        $revoked = (bool) ($item['revoked'] ?? false);
+
+        $existing = CalendarFeed::query()
+            ->where('user_id', $userId)
+            ->when($revoked, fn ($q) => $q->whereNotNull('revoked_at'), fn ($q) => $q->whereNull('revoked_at'))
+            ->first();
+
+        if ($existing !== null) {
+            $this->ids[(string) $item['id']] = (string) $existing->getKey();
+            $this->calendaringTokens[(string) $item['id']] = null;
+
+            return;
+        }
+
+        $plain = Str::random(48);
+        $feed = CalendarFeed::create([
+            'user_id' => $userId,
+            'token_hash' => hash('sha256', $plain),
+            'revoked_at' => $revoked ? now() : null,
+        ]);
+
+        $this->ids[(string) $item['id']] = (string) $feed->getKey();
+        $this->calendaringTokens[(string) $item['id']] = $plain;
+    }
+
+    /**
+     * T-14 (009): persist a fixture guest_share — one CalendarShare
+     * row per shared item (calendar_shares is per-item). The
+     * symbolic id resolves to the FIRST item's share; its plain
+     * token is exposed via calendaringToken().
+     *
+     * @param  array<string, mixed>  $item
+     */
+    private function loadCalendaringShare(array $item): void
+    {
+        $revoked = (bool) ($item['revoked'] ?? false);
+        /** @var list<string> $itemKeys */
+        $itemKeys = isset($item['items']) && is_array($item['items']) ? array_values($item['items']) : [];
+
+        $firstShareId = null;
+        $firstToken = null;
+
+        foreach ($itemKeys as $index => $itemKey) {
+            $calendarItem = $this->calendarItem((string) $itemKey);
+
+            $existing = CalendarShare::query()
+                ->where('item_id', (string) $calendarItem->getKey())
+                ->where('guest_email', (string) ($item['guest_email'] ?? ''))
+                ->when($revoked, fn ($q) => $q->whereNotNull('revoked_at'), fn ($q) => $q->whereNull('revoked_at'))
+                ->first();
+
+            if ($existing !== null) {
+                if ($index === 0) {
+                    $firstShareId = (string) $existing->getKey();
+                }
+
+                continue;
+            }
+
+            $plain = Str::random(48);
+            $share = CalendarShare::create([
+                'item_id' => (string) $calendarItem->getKey(),
+                'guest_email' => (string) ($item['guest_email'] ?? ''),
+                'fields' => ['title', 'date', 'time', 'location', 'description'],
+                'token_hash' => hash('sha256', $plain),
+                'expires_at' => null,
+                'revoked_at' => $revoked ? now() : null,
+                'created_by' => null,
+            ]);
+
+            if ($index === 0) {
+                $firstShareId = (string) $share->getKey();
+                $firstToken = $plain;
+            }
+        }
+
+        $this->ids[(string) $item['id']] = $firstShareId ?? (string) Str::uuid();
+        $this->calendaringTokens[(string) $item['id']] = $firstToken;
+    }
+
+    public function deadlineTemplate(string $key): DeadlineTemplate
+    {
+        return DeadlineTemplate::findOrFail($this->id($key));
+    }
+
+    /**
+     * T-10 (009): persist a fixture deadline_template with its
+     * versions. The fixture's version `content` envelope is stored
+     * verbatim as the version's `rules` (009-D19: the engine reads
+     * both envelopes). Fixture statuses map onto the catalog
+     * lifecycle: published/draft pass through; a fixture in_review
+     * would land as pending_review.
+     *
+     * @param  array<string, mixed>  $item
+     */
+    private function loadCalendaringDeadlineTemplate(array $item): void
+    {
+        $orgId = $this->ids[(string) $item['org']];
+
+        $jurisdictionParts = array_filter([
+            isset($item['jurisdiction']) ? (string) $item['jurisdiction'] : null,
+            isset($item['court']) ? (string) $item['court'] : null,
+        ]);
+
+        /** @var list<array<string, mixed>> $versions */
+        $versions = isset($item['versions']) && is_array($item['versions']) ? array_values($item['versions']) : [];
+        $firstContent = isset($versions[0]['content']) && is_array($versions[0]['content']) ? $versions[0]['content'] : [];
+
+        $template = DeadlineTemplate::firstOrCreate(
+            [
+                'org_id' => $orgId,
+                'name' => (string) $item['name'],
+            ],
+            [
+                'jurisdiction_label' => $jurisdictionParts !== [] ? implode(' · ', $jurisdictionParts) : null,
+                'demonstration' => isset($firstContent['demonstration']) ? (bool) $firstContent['demonstration'] : true,
+                'owner_label' => isset($firstContent['owner']) ? (string) $firstContent['owner'] : null,
+                'created_by' => isset($versions[0]['maker']) ? $this->ids[(string) $versions[0]['maker']] : null,
+            ]
+        );
+
+        $this->ids[(string) $item['id']] = (string) $template->getKey();
+
+        foreach ($versions as $versionData) {
+            $status = (string) ($versionData['status'] ?? 'draft');
+            if ($status === 'in_review') {
+                $status = 'pending_review';
+            }
+            /** @var array<string, mixed> $content */
+            $content = isset($versionData['content']) && is_array($versionData['content']) ? $versionData['content'] : [];
+
+            DeadlineTemplateVersion::firstOrCreate(
+                [
+                    'template_id' => (string) $template->getKey(),
+                    'version' => (int) ($versionData['version'] ?? 1),
+                ],
+                [
+                    'status' => $status,
+                    'rules' => $content,
+                    'created_by' => isset($versionData['maker']) ? $this->ids[(string) $versionData['maker']] : null,
+                    'reviewed_by' => isset($versionData['checker']) ? $this->ids[(string) $versionData['checker']] : null,
+                    'published_at' => $status === 'published' ? now() : null,
+                ]
+            );
+        }
+    }
+
+    /**
+     * @param  array<string, mixed>  $item
+     */
+    private function loadCalendaringItem(array $item): void
+    {
+        $matter = $this->matter((string) $item['matter']);
+        $orgId = (string) $matter->org_id;
+        $timezone = (string) ($item['timezone'] ?? 'UTC');
+
+        // Recurrence fixture (T-05): create the anchor, then let
+        // RecurrenceService materialize the series. Convention: the
+        // anchor counts as the first occurrence (series_id = anchor id),
+        // so a fixture declaring occurrences:3 yields exactly 3 rows.
+        if (isset($item['recurrence']) && is_array($item['recurrence'])) {
+            $rec = $item['recurrence'];
+            $base = isset($rec['starts_on']) ? $this->parseFixtureDate((string) $rec['starts_on']) : null;
+            $rule = $rec;
+            $rule['starts_on'] = $base;
+            $rule['count'] = (int) ($rec['occurrences'] ?? $rec['count'] ?? 1);
+
+            $anchor = CalendarItem::firstOrCreate(
+                [
+                    'matter_id' => (string) $matter->getKey(),
+                    'title' => (string) $item['title'],
+                    'occurrence_date' => $base,
+                ],
+                $this->calendaringItemAttributes($item, $orgId, $timezone) + [
+                    'occurrence_date' => $base,
+                    'due_date' => $base,
+                    'recurrence_rule' => $rule,
+                ]
+            );
+
+            RecurrenceService::materialize($anchor);
+
+            $this->ids[(string) $item['id']] = (string) $anchor->getKey();
+
+            return;
+        }
+
+        $startsAt = null;
+        $endsAt = null;
+        if (isset($item['starts_at'])) {
+            $startsAt = Carbon::parse((string) $item['starts_at'], $timezone)->setTimezone('UTC');
+        }
+        if (isset($item['ends_at'])) {
+            $endsAt = Carbon::parse((string) $item['ends_at'], $timezone)->setTimezone('UTC');
+        }
+
+        // reminder_policy is persisted by T-06 below (after attendees,
+        // so attendee recipients resolve); checklist and depends_on
+        // are persisted by T-04 below.
+        $row = CalendarItem::firstOrCreate(
+            [
+                'matter_id' => (string) $matter->getKey(),
+                'title' => (string) $item['title'],
+            ],
+            $this->calendaringItemAttributes($item, $orgId, $timezone) + [
+                'starts_at' => $startsAt,
+                'ends_at' => $endsAt,
+            ]
+        );
+
+        $this->ids[(string) $item['id']] = (string) $row->getKey();
+
+        foreach ($item['attendees'] ?? [] as $attendee) {
+            /** @var array<string, mixed> $attendee */
+            ItemAttendee::firstOrCreate(
+                [
+                    'item_id' => (string) $row->getKey(),
+                    'user_id' => isset($attendee['user']) ? $this->ids[$attendee['user']] : null,
+                    'email' => $attendee['email'] ?? null,
+                ],
+                [
+                    'name' => $attendee['name'] ?? null,
+                ]
+            );
+        }
+
+        if (isset($item['reminder_policy']) && is_array($item['reminder_policy'])) {
+            $this->loadCalendaringReminderPolicy($row, $item['reminder_policy']);
+        }
+
+        foreach (array_values($item['checklist'] ?? []) as $position => $entry) {
+            /** @var array<string, mixed> $entry */
+            ChecklistItem::firstOrCreate(
+                [
+                    'item_id' => (string) $row->getKey(),
+                    'label' => (string) ($entry['label'] ?? ''),
+                ],
+                [
+                    'required' => (bool) ($entry['required'] ?? false),
+                    'done' => (bool) ($entry['done'] ?? false),
+                    'position' => $position,
+                ]
+            );
+        }
+
+        foreach ($item['depends_on'] ?? [] as $predecessorKey) {
+            $this->pendingCalendarDependencies[] = [
+                'successor_id' => (string) $row->getKey(),
+                'predecessor_key' => (string) $predecessorKey,
+            ];
+        }
+    }
+
+    /**
+     * T-06: persist a fixture reminder_policy as the item's v1 (or
+     * fixture-declared version) active policy via direct model
+     * creation (setPolicy-equivalent), then materialize deliveries
+     * for confirmed items.
+     *
+     * @param  array<string, mixed>  $policyData
+     */
+    private function loadCalendaringReminderPolicy(CalendarItem $row, array $policyData): void
+    {
+        $version = isset($policyData['version']) ? (int) $policyData['version'] : 1;
+        /** @var array<int, mixed> $rules */
+        $rules = is_array($policyData['rules'] ?? null) ? array_values($policyData['rules']) : [];
+
+        ReminderPolicy::firstOrCreate(
+            [
+                'item_id' => (string) $row->getKey(),
+                'version' => $version,
+            ],
+            [
+                'org_id' => (string) $row->org_id,
+                'matter_id' => (string) $row->matter_id,
+                'active' => true,
+                'rules' => $rules,
+                'created_by' => null,
+            ]
+        );
+
+        ReminderPlanner::materialize($row->fresh() ?? $row);
+    }
+
+    /**
+     * @param  array<string, mixed>  $item
+     */
+    private function loadCalendaringReminderPreference(array $item): void
+    {
+        $userId = $this->ids[(string) $item['user']];
+
+        $pref = ReminderPreference::firstOrCreate(
+            ['user_id' => $userId],
+            [
+                'quiet_start' => $item['quiet_start'] ?? null,
+                'quiet_end' => $item['quiet_end'] ?? null,
+                'timezone' => (string) ($item['timezone'] ?? 'UTC'),
+                'digest_enabled' => (bool) ($item['digest_enabled'] ?? false),
+                'digest_time' => $item['digest_time'] ?? null,
+            ]
+        );
+
+        $this->ids[(string) $item['id']] = (string) $pref->getKey();
+    }
+
+    public function reminderPreference(string $key): ReminderPreference
+    {
+        return ReminderPreference::findOrFail($this->id($key));
+    }
+
+    /**
+     * @param  array<string, mixed>  $item
+     * @return array<string, mixed>
+     */
+    private function calendaringItemAttributes(array $item, string $orgId, string $timezone): array
+    {
+        return [
+            'org_id' => $orgId,
+            'type' => (string) ($item['item_type'] ?? 'task'),
+            'description' => $item['description'] ?? null,
+            'visibility' => (string) ($item['visibility'] ?? 'matter'),
+            'status' => (string) ($item['status'] ?? 'draft'),
+            'task_status' => $item['task_status'] ?? null,
+            'classification' => $item['classification'] ?? null,
+            'jurisdiction' => $item['jurisdiction'] ?? null,
+            'due_date' => isset($item['due_date']) ? $this->parseFixtureDate((string) $item['due_date']) : null,
+            'cutoff_time' => $item['cutoff_time'] ?? null,
+            'all_day' => (bool) ($item['all_day'] ?? false),
+            'timezone' => $timezone,
+            'location' => $item['location'] ?? null,
+            'meeting_url' => $item['meeting_url'] ?? null,
+            'assignee_id' => isset($item['assignee']) ? $this->ids[$item['assignee']] : null,
+            'escalation_owner_id' => isset($item['escalation_owner']) ? $this->ids[$item['escalation_owner']] : null,
+            'reviewer_id' => isset($item['reviewer']) ? $this->ids[$item['reviewer']] : null,
+            'version' => 1,
+            'source' => (string) ($item['source'] ?? 'manual'),
+        ];
+    }
+
+    private function parseFixtureDate(string $value): string
+    {
+        if (preg_match('/^([+-])(\d+)([hd])$/', $value) === 1) {
+            return $this->parseRelativeTime($value)->toDateString();
+        }
+
+        return Carbon::parse($value)->toDateString();
     }
 
     /**

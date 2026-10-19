@@ -18,6 +18,7 @@
     $navLinks = [
         ['Home', route('app.home')],
         ['Matters', route('matters.index')],
+        ['Calendar', route('calendar.index')],
         ['Templates', route('templates.index')],
     ];
 

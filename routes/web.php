@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Admin\AuditEventController as AdminAuditEventController;
 use App\Http\Controllers\Admin\InvitationController as AdminInvitationController;
+use App\Http\Controllers\Admin\ReminderController as AdminReminderController;
 use App\Http\Controllers\Admin\RetentionController as AdminRetentionController;
 use App\Http\Controllers\Admin\TeamController as AdminTeamController;
 use App\Http\Controllers\Admin\UserController as AdminUserController;
@@ -14,6 +15,14 @@ use App\Http\Controllers\Auth\RegisteredUserController;
 use App\Http\Controllers\Auth\TwoFactorChallengeController;
 use App\Http\Controllers\Auth\TwoFactorQrCodeImageController;
 use App\Http\Controllers\Auth\TwoFactorSettingsController;
+use App\Http\Controllers\Calendaring\CalendarController;
+use App\Http\Controllers\Calendaring\CalendarExternalController;
+use App\Http\Controllers\Calendaring\CalendarItemController;
+use App\Http\Controllers\Calendaring\CalendarRecurrenceController;
+use App\Http\Controllers\Calendaring\CalendarTaskController;
+use App\Http\Controllers\Calendaring\DeadlineInstantiationController;
+use App\Http\Controllers\Calendaring\DeadlineTemplateController;
+use App\Http\Controllers\Calendaring\NotificationController;
 use App\Http\Controllers\CommentController;
 use App\Http\Controllers\DocumentActivityController;
 use App\Http\Controllers\DocumentController;
@@ -247,6 +256,17 @@ Route::middleware(['auth:'.config('fortify.guard'), RequireOrgAdmin::class.':aud
             ->name('audit-events.export');
     });
 
+// === 009 calendaring — Batch 3b (T-09 reminder ops) ===
+// Org-admin ops view over the delivery ledger + replay of dead /
+// failed rows. Scoped to the admin's org in the controller.
+Route::middleware(['auth:'.config('fortify.guard'), RequireOrgAdmin::class])
+    ->prefix('admin')
+    ->name('admin.')
+    ->group(function (): void {
+        Route::get('/reminders', [AdminReminderController::class, 'index'])->name('reminders.index');
+        Route::post('/reminders/{delivery}/replay', [AdminReminderController::class, 'replay'])->name('reminders.replay');
+    });
+
 // === 010 app home ===
 // Spec 010 T-02: the authenticated app home (dashboard v1). Setup-mode
 // sessions stay confined by RestrictToTwoFactorSetup — `home` is
@@ -297,6 +317,9 @@ Route::middleware(['auth:'.config('fortify.guard')])->group(function (): void {
     Route::post('/matters/{matter}/close', [MatterController::class, 'close'])
         ->middleware('matter.access:manage')
         ->name('matters.close');
+    Route::post('/matters/{matter}/restricted', [MatterController::class, 'setRestricted'])
+        ->middleware('matter.access:manage')
+        ->name('matters.restricted');
     Route::get('/matters/{matter}/summary', [MatterController::class, 'summary'])
         ->middleware('matter.access:view')
         ->name('matters.summary');
@@ -437,6 +460,22 @@ Route::middleware(['auth:'.config('fortify.guard')])->group(function (): void {
     Route::get('/matters/{matter}/feed', [MatterController::class, 'feed'])
         ->middleware('matter.access:view')
         ->name('matters.feed');
+});
+
+// === Spec 009 T-10: deadline template catalog (009-D18) ===
+// Registered BEFORE the 007 stationery section on purpose: 007 owns
+// GET /templates/{template}, which would otherwise swallow the
+// literal "deadlines" segment. Route names templates.deadlines.* are
+// distinct from 007's templates.* (model, routes, and names never
+// collide). Org-scoped in the controller/service; no matter access.
+Route::middleware(['auth:'.config('fortify.guard')])->group(function (): void {
+    Route::get('/templates/deadlines', [DeadlineTemplateController::class, 'index'])->name('templates.deadlines.index');
+    Route::get('/templates/deadlines/{template}', [DeadlineTemplateController::class, 'show'])->name('templates.deadlines.show');
+    Route::post('/templates/deadlines', [DeadlineTemplateController::class, 'store'])->name('templates.deadlines.store');
+    Route::post('/templates/deadlines/{template}/versions', [DeadlineTemplateController::class, 'storeVersion'])->name('templates.deadlines.versions.store');
+    Route::post('/templates/deadlines/{template}/versions/{version}/submit', [DeadlineTemplateController::class, 'submit'])->name('templates.deadlines.versions.submit');
+    Route::post('/templates/deadlines/{template}/versions/{version}/publish', [DeadlineTemplateController::class, 'publish'])->name('templates.deadlines.versions.publish');
+    Route::post('/templates/deadlines/{template}/versions/{version}/retire', [DeadlineTemplateController::class, 'retire'])->name('templates.deadlines.versions.retire');
 });
 
 // === Spec 007 T-04: editor + templates (stationery) ===
@@ -729,5 +768,104 @@ Route::middleware(['auth:'.config('fortify.guard')])->group(function (): void {
         ->middleware('matter.access:view')
         ->name('documents.activity');
 });
+
+// === 009 calendaring — Batch 1 ===
+// Item routes are addressed by item id (not nested under matter): the
+// controller resolves item -> matter -> AccessControl server-side.
+Route::middleware(['auth:'.config('fortify.guard')])->group(function (): void {
+    Route::get('/calendar', [CalendarController::class, 'index'])
+        ->name('calendar.index');
+    Route::get('/calendar/agenda', [CalendarController::class, 'agenda'])
+        ->name('calendar.agenda');
+    Route::post('/calendar/filters', [CalendarController::class, 'saveFilters'])
+        ->name('calendar.filters');
+    Route::get('/matters/{matter}/calendar', [CalendarController::class, 'matterCalendar'])
+        ->middleware('matter.access:view')
+        ->name('matters.calendar');
+    Route::post('/matters/{matter}/calendar/items', [CalendarItemController::class, 'store'])
+        ->middleware('matter.access:edit')
+        ->name('calendar.items.store');
+    Route::get('/calendar/items/{item}', [CalendarItemController::class, 'show'])
+        ->name('calendar.items.show');
+    Route::get('/calendar/items/{item}/edit', [CalendarItemController::class, 'edit'])
+        ->name('calendar.items.edit');
+    Route::patch('/calendar/items/{item}', [CalendarItemController::class, 'update'])
+        ->name('calendar.items.update');
+    Route::post('/calendar/items/{item}/confirm', [CalendarItemController::class, 'confirm'])
+        ->name('calendar.items.confirm');
+    Route::post('/calendar/items/{item}/complete', [CalendarItemController::class, 'complete'])
+        ->name('calendar.items.complete');
+    Route::post('/calendar/items/{item}/cancel', [CalendarItemController::class, 'cancel'])
+        ->name('calendar.items.cancel');
+    Route::post('/calendar/items/{item}/reopen', [CalendarItemController::class, 'reopen'])
+        ->name('calendar.items.reopen');
+    Route::get('/calendar/items/{item}/explain', [CalendarItemController::class, 'explain'])
+        ->name('calendar.items.explain');
+    // === 009 calendaring — Batch 2 (T-04 tasks) ===
+    Route::get('/calendar/triage', [CalendarTaskController::class, 'triage'])
+        ->name('calendar.triage');
+    Route::post('/calendar/items/{item}/assign', [CalendarTaskController::class, 'assign'])
+        ->name('calendar.tasks.assign');
+    Route::post('/calendar/items/{item}/task-status', [CalendarTaskController::class, 'taskStatus'])
+        ->name('calendar.tasks.status');
+    Route::post('/calendar/items/{item}/dependencies', [CalendarTaskController::class, 'storeDependency'])
+        ->name('calendar.tasks.dependencies.store');
+    Route::delete('/calendar/items/{item}/dependencies/{predecessor}', [CalendarTaskController::class, 'destroyDependency'])
+        ->name('calendar.tasks.dependencies.destroy');
+    Route::post('/calendar/items/{item}/dependencies/preview-move', [CalendarTaskController::class, 'previewMove'])
+        ->name('calendar.tasks.dependencies.preview-move');
+    Route::post('/calendar/items/{item}/dependencies/apply-move', [CalendarTaskController::class, 'applyMove'])
+        ->name('calendar.tasks.dependencies.apply-move');
+    Route::post('/calendar/items/{item}/checklist/{entry}/toggle', [CalendarTaskController::class, 'toggleChecklist'])
+        ->name('calendar.tasks.checklist.toggle');
+    // === 009 calendaring — Batch 2 (T-05 recurrence) ===
+    Route::post('/calendar/items/{item}/recurrence', [CalendarRecurrenceController::class, 'update'])
+        ->name('calendar.items.recurrence');
+    // === 009 calendaring — Batch 4b (T-12 instantiation) ===
+    Route::post('/matters/{matter}/deadline-instantiations/preview', [DeadlineInstantiationController::class, 'preview'])
+        ->middleware('matter.access:edit')
+        ->name('calendar.instantiations.preview');
+    Route::post('/matters/{matter}/deadline-instantiations', [DeadlineInstantiationController::class, 'store'])
+        ->middleware('matter.access:edit')
+        ->name('calendar.instantiations.store');
+    // === 009 calendaring — Batch 4b (T-13 recalculation) ===
+    Route::post('/matters/{matter}/deadline-instantiations/{batch}/recalculate/preview', [DeadlineInstantiationController::class, 'recalculatePreview'])
+        ->middleware('matter.access:edit')
+        ->name('calendar.instantiations.recalculate.preview');
+    Route::post('/matters/{matter}/deadline-instantiations/{batch}/recalculate', [DeadlineInstantiationController::class, 'recalculate'])
+        ->middleware('matter.access:edit')
+        ->name('calendar.instantiations.recalculate');
+    // === 009 calendaring — Batch 3 (T-07 inbox) ===
+    Route::get('/notifications', [NotificationController::class, 'index'])
+        ->name('notifications.index');
+    // === 009 calendaring — Batch 3b (T-08 ack / snooze) ===
+    Route::post('/notifications/{delivery}/acknowledge', [NotificationController::class, 'acknowledge'])
+        ->name('notifications.acknowledge');
+    Route::post('/notifications/{delivery}/ack', [NotificationController::class, 'acknowledge'])
+        ->name('notifications.ack');
+    Route::post('/notifications/{delivery}/snooze', [NotificationController::class, 'snooze'])
+        ->name('notifications.snooze');
+    // === 009 calendaring — Batch 5 (T-14 external coordination, Phase A) ===
+    Route::get('/calendar/export.ics', [CalendarExternalController::class, 'export'])
+        ->name('calendar.export');
+    Route::post('/calendar/feeds', [CalendarExternalController::class, 'storeFeed'])
+        ->name('calendar.feeds.store');
+    Route::delete('/calendar/feeds/{feed}', [CalendarExternalController::class, 'destroyFeed'])
+        ->name('calendar.feeds.destroy');
+    Route::post('/calendar/items/{item}/shares', [CalendarExternalController::class, 'storeShare'])
+        ->name('calendar.shares.store');
+    Route::delete('/calendar/shares/{share}', [CalendarExternalController::class, 'revokeShare'])
+        ->name('calendar.shares.revoke');
+    Route::post('/calendar/items/{item}/invite', [CalendarExternalController::class, 'invite'])
+        ->name('calendar.items.invite');
+});
+
+// === 009 calendaring — Batch 5 (T-14 public token surfaces) ===
+// Token-gated, no session auth: the sha256 hash lookup is the gate;
+// revoked/unknown tokens 404 with no existence signal (009-D22).
+Route::get('/feeds/calendar/{token}.ics', [CalendarExternalController::class, 'feed'])
+    ->name('calendar.feed.fetch');
+Route::get('/guest/calendar/{token}', [CalendarExternalController::class, 'guest'])
+    ->name('calendar.guest.show');
 
 require __DIR__.'/share.php';

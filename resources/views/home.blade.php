@@ -12,7 +12,9 @@
 
     Expects: $user, $orgName, $matters (Collection<Matter>), $matterCount,
     $activity (Collection<AuditEvent>), $orgHasMatters, $canCreateMatter,
-    $isOrgAdmin, $twoFactorConfirmed, $passkeyCount.
+    $isOrgAdmin, $twoFactorConfirmed, $passkeyCount, and $deadlines
+    (009 T-17 module data, or null when the user has no accessible
+    matters — the module is then omitted entirely, per 010 C-04).
 --}}
 <x-layouts.app title="Home · Vision Law">
     <x-ui.page-header
@@ -89,6 +91,33 @@
                     <p class="text-[14.5px] text-vl-mut">No recent activity on your matters yet.</p>
                 @endforelse
             </x-ui.card>
+
+            @if ($deadlines !== null)
+                <x-ui.card title="Deadlines & agenda" class="min-[821px]:col-span-2">
+                    <x-slot name="header-actions">
+                        <a href="{{ route('calendar.index') }}" class="text-[14px] font-semibold text-vl-ink no-underline hover:underline">Open calendar</a>
+                    </x-slot>
+
+                    <div class="grid gap-4 min-[821px]:grid-cols-3">
+                        <x-ui.stat :value="$deadlines['overdue']" label="Overdue" />
+                        <x-ui.stat :value="$deadlines['dueWithin7']" label="Due within 7 days" />
+                        <x-ui.stat :value="$deadlines['unackedMandatory']" label="Unacknowledged mandatory reminders" />
+                    </div>
+
+                    <div class="mt-2">
+                        @forelse ($deadlines['upcoming'] as $deadlineItem)
+                            <div class="flex flex-wrap items-baseline gap-3 py-3 border-t border-vl-line">
+                                <a href="{{ route('calendar.items.show', $deadlineItem) }}" class="font-semibold text-vl-ink underline">{{ $deadlineItem->title }}</a>
+                                <x-ui.status type="calendar_item" :value="$deadlineItem->status" />
+                                <span class="text-[13px] text-vl-mut">{{ $deadlineItem->matter?->title }}</span>
+                                <span class="ml-auto text-[13px] whitespace-nowrap {{ $deadlineItem->getAttribute('home_overdue') ? 'font-semibold text-vl-ink' : 'text-vl-mut' }}">{{ ($deadlineItem->getAttribute('home_date') ?? 'Undated') . ($deadlineItem->getAttribute('home_overdue') ? ' · Overdue' : '') }}</span>
+                            </div>
+                        @empty
+                            <p class="text-[14.5px] text-vl-mut mt-3">No upcoming confirmed items on your matters.</p>
+                        @endforelse
+                    </div>
+                </x-ui.card>
+            @endif
 
             <x-ui.card title="Security status" class="min-[821px]:col-start-3 min-[821px]:row-start-1">
                 <div class="space-y-4">

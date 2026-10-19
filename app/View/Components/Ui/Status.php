@@ -79,6 +79,15 @@ class Status extends Component
             'rejected' => ['label' => 'Rejected', 'tone' => 'neutral'],
             'executed' => ['label' => 'Executed', 'tone' => 'ok'],
         ],
+        // Spec 009: calendar item lifecycle — text label is the non-color cue.
+        'calendar_item' => [
+            'draft' => ['label' => 'Draft', 'tone' => 'warn'],
+            'confirmed' => ['label' => 'Confirmed', 'tone' => 'ok'],
+            'at_risk' => ['label' => 'At risk', 'tone' => 'bad'],
+            'completed' => ['label' => 'Completed', 'tone' => 'ok'],
+            'superseded' => ['label' => 'Superseded', 'tone' => 'neutral'],
+            'canceled' => ['label' => 'Canceled', 'tone' => 'neutral'],
+        ],
     ];
 
     public string $label;
