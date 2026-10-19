@@ -3,6 +3,7 @@
 namespace Tests\Helpers;
 
 use App\Models\CalendarItem;
+use App\Models\ChecklistItem;
 use App\Models\Document;
 use App\Models\DocumentFolder;
 use App\Models\DocumentShare;
@@ -17,6 +18,7 @@ use App\Models\MatterLink;
 use App\Models\MatterParty;
 use App\Models\Organization;
 use App\Models\Role;
+use App\Models\TaskDependency;
 use App\Models\Team;
 use App\Models\User;
 use App\Services\AuditLogger;
@@ -114,6 +116,14 @@ class FixtureLoader
      * @var list<array{org_id: string, matter_id: string, related: string, link_type: string, note: ?string}>
      */
     private array $pendingLinks = [];
+
+    /**
+     * Calendar dependency edges (009 T-04): depends_on targets are
+     * resolved in a post-pass after every calendar item exists.
+     *
+     * @var list<array{successor_id: string, predecessor_key: string}>
+     */
+    private array $pendingCalendarDependencies = [];
 
     private function runMatterFixtures(): void
     {
@@ -1094,9 +1104,29 @@ class FixtureLoader
             }
         }
 
+        $this->flushPendingCalendarDependencies();
         $this->flushPendingLinks();
 
         app(PermissionRegistrar::class)->forgetCachedPermissions();
+    }
+
+    private function flushPendingCalendarDependencies(): void
+    {
+        foreach ($this->pendingCalendarDependencies as $edge) {
+            $successor = CalendarItem::findOrFail($edge['successor_id']);
+            TaskDependency::firstOrCreate(
+                [
+                    'predecessor_item_id' => $this->ids[$edge['predecessor_key']],
+                    'successor_item_id' => (string) $successor->getKey(),
+                ],
+                [
+                    'org_id' => (string) $successor->org_id,
+                    'matter_id' => (string) $successor->matter_id,
+                ]
+            );
+        }
+
+        $this->pendingCalendarDependencies = [];
     }
 
     public function calendarItem(string $key): CalendarItem
@@ -1163,8 +1193,8 @@ class FixtureLoader
             $endsAt = Carbon::parse((string) $item['ends_at'], $timezone)->setTimezone('UTC');
         }
 
-        // NOTE (T-01): checklist, depends_on and reminder_policy keys are
-        // intentionally ignored here — later batches extend this loader.
+        // NOTE: reminder_policy is still ignored here (T-06); checklist
+        // and depends_on are persisted by T-04 below.
         $row = CalendarItem::firstOrCreate(
             [
                 'matter_id' => (string) $matter->getKey(),
@@ -1190,6 +1220,28 @@ class FixtureLoader
                     'name' => $attendee['name'] ?? null,
                 ]
             );
+        }
+
+        foreach (array_values($item['checklist'] ?? []) as $position => $entry) {
+            /** @var array<string, mixed> $entry */
+            ChecklistItem::firstOrCreate(
+                [
+                    'item_id' => (string) $row->getKey(),
+                    'label' => (string) ($entry['label'] ?? ''),
+                ],
+                [
+                    'required' => (bool) ($entry['required'] ?? false),
+                    'done' => (bool) ($entry['done'] ?? false),
+                    'position' => $position,
+                ]
+            );
+        }
+
+        foreach ($item['depends_on'] ?? [] as $predecessorKey) {
+            $this->pendingCalendarDependencies[] = [
+                'successor_id' => (string) $row->getKey(),
+                'predecessor_key' => (string) $predecessorKey,
+            ];
         }
     }
 

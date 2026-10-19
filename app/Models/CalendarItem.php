@@ -43,6 +43,8 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * @property string|null $series_id
  * @property CarbonInterface|null $occurrence_date
  * @property array<string, mixed>|null $recurrence_rule
+ * @property CarbonInterface|null $completed_at
+ * @property string|null $completed_by
  * @property string|null $created_by
  * @property string|null $updated_by
  * @property CarbonInterface $created_at
@@ -103,6 +105,8 @@ class CalendarItem extends Model
         'series_id',
         'occurrence_date',
         'recurrence_rule',
+        'completed_at',
+        'completed_by',
         'created_by',
         'updated_by',
     ];
@@ -122,6 +126,7 @@ class CalendarItem extends Model
             'inputs' => 'array',
             'calc_trace' => 'array',
             'recurrence_rule' => 'array',
+            'completed_at' => 'datetime',
         ];
     }
 
@@ -213,6 +218,44 @@ class CalendarItem extends Model
     public function attendees(): HasMany
     {
         return $this->hasMany(ItemAttendee::class, 'item_id');
+    }
+
+    /**
+     * @return BelongsTo<User, $this>
+     */
+    public function completedBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'completed_by');
+    }
+
+    /**
+     * Dependency edges where this item is the successor (it depends on
+     * the predecessor).
+     *
+     * @return HasMany<TaskDependency, $this>
+     */
+    public function dependencies(): HasMany
+    {
+        return $this->hasMany(TaskDependency::class, 'successor_item_id');
+    }
+
+    /**
+     * Dependency edges where this item is the predecessor (other tasks
+     * depend on it).
+     *
+     * @return HasMany<TaskDependency, $this>
+     */
+    public function dependents(): HasMany
+    {
+        return $this->hasMany(TaskDependency::class, 'predecessor_item_id');
+    }
+
+    /**
+     * @return HasMany<ChecklistItem, $this>
+     */
+    public function checklistItems(): HasMany
+    {
+        return $this->hasMany(ChecklistItem::class, 'item_id')->orderBy('position')->orderBy('id');
     }
 
     /**

@@ -16,6 +16,7 @@ use App\Http\Controllers\Auth\TwoFactorQrCodeImageController;
 use App\Http\Controllers\Auth\TwoFactorSettingsController;
 use App\Http\Controllers\Calendaring\CalendarController;
 use App\Http\Controllers\Calendaring\CalendarItemController;
+use App\Http\Controllers\Calendaring\CalendarTaskController;
 use App\Http\Controllers\CommentController;
 use App\Http\Controllers\DocumentActivityController;
 use App\Http\Controllers\DocumentController;
@@ -764,6 +765,23 @@ Route::middleware(['auth:'.config('fortify.guard')])->group(function (): void {
         ->name('calendar.items.reopen');
     Route::get('/calendar/items/{item}/explain', [CalendarItemController::class, 'explain'])
         ->name('calendar.items.explain');
+    // === 009 calendaring — Batch 2 (T-04 tasks) ===
+    Route::get('/calendar/triage', [CalendarTaskController::class, 'triage'])
+        ->name('calendar.triage');
+    Route::post('/calendar/items/{item}/assign', [CalendarTaskController::class, 'assign'])
+        ->name('calendar.tasks.assign');
+    Route::post('/calendar/items/{item}/task-status', [CalendarTaskController::class, 'taskStatus'])
+        ->name('calendar.tasks.status');
+    Route::post('/calendar/items/{item}/dependencies', [CalendarTaskController::class, 'storeDependency'])
+        ->name('calendar.tasks.dependencies.store');
+    Route::delete('/calendar/items/{item}/dependencies/{predecessor}', [CalendarTaskController::class, 'destroyDependency'])
+        ->name('calendar.tasks.dependencies.destroy');
+    Route::post('/calendar/items/{item}/dependencies/preview-move', [CalendarTaskController::class, 'previewMove'])
+        ->name('calendar.tasks.dependencies.preview-move');
+    Route::post('/calendar/items/{item}/dependencies/apply-move', [CalendarTaskController::class, 'applyMove'])
+        ->name('calendar.tasks.dependencies.apply-move');
+    Route::post('/calendar/items/{item}/checklist/{entry}/toggle', [CalendarTaskController::class, 'toggleChecklist'])
+        ->name('calendar.tasks.checklist.toggle');
 });
 
 require __DIR__.'/share.php';

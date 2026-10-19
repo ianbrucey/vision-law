@@ -44,7 +44,7 @@ class CalendarItemController extends Controller
         $model = $this->resolveItem($item);
         AccessControl::authorize($actor, 'view', $model->matter);
 
-        $model->load(['matter', 'assignee', 'attendees.user', 'supersededBy', 'supersedes']);
+        $model->load(['matter', 'assignee', 'attendees.user', 'supersededBy', 'supersedes', 'checklistItems', 'dependencies.predecessor', 'dependents.successor', 'completedBy']);
 
         if ($request->wantsJson()) {
             return response()->json($this->resource($model) + [
@@ -52,12 +52,7 @@ class CalendarItemController extends Controller
             ]);
         }
 
-        return view('calendaring.items.show', [
-            'item' => $model,
-            'matter' => $model->matter,
-            'canEdit' => $this->can($actor, 'edit', $model),
-            'explanation' => ItemService::explain($model),
-        ]);
+        return view('calendaring.items.show', $this->showData($model, $actor));
     }
 
     public function edit(Request $request, string $item): View
@@ -84,12 +79,28 @@ class CalendarItemController extends Controller
             return response()->json($explanation);
         }
 
-        return view('calendaring.items.show', [
-            'item' => $model->load(['matter', 'assignee', 'attendees.user']),
+        $model->load(['matter', 'assignee', 'attendees.user', 'checklistItems', 'dependencies.predecessor', 'dependents.successor', 'completedBy']);
+
+        return view('calendaring.items.show', $this->showData($model, $actor));
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function showData(CalendarItem $model, User $actor): array
+    {
+        return [
+            'item' => $model,
             'matter' => $model->matter,
             'canEdit' => $this->can($actor, 'edit', $model),
-            'explanation' => $explanation,
-        ]);
+            'explanation' => ItemService::explain($model),
+            'taskUsers' => User::query()->where('org_id', $model->org_id)->orderBy('name')->get(),
+            'taskCandidates' => CalendarItem::query()
+                ->where('matter_id', $model->matter_id)
+                ->where('type', 'task')
+                ->whereKeyNot($model->getKey())
+                ->orderBy('title')->get(),
+        ];
     }
 
     public function update(Request $request, string $item): JsonResponse|RedirectResponse|Response
@@ -232,6 +243,8 @@ class CalendarItemController extends Controller
             'location' => $item->location,
             'meeting_url' => $item->meeting_url,
             'assignee_id' => $item->assignee_id,
+            'completed_at' => $item->completed_at?->toIso8601String(),
+            'completed_by' => $item->completed_by,
             'version' => $item->version,
             'source' => $item->source,
             'supersedes_id' => $item->supersedes_id,

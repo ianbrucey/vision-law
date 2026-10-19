@@ -57,6 +57,84 @@
         </x-ui.card>
     @endif
 
+    @if ($item->type === 'task')
+        <x-ui.card title="Task" class="mt-6">
+            <x-ui.kv :items="[
+                ['label' => 'Task status', 'value' => ucfirst(str_replace('_', ' ', $item->task_status ?? 'not_started'))],
+                ['label' => 'Completed', 'value' => $item->completed_at ? $item->completed_at->toDateTimeString() . ($item->completedBy ? ' by ' . $item->completedBy->name : '') : '—'],
+            ]" />
+            @if ($canEdit)
+                <form method="POST" action="{{ route('calendar.tasks.assign', $item) }}" class="mt-4">
+                    @csrf
+                    <x-ui.select name="assignee_id" label="Assignee" :options="$taskUsers->mapWithKeys(fn ($u) => [(string) $u->getKey() => $u->name])->all()" :value="$item->assignee_id" />
+                    <x-ui.button variant="primary" type="submit">Assign</x-ui.button>
+                </form>
+                <div class="flex flex-wrap gap-2.5 mt-4">
+                    @foreach (\App\Models\CalendarItem::TASK_STATUSES as $taskStatus)
+                        <form method="POST" action="{{ route('calendar.tasks.status', $item) }}">
+                            @csrf
+                            <input type="hidden" name="task_status" value="{{ $taskStatus }}">
+                            @if ($taskStatus === 'completed')
+                                <x-ui.field name="override_reason" label="Override reason (only to complete with open required checklist items)" optional />
+                            @endif
+                            <x-ui.button variant="secondary" type="submit">{{ ucfirst(str_replace('_', ' ', $taskStatus)) }}</x-ui.button>
+                        </form>
+                    @endforeach
+                </div>
+            @endif
+
+            <h3 class="font-semibold mt-6 mb-2">Checklist</h3>
+            @forelse ($item->checklistItems as $entry)
+                <div class="flex items-center gap-3 py-1">
+                    @if ($canEdit)
+                        <form method="POST" action="{{ route('calendar.tasks.checklist.toggle', [$item, $entry]) }}">
+                            @csrf
+                            <input type="hidden" name="done" value="{{ $entry->done ? '0' : '1' }}">
+                            <x-ui.button variant="secondary" type="submit">{{ $entry->done ? 'Reopen' : 'Done' }}</x-ui.button>
+                        </form>
+                    @endif
+                    <span>{{ $entry->done ? '✓' : '○' }} {{ $entry->label }} @if ($entry->required) (required) @endif</span>
+                </div>
+            @empty
+                <p>No checklist items.</p>
+            @endforelse
+
+            <h3 class="font-semibold mt-6 mb-2">Dependencies</h3>
+            <p>Depends on:</p>
+            @forelse ($item->dependencies as $edge)
+                <div class="flex items-center gap-3 py-1">
+                    <a href="{{ route('calendar.items.show', $edge->predecessor) }}" class="underline">{{ $edge->predecessor->title }}</a>
+                    @if ($canEdit)
+                        <form method="POST" action="{{ route('calendar.tasks.dependencies.destroy', [$item, $edge->predecessor]) }}">
+                            @csrf @method('DELETE')
+                            <x-ui.button variant="danger" type="submit">Remove</x-ui.button>
+                        </form>
+                    @endif
+                </div>
+            @empty
+                <p>None.</p>
+            @endforelse
+            <p class="mt-3">Blocks:</p>
+            @forelse ($item->dependents as $edge)
+                <p><a href="{{ route('calendar.items.show', $edge->successor) }}" class="underline">{{ $edge->successor->title }}</a></p>
+            @empty
+                <p>None.</p>
+            @endforelse
+            @if ($canEdit)
+                <form method="POST" action="{{ route('calendar.tasks.dependencies.store', $item) }}" class="mt-4">
+                    @csrf
+                    <x-ui.select name="predecessor_id" label="Depends on" :options="$taskCandidates->mapWithKeys(fn ($t) => [(string) $t->getKey() => $t->title])->all()" />
+                    <x-ui.button variant="primary" type="submit">Add dependency</x-ui.button>
+                </form>
+                <form method="POST" action="{{ route('calendar.tasks.dependencies.apply-move', $item) }}" class="mt-4">
+                    @csrf
+                    <x-ui.field name="new_due_date" label="Move this task's due date" type="date" :value="$item->due_date?->toDateString()" />
+                    <x-ui.button variant="secondary" type="submit">Apply move (shifts blocked tasks)</x-ui.button>
+                </form>
+            @endif
+        </x-ui.card>
+    @endif
+
     <x-ui.card title="Explanation" class="mt-6">
         <p>{{ $explanation['summary'] ?? 'Manual entry' }}</p>
         <x-ui.kv :items="[
