@@ -14,6 +14,7 @@ use App\Http\Controllers\Auth\RegisteredUserController;
 use App\Http\Controllers\Auth\TwoFactorChallengeController;
 use App\Http\Controllers\Auth\TwoFactorQrCodeImageController;
 use App\Http\Controllers\Auth\TwoFactorSettingsController;
+use App\Http\Controllers\Calendaring\CalendarController;
 use App\Http\Controllers\Calendaring\CalendarItemController;
 use App\Http\Controllers\CommentController;
 use App\Http\Controllers\DocumentActivityController;
@@ -735,8 +736,28 @@ Route::middleware(['auth:'.config('fortify.guard')])->group(function (): void {
 // Item routes are addressed by item id (not nested under matter): the
 // controller resolves item -> matter -> AccessControl server-side.
 Route::middleware(['auth:'.config('fortify.guard')])->group(function (): void {
+    Route::get('/matters/{matter}/calendar', [CalendarController::class, 'matterCalendar'])
+        ->middleware('matter.access:view')
+        ->name('matters.calendar');
+    Route::post('/matters/{matter}/calendar/items', [CalendarItemController::class, 'store'])
+        ->middleware('matter.access:edit')
+        ->name('calendar.items.store');
     Route::get('/calendar/items/{item}', [CalendarItemController::class, 'show'])
         ->name('calendar.items.show');
+    Route::get('/calendar/items/{item}/edit', [CalendarItemController::class, 'edit'])
+        ->name('calendar.items.edit');
+    Route::patch('/calendar/items/{item}', [CalendarItemController::class, 'update'])
+        ->name('calendar.items.update');
+    Route::post('/calendar/items/{item}/confirm', [CalendarItemController::class, 'confirm'])
+        ->name('calendar.items.confirm');
+    Route::post('/calendar/items/{item}/complete', [CalendarItemController::class, 'complete'])
+        ->name('calendar.items.complete');
+    Route::post('/calendar/items/{item}/cancel', [CalendarItemController::class, 'cancel'])
+        ->name('calendar.items.cancel');
+    Route::post('/calendar/items/{item}/reopen', [CalendarItemController::class, 'reopen'])
+        ->name('calendar.items.reopen');
+    Route::get('/calendar/items/{item}/explain', [CalendarItemController::class, 'explain'])
+        ->name('calendar.items.explain');
 });
 
 require __DIR__.'/share.php';

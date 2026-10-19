@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Carbon\CarbonInterface;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
@@ -14,9 +15,38 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * @property string $matter_id
  * @property string $type
  * @property string $title
+ * @property string|null $description
+ * @property string $visibility
  * @property string $status
+ * @property string|null $task_status
  * @property string|null $classification
+ * @property string|null $jurisdiction
+ * @property CarbonInterface|null $due_date
+ * @property string|null $cutoff_time
+ * @property CarbonInterface|null $starts_at
+ * @property CarbonInterface|null $ends_at
+ * @property bool $all_day
+ * @property string $timezone
+ * @property string|null $location
+ * @property string|null $meeting_url
+ * @property string|null $assignee_id
+ * @property string|null $escalation_owner_id
+ * @property string|null $reviewer_id
  * @property int $version
+ * @property string|null $supersedes_id
+ * @property string|null $superseded_by_id
+ * @property string $source
+ * @property string|null $template_version_id
+ * @property string|null $rule_key
+ * @property array<string, mixed>|null $inputs
+ * @property array<string, mixed>|null $calc_trace
+ * @property string|null $series_id
+ * @property CarbonInterface|null $occurrence_date
+ * @property array<string, mixed>|null $recurrence_rule
+ * @property string|null $created_by
+ * @property string|null $updated_by
+ * @property CarbonInterface $created_at
+ * @property CarbonInterface $updated_at
  */
 class CalendarItem extends Model
 {

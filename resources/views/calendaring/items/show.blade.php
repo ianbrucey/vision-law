@@ -1,10 +1,18 @@
 <x-layouts.app :title="$item->title . ' · Vision Law'">
     <x-ui.page-header :title="$item->title" :subtitle="$matter->matter_number . ' · ' . $matter->title">
+        <x-slot name="crumbs">
+            <a href="{{ route('matters.calendar', $matter) }}" class="text-vl-mut underline decoration-vl-line underline-offset-2 hover:text-vl-ink">Matter calendar</a>
+            <span class="text-vl-mut" aria-hidden="true"> › </span>
+            <span>{{ $item->title }}</span>
+        </x-slot>
         <x-slot name="actions">
             <x-ui.status type="calendar_item" :value="$item->status" />
             <x-ui.chip tone="neutral">{{ ucfirst($item->type) }}</x-ui.chip>
             @if ($item->classification)
                 <x-ui.chip tone="neutral">{{ ucfirst($item->classification) }}</x-ui.chip>
+            @endif
+            @if ($canEdit)
+                <x-ui.button variant="primary" href="{{ route('calendar.items.edit', $item) }}">Edit</x-ui.button>
             @endif
         </x-slot>
     </x-ui.page-header>
@@ -19,19 +27,49 @@
             ['label' => 'Assignee', 'value' => $item->assignee?->name ?? 'Unassigned'],
             ['label' => 'Timezone', 'value' => $item->timezone ?? 'UTC'],
             ['label' => 'Location', 'value' => $item->location ?? '—'],
+            ['label' => 'Version', 'value' => (string) $item->version],
         ]" />
         @if ($item->description)
             <p class="mt-4">{{ $item->description }}</p>
         @endif
+        @if ($item->supersededBy)
+            <p class="mt-4">Superseded by <a href="{{ route('calendar.items.show', $item->supersededBy) }}" class="underline">{{ $item->supersededBy->title }}</a></p>
+        @endif
+        @if ($item->supersedes)
+            <p class="mt-4">Supersedes <a href="{{ route('calendar.items.show', $item->supersedes) }}" class="underline">{{ $item->supersedes->title }}</a></p>
+        @endif
     </x-ui.card>
+
+    @if ($canEdit && !in_array($item->status, ['superseded', 'canceled'], true))
+        <x-ui.card title="Lifecycle" class="mt-6">
+            <div class="flex flex-wrap gap-2.5">
+                @if (in_array($item->status, ['draft', 'at_risk'], true))
+                    <form method="POST" action="{{ route('calendar.items.confirm', $item) }}">@csrf<x-ui.button variant="primary" type="submit">Confirm</x-ui.button></form>
+                @endif
+                @if (in_array($item->status, ['draft', 'confirmed', 'at_risk'], true))
+                    <form method="POST" action="{{ route('calendar.items.complete', $item) }}">@csrf<x-ui.button variant="secondary" type="submit">Complete</x-ui.button></form>
+                    <form method="POST" action="{{ route('calendar.items.cancel', $item) }}">@csrf<x-ui.field name="reason" label="Reason (required for cancel)" /><x-ui.button variant="danger" type="submit">Cancel</x-ui.button></form>
+                @endif
+                @if (in_array($item->status, ['completed'], true))
+                    <form method="POST" action="{{ route('calendar.items.reopen', $item) }}">@csrf<x-ui.button variant="secondary" type="submit">Reopen</x-ui.button></form>
+                @endif
+            </div>
+        </x-ui.card>
+    @endif
 
     <x-ui.card title="Explanation" class="mt-6">
         <p>{{ $explanation['summary'] ?? 'Manual entry' }}</p>
-        <p class="text-[14px] text-vl-mut">Source: {{ $explanation['source'] ?? $item->source }}</p>
+        <x-ui.kv :items="[
+            ['label' => 'Source', 'value' => (string) ($explanation['source'] ?? $item->source)],
+            ['label' => 'Actor', 'value' => (string) ($explanation['actor'] ?? '—')],
+            ['label' => 'Rule', 'value' => (string) ($explanation['rule_key'] ?? '—')],
+            ['label' => 'Anchor', 'value' => is_array($explanation['anchor'] ?? null) ? json_encode($explanation['anchor']) : (string) ($explanation['anchor'] ?? '—')],
+            ['label' => 'Rule version', 'value' => (string) ($explanation['rule_version'] ?? $explanation['pack_version'] ?? '—')],
+        ]" />
         @if (!empty($explanation['steps']))
-            <ol class="list-decimal ml-5 mt-2">
+            <ol class="list-decimal ml-5 mt-3 space-y-1">
                 @foreach ($explanation['steps'] as $step)
-                    <li>{{ is_array($step) ? json_encode($step) : $step }}</li>
+                    <li>{{ is_array($step) ? ($step['description'] ?? json_encode($step)) : $step }}</li>
                 @endforeach
             </ol>
         @endif
