@@ -1,0 +1,14 @@
+[Unit]
+Description=Vision Law scheduler (spec 009 reminder dispatch/escalation sweeps)
+After=network.target visionlaw-web.service
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/opt/vision-law
+ExecStart=/usr/bin/php /opt/vision-law/artisan schedule:work
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
