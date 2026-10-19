@@ -19,6 +19,7 @@ use App\Http\Controllers\Calendaring\CalendarController;
 use App\Http\Controllers\Calendaring\CalendarItemController;
 use App\Http\Controllers\Calendaring\CalendarRecurrenceController;
 use App\Http\Controllers\Calendaring\CalendarTaskController;
+use App\Http\Controllers\Calendaring\DeadlineTemplateController;
 use App\Http\Controllers\Calendaring\NotificationController;
 use App\Http\Controllers\CommentController;
 use App\Http\Controllers\DocumentActivityController;
@@ -454,6 +455,22 @@ Route::middleware(['auth:'.config('fortify.guard')])->group(function (): void {
     Route::get('/matters/{matter}/feed', [MatterController::class, 'feed'])
         ->middleware('matter.access:view')
         ->name('matters.feed');
+});
+
+// === Spec 009 T-10: deadline template catalog (009-D18) ===
+// Registered BEFORE the 007 stationery section on purpose: 007 owns
+// GET /templates/{template}, which would otherwise swallow the
+// literal "deadlines" segment. Route names templates.deadlines.* are
+// distinct from 007's templates.* (model, routes, and names never
+// collide). Org-scoped in the controller/service; no matter access.
+Route::middleware(['auth:'.config('fortify.guard')])->group(function (): void {
+    Route::get('/templates/deadlines', [DeadlineTemplateController::class, 'index'])->name('templates.deadlines.index');
+    Route::get('/templates/deadlines/{template}', [DeadlineTemplateController::class, 'show'])->name('templates.deadlines.show');
+    Route::post('/templates/deadlines', [DeadlineTemplateController::class, 'store'])->name('templates.deadlines.store');
+    Route::post('/templates/deadlines/{template}/versions', [DeadlineTemplateController::class, 'storeVersion'])->name('templates.deadlines.versions.store');
+    Route::post('/templates/deadlines/{template}/versions/{version}/submit', [DeadlineTemplateController::class, 'submit'])->name('templates.deadlines.versions.submit');
+    Route::post('/templates/deadlines/{template}/versions/{version}/publish', [DeadlineTemplateController::class, 'publish'])->name('templates.deadlines.versions.publish');
+    Route::post('/templates/deadlines/{template}/versions/{version}/retire', [DeadlineTemplateController::class, 'retire'])->name('templates.deadlines.versions.retire');
 });
 
 // === Spec 007 T-04: editor + templates (stationery) ===

@@ -4,6 +4,8 @@ namespace Tests\Helpers;
 
 use App\Models\CalendarItem;
 use App\Models\ChecklistItem;
+use App\Models\DeadlineTemplate;
+use App\Models\DeadlineTemplateVersion;
 use App\Models\Document;
 use App\Models\DocumentFolder;
 use App\Models\DocumentShare;
@@ -1053,10 +1055,10 @@ class FixtureLoader
      * fixture definition for calendaring (009 T-01).
      *
      * Base types are persisted; reminder_preference is wired in
-     * T-06; calendar_feed / guest_share / deadline_template /
-     * golden_cases have no tables yet — their symbolic ids are
-     * recorded and persistence is skipped gracefully (later batches
-     * wire real loading).
+     * T-06; deadline_template is wired in T-10 (009); calendar_feed /
+     * guest_share / golden_cases have no tables yet — their symbolic
+     * ids are recorded and persistence is skipped gracefully (later
+     * batches wire real loading).
      */
     public static function loadCalendaringFixtures(): self
     {
@@ -1098,9 +1100,11 @@ class FixtureLoader
                 case 'reminder_preference':
                     $this->loadCalendaringReminderPreference($item);
                     break;
+                case 'deadline_template':
+                    $this->loadCalendaringDeadlineTemplate($item);
+                    break;
                 case 'calendar_feed':
                 case 'guest_share':
-                case 'deadline_template':
                 case 'golden_cases':
                     // Tables arrive in later batches — record the symbolic
                     // id so callers can resolve it, skip persistence.
@@ -1139,6 +1143,73 @@ class FixtureLoader
     public function calendarItem(string $key): CalendarItem
     {
         return CalendarItem::findOrFail($this->id($key));
+    }
+
+    public function deadlineTemplate(string $key): DeadlineTemplate
+    {
+        return DeadlineTemplate::findOrFail($this->id($key));
+    }
+
+    /**
+     * T-10 (009): persist a fixture deadline_template with its
+     * versions. The fixture's version `content` envelope is stored
+     * verbatim as the version's `rules` (009-D19: the engine reads
+     * both envelopes). Fixture statuses map onto the catalog
+     * lifecycle: published/draft pass through; a fixture in_review
+     * would land as pending_review.
+     *
+     * @param  array<string, mixed>  $item
+     */
+    private function loadCalendaringDeadlineTemplate(array $item): void
+    {
+        $orgId = $this->ids[(string) $item['org']];
+
+        $jurisdictionParts = array_filter([
+            isset($item['jurisdiction']) ? (string) $item['jurisdiction'] : null,
+            isset($item['court']) ? (string) $item['court'] : null,
+        ]);
+
+        /** @var list<array<string, mixed>> $versions */
+        $versions = isset($item['versions']) && is_array($item['versions']) ? array_values($item['versions']) : [];
+        $firstContent = isset($versions[0]['content']) && is_array($versions[0]['content']) ? $versions[0]['content'] : [];
+
+        $template = DeadlineTemplate::firstOrCreate(
+            [
+                'org_id' => $orgId,
+                'name' => (string) $item['name'],
+            ],
+            [
+                'jurisdiction_label' => $jurisdictionParts !== [] ? implode(' · ', $jurisdictionParts) : null,
+                'demonstration' => isset($firstContent['demonstration']) ? (bool) $firstContent['demonstration'] : true,
+                'owner_label' => isset($firstContent['owner']) ? (string) $firstContent['owner'] : null,
+                'created_by' => isset($versions[0]['maker']) ? $this->ids[(string) $versions[0]['maker']] : null,
+            ]
+        );
+
+        $this->ids[(string) $item['id']] = (string) $template->getKey();
+
+        foreach ($versions as $versionData) {
+            $status = (string) ($versionData['status'] ?? 'draft');
+            if ($status === 'in_review') {
+                $status = 'pending_review';
+            }
+            /** @var array<string, mixed> $content */
+            $content = isset($versionData['content']) && is_array($versionData['content']) ? $versionData['content'] : [];
+
+            DeadlineTemplateVersion::firstOrCreate(
+                [
+                    'template_id' => (string) $template->getKey(),
+                    'version' => (int) ($versionData['version'] ?? 1),
+                ],
+                [
+                    'status' => $status,
+                    'rules' => $content,
+                    'created_by' => isset($versionData['maker']) ? $this->ids[(string) $versionData['maker']] : null,
+                    'reviewed_by' => isset($versionData['checker']) ? $this->ids[(string) $versionData['checker']] : null,
+                    'published_at' => $status === 'published' ? now() : null,
+                ]
+            );
+        }
     }
 
     /**
