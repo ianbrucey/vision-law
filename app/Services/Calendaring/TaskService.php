@@ -58,6 +58,10 @@ class TaskService
                 $newAssignee->notify($notification);
             }
 
+            if ($item->status === 'confirmed') {
+                ReminderPlanner::reschedule($item->fresh() ?? $item);
+            }
+
             return $item;
         });
     }
@@ -102,6 +106,12 @@ class TaskService
                 'before' => $before,
                 'after' => ItemService::snapshot($item),
             ], $item->matter);
+
+            if ($item->status === 'canceled' || $item->status === 'completed') {
+                ReminderPlanner::supersedePending($item);
+            } elseif ($isReopen && $item->status === 'confirmed') {
+                ReminderPlanner::materialize($item);
+            }
 
             return $item;
         });
@@ -152,6 +162,8 @@ class TaskService
                 'before' => $before,
                 'after' => ItemService::snapshot($item),
             ], $item->matter);
+
+            ReminderPlanner::supersedePending($item);
 
             return $item;
         });

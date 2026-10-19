@@ -59,6 +59,10 @@ class ItemService
                 'after' => self::snapshot($item),
             ], $matter);
 
+            if ($item->status === 'confirmed') {
+                ReminderPlanner::materialize($item);
+            }
+
             return $item;
         });
     }
@@ -125,6 +129,23 @@ class ItemService
 
             AuditLogger::log('calendar.item.updated', $actor, $payload, $fresh->matter);
 
+            // Reminder hooks (T-06): thin calls into the planner.
+            $after = self::snapshot($fresh);
+            if (in_array($fresh->status, ['canceled', 'completed'], true)) {
+                ReminderPlanner::supersedePending($fresh);
+            } elseif ($fresh->status === 'confirmed') {
+                $dateChanged = ($before['due_date'] ?? null) !== ($after['due_date'] ?? null)
+                    || ($before['starts_at'] ?? null) !== ($after['starts_at'] ?? null)
+                    || ($before['cutoff_time'] ?? null) !== ($after['cutoff_time'] ?? null);
+                $becameConfirmed = ($before['status'] ?? null) !== 'confirmed';
+                $assigneeChanged = ($before['assignee_id'] ?? null) !== ($after['assignee_id'] ?? null);
+                if ($becameConfirmed) {
+                    ReminderPlanner::materialize($fresh);
+                } elseif ($dateChanged || $assigneeChanged) {
+                    ReminderPlanner::reschedule($fresh);
+                }
+            }
+
             return $fresh;
         });
     }
@@ -184,6 +205,12 @@ class ItemService
             }
 
             AuditLogger::log($rule['event'], $actor, $payload, $item->matter);
+
+            if ($rule['to'] === 'confirmed') {
+                ReminderPlanner::materialize($item);
+            } elseif (in_array($rule['to'], ['canceled', 'completed'], true)) {
+                ReminderPlanner::supersedePending($item);
+            }
 
             return $item;
         });
@@ -255,6 +282,11 @@ class ItemService
             }
 
             AuditLogger::log('calendar.item.superseded', $actor, $payload, $item->matter);
+
+            ReminderPlanner::supersedePending($item);
+            if ($successor->status === 'confirmed') {
+                ReminderPlanner::materialize($successor);
+            }
 
             return $successor;
         });

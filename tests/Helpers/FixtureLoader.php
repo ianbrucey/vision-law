@@ -17,12 +17,15 @@ use App\Models\MatterGrant;
 use App\Models\MatterLink;
 use App\Models\MatterParty;
 use App\Models\Organization;
+use App\Models\ReminderPolicy;
+use App\Models\ReminderPreference;
 use App\Models\Role;
 use App\Models\TaskDependency;
 use App\Models\Team;
 use App\Models\User;
 use App\Services\AuditLogger;
 use App\Services\Calendaring\RecurrenceService;
+use App\Services\Calendaring\ReminderPlanner;
 use App\Services\DocumentIngestService;
 use App\Services\DocumentStore;
 use App\Services\MalwareScanner;
@@ -1049,10 +1052,11 @@ class FixtureLoader
      * Loads specs/009-calendaring/04-fixtures.json — the SINGLE canonical
      * fixture definition for calendaring (009 T-01).
      *
-     * Base types are persisted; reminder_preference / calendar_feed /
-     * guest_share / deadline_template / golden_cases have no tables yet
-     * in Batch 1 — their symbolic ids are recorded and persistence is
-     * skipped gracefully (later batches wire real loading).
+     * Base types are persisted; reminder_preference is wired in
+     * T-06; calendar_feed / guest_share / deadline_template /
+     * golden_cases have no tables yet — their symbolic ids are
+     * recorded and persistence is skipped gracefully (later batches
+     * wire real loading).
      */
     public static function loadCalendaringFixtures(): self
     {
@@ -1092,6 +1096,8 @@ class FixtureLoader
                     $this->loadCalendaringItem($item);
                     break;
                 case 'reminder_preference':
+                    $this->loadCalendaringReminderPreference($item);
+                    break;
                 case 'calendar_feed':
                 case 'guest_share':
                 case 'deadline_template':
@@ -1184,8 +1190,9 @@ class FixtureLoader
             $endsAt = Carbon::parse((string) $item['ends_at'], $timezone)->setTimezone('UTC');
         }
 
-        // NOTE: reminder_policy is still ignored here (T-06); checklist
-        // and depends_on are persisted by T-04 below.
+        // reminder_policy is persisted by T-06 below (after attendees,
+        // so attendee recipients resolve); checklist and depends_on
+        // are persisted by T-04 below.
         $row = CalendarItem::firstOrCreate(
             [
                 'matter_id' => (string) $matter->getKey(),
@@ -1213,6 +1220,10 @@ class FixtureLoader
             );
         }
 
+        if (isset($item['reminder_policy']) && is_array($item['reminder_policy'])) {
+            $this->loadCalendaringReminderPolicy($row, $item['reminder_policy']);
+        }
+
         foreach (array_values($item['checklist'] ?? []) as $position => $entry) {
             /** @var array<string, mixed> $entry */
             ChecklistItem::firstOrCreate(
@@ -1234,6 +1245,63 @@ class FixtureLoader
                 'predecessor_key' => (string) $predecessorKey,
             ];
         }
+    }
+
+    /**
+     * T-06: persist a fixture reminder_policy as the item's v1 (or
+     * fixture-declared version) active policy via direct model
+     * creation (setPolicy-equivalent), then materialize deliveries
+     * for confirmed items.
+     *
+     * @param  array<string, mixed>  $policyData
+     */
+    private function loadCalendaringReminderPolicy(CalendarItem $row, array $policyData): void
+    {
+        $version = isset($policyData['version']) ? (int) $policyData['version'] : 1;
+        /** @var array<int, mixed> $rules */
+        $rules = is_array($policyData['rules'] ?? null) ? array_values($policyData['rules']) : [];
+
+        ReminderPolicy::firstOrCreate(
+            [
+                'item_id' => (string) $row->getKey(),
+                'version' => $version,
+            ],
+            [
+                'org_id' => (string) $row->org_id,
+                'matter_id' => (string) $row->matter_id,
+                'active' => true,
+                'rules' => $rules,
+                'created_by' => null,
+            ]
+        );
+
+        ReminderPlanner::materialize($row->fresh() ?? $row);
+    }
+
+    /**
+     * @param  array<string, mixed>  $item
+     */
+    private function loadCalendaringReminderPreference(array $item): void
+    {
+        $userId = $this->ids[(string) $item['user']];
+
+        $pref = ReminderPreference::firstOrCreate(
+            ['user_id' => $userId],
+            [
+                'quiet_start' => $item['quiet_start'] ?? null,
+                'quiet_end' => $item['quiet_end'] ?? null,
+                'timezone' => (string) ($item['timezone'] ?? 'UTC'),
+                'digest_enabled' => (bool) ($item['digest_enabled'] ?? false),
+                'digest_time' => $item['digest_time'] ?? null,
+            ]
+        );
+
+        $this->ids[(string) $item['id']] = (string) $pref->getKey();
+    }
+
+    public function reminderPreference(string $key): ReminderPreference
+    {
+        return ReminderPreference::findOrFail($this->id($key));
     }
 
     /**

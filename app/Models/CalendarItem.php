@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 
 /**
  * @property string $id
@@ -275,5 +276,29 @@ class CalendarItem extends Model
     public function supersededBy(): BelongsTo
     {
         return $this->belongsTo(self::class, 'superseded_by_id');
+    }
+
+    /**
+     * @return HasMany<ReminderPolicy, $this>
+     */
+    public function reminderPolicies(): HasMany
+    {
+        return $this->hasMany(ReminderPolicy::class, 'item_id');
+    }
+
+    /**
+     * @return HasOne<ReminderPolicy, $this>
+     */
+    public function activeReminderPolicy(): HasOne
+    {
+        return $this->hasOne(ReminderPolicy::class, 'item_id')->where('active', true)->orderByDesc('version');
+    }
+
+    /**
+     * @return HasMany<ReminderDelivery, $this>
+     */
+    public function reminderDeliveries(): HasMany
+    {
+        return $this->hasMany(ReminderDelivery::class, 'item_id');
     }
 }
