@@ -36,6 +36,31 @@
         </x-ui.card>
     @endif
 
+    <x-ui.card title="Deadline templates" class="mb-6">
+        @if ($canEdit)
+            <form method="POST" action="{{ route('calendar.instantiations.preview', $matter) }}">
+                @csrf
+                <x-ui.select name="template_version_id" label="Published template version" :options="$publishedVersions->mapWithKeys(fn ($version) => [(string) $version->getKey() => ($version->template?->name ?? 'Template') . ' — v' . $version->version])->all()" required />
+                <div class="grid gap-x-5 min-[821px]:grid-cols-2">
+                    <x-ui.field name="trigger_date" label="Trigger date (e.g. date of service)" type="date" required />
+                    <x-ui.field name="timezone" label="Time zone" value="America/New_York" required />
+                </div>
+                <x-ui.button variant="primary" type="submit">Preview deadlines</x-ui.button>
+            </form>
+        @endif
+
+        @forelse ($instantiationBatches as $batch)
+            <div class="flex flex-wrap items-baseline gap-3 py-3 border-t border-vl-line">
+                <span class="font-semibold text-vl-ink">{{ $batch->templateVersion?->template?->name ?? 'Template' }} — v{{ $batch->templateVersion?->version }}</span>
+                <x-ui.chip tone="neutral">{{ $batch->items_count }} items</x-ui.chip>
+                <span class="text-[13px] text-vl-mut">Trigger: {{ $batch->inputs['trigger_date'] ?? '' }}</span>
+                <span class="text-[13px] text-vl-mut">Instantiated {{ $batch->created_at?->toDateString() }}</span>
+            </div>
+        @empty
+            <p class="text-[14.5px] text-vl-mut pt-3">No template instantiations for this matter yet.</p>
+        @endforelse
+    </x-ui.card>
+
     <x-ui.card title="Items">
         @forelse ($items as $item)
             <div class="flex flex-wrap items-baseline gap-3 py-3 border-t border-vl-line first:border-t-0">

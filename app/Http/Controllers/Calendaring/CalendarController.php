@@ -5,6 +5,8 @@ namespace App\Http\Controllers\Calendaring;
 use App\Http\Controllers\Controller;
 use App\Models\CalendarFilterPreference;
 use App\Models\CalendarItem;
+use App\Models\DeadlineTemplateVersion;
+use App\Models\InstantiationBatch;
 use App\Models\Matter;
 use App\Models\User;
 use App\Services\AccessControl;
@@ -67,11 +69,28 @@ class CalendarController extends Controller
             ->orderBy('calendar_items.title')
             ->get();
 
+        // Instantiation panel data (009 T-12): published versions in
+        // the matter's org + this matter's instantiation batches.
+        $publishedVersions = DeadlineTemplateVersion::query()
+            ->where('status', 'published')
+            ->whereHas('template', fn ($query) => $query->where('org_id', (string) $matter->org_id))
+            ->with('template')
+            ->orderBy('version')
+            ->get();
+        $instantiationBatches = InstantiationBatch::query()
+            ->where('matter_id', (string) $matter->getKey())
+            ->with('templateVersion.template')
+            ->withCount('items')
+            ->orderByDesc('created_at')
+            ->get();
+
         // Annotate via a list agenda over the same matter for changed state.
         return view('calendaring.calendar.matter', [
             'matter' => $matter,
             'items' => $items,
             'canEdit' => $this->canEdit($actor, $matter),
+            'publishedVersions' => $publishedVersions,
+            'instantiationBatches' => $instantiationBatches,
         ]);
     }
 

@@ -19,6 +19,7 @@ use App\Http\Controllers\Calendaring\CalendarController;
 use App\Http\Controllers\Calendaring\CalendarItemController;
 use App\Http\Controllers\Calendaring\CalendarRecurrenceController;
 use App\Http\Controllers\Calendaring\CalendarTaskController;
+use App\Http\Controllers\Calendaring\DeadlineInstantiationController;
 use App\Http\Controllers\Calendaring\DeadlineTemplateController;
 use App\Http\Controllers\Calendaring\NotificationController;
 use App\Http\Controllers\CommentController;
@@ -816,6 +817,13 @@ Route::middleware(['auth:'.config('fortify.guard')])->group(function (): void {
     // === 009 calendaring — Batch 2 (T-05 recurrence) ===
     Route::post('/calendar/items/{item}/recurrence', [CalendarRecurrenceController::class, 'update'])
         ->name('calendar.items.recurrence');
+    // === 009 calendaring — Batch 4b (T-12 instantiation) ===
+    Route::post('/matters/{matter}/deadline-instantiations/preview', [DeadlineInstantiationController::class, 'preview'])
+        ->middleware('matter.access:edit')
+        ->name('calendar.instantiations.preview');
+    Route::post('/matters/{matter}/deadline-instantiations', [DeadlineInstantiationController::class, 'store'])
+        ->middleware('matter.access:edit')
+        ->name('calendar.instantiations.store');
     // === 009 calendaring — Batch 3 (T-07 inbox) ===
     Route::get('/notifications', [NotificationController::class, 'index'])
         ->name('notifications.index');

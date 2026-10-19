@@ -38,6 +38,8 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
  * @property string|null $superseded_by_id
  * @property string $source
  * @property string|null $template_version_id
+ * @property string|null $instantiation_batch_id
+ * @property bool $date_overridden
  * @property string|null $rule_key
  * @property array<string, mixed>|null $inputs
  * @property array<string, mixed>|null $calc_trace
@@ -101,6 +103,8 @@ class CalendarItem extends Model
         'superseded_by_id',
         'source',
         'template_version_id',
+        'instantiation_batch_id',
+        'date_overridden',
         'rule_key',
         'inputs',
         'calc_trace',
@@ -125,6 +129,7 @@ class CalendarItem extends Model
             'starts_at' => 'datetime',
             'ends_at' => 'datetime',
             'all_day' => 'boolean',
+            'date_overridden' => 'boolean',
             'version' => 'integer',
             'inputs' => 'array',
             'calc_trace' => 'array',
@@ -276,6 +281,25 @@ class CalendarItem extends Model
     public function supersededBy(): BelongsTo
     {
         return $this->belongsTo(self::class, 'superseded_by_id');
+    }
+
+    /**
+     * The instantiation batch that generated this item (009 T-12),
+     * when it came from a template.
+     *
+     * @return BelongsTo<InstantiationBatch, $this>
+     */
+    public function instantiationBatch(): BelongsTo
+    {
+        return $this->belongsTo(InstantiationBatch::class, 'instantiation_batch_id');
+    }
+
+    /**
+     * @return BelongsTo<DeadlineTemplateVersion, $this>
+     */
+    public function templateVersion(): BelongsTo
+    {
+        return $this->belongsTo(DeadlineTemplateVersion::class, 'template_version_id');
     }
 
     /**
