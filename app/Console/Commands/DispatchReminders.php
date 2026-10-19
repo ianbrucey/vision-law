@@ -33,6 +33,15 @@ class DispatchReminders extends Command
             ->where('updated_at', '<', now()->subMinutes(10))
             ->update(['status' => 'pending']);
 
+        // Snoozed deliveries whose snooze has expired are due again
+        // (T-08): snoozed -> pending, then the normal flow below; a
+        // re-send lands them back at sent.
+        ReminderDelivery::query()
+            ->where('status', 'snoozed')
+            ->whereNotNull('snoozed_until')
+            ->where('snoozed_until', '<=', now())
+            ->update(['status' => 'pending', 'snoozed_until' => null]);
+
         $due = ReminderDelivery::query()
             ->where('status', 'pending')
             ->where('scheduled_for', '<=', now())

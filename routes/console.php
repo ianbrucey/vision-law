@@ -21,3 +21,6 @@ Schedule::command('retention:evaluate')->daily();
 
 // 009 T-07: reminder dispatch (materialize + claim + send pipeline).
 Schedule::command('reminders:dispatch')->everyMinute();
+
+// 009 T-08: escalation sweep for unacknowledged mandatory reminders.
+Schedule::command('reminders:escalate')->everyFiveMinutes();

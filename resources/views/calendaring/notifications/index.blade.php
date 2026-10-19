@@ -19,6 +19,27 @@
                         @if ($delivery->sent_at)
                             <span>{{ $delivery->sent_at->toDayDateTimeString() }}</span>
                         @endif
+                        @if (!empty($delivery->payload['digest_items']) && is_array($delivery->payload['digest_items']))
+                            <ul>
+                                @foreach ($delivery->payload['digest_items'] as $entry)
+                                    <li>{{ is_array($entry) ? ($entry['item_title'] ?? '') : '' }}</li>
+                                @endforeach
+                            </ul>
+                        @endif
+                        @if ($delivery->status === 'sent' || $delivery->status === 'snoozed')
+                            <form method="POST" action="{{ route('notifications.acknowledge', $delivery) }}">
+                                @csrf
+                                <button type="submit">Acknowledge</button>
+                            </form>
+                            <form method="POST" action="{{ route('notifications.snooze', $delivery) }}">
+                                @csrf
+                                <label>
+                                    Snooze until
+                                    <input type="datetime-local" name="until">
+                                </label>
+                                <button type="submit">Snooze</button>
+                            </form>
+                        @endif
                     </li>
                 @endforeach
             </ul>

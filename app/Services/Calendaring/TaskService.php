@@ -6,7 +6,6 @@ use App\Models\CalendarItem;
 use App\Models\ChecklistItem;
 use App\Models\TaskDependency;
 use App\Models\User;
-use App\Notifications\TaskAssignedNotification;
 use App\Services\AccessControl;
 use App\Services\AuditLogger;
 use Illuminate\Support\Carbon;
@@ -50,12 +49,24 @@ class TaskService
                 'after' => ['assignee_id' => $userId],
             ], $item->matter);
 
-            $notification = new TaskAssignedNotification($item->fresh() ?? $item, $oldId, $userId);
+            // Assignment notice via the ledger (T-08): NoticeService
+            // creates kind=notice deliveries for BOTH the old and the
+            // new assignee and delivers them through DeliveryService,
+            // so the ledger is the single system of record. The
+            // resulting ReminderNotification carries item/matter plus
+            // previous/new assignee ids — the context C-06 asserts.
+            $freshItem = $item->fresh() ?? $item;
+            $noticeExtra = [
+                'previous_assignee_id' => $oldId,
+                'new_assignee_id' => $userId,
+                'before' => ['assignee_id' => $oldId],
+                'after' => ['assignee_id' => $userId],
+            ];
             if ($oldAssignee !== null) {
-                $oldAssignee->notify($notification);
+                NoticeService::notify($freshItem, $oldAssignee, 'assignment', $noticeExtra, $actor);
             }
             if ($newAssignee !== null && (string) $newAssignee->getKey() !== $oldId) {
-                $newAssignee->notify($notification);
+                NoticeService::notify($freshItem, $newAssignee, 'assignment', $noticeExtra, $actor);
             }
 
             if ($item->status === 'confirmed') {

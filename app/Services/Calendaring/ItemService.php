@@ -86,6 +86,7 @@ class ItemService
         }
 
         $before = self::snapshot($item);
+        $wasConfirmed = $item->status === 'confirmed';
 
         // Hard-deadline guard (009-D12).
         $isHardConfirmed = $item->status === 'confirmed' && $item->classification === 'hard';
@@ -104,7 +105,7 @@ class ItemService
         $attrs = self::validateItem($data, $item);
         self::assertRange($attrs, $item);
 
-        return DB::transaction(function () use ($item, $data, $attrs, $actor, $before): CalendarItem {
+        return DB::transaction(function () use ($item, $data, $attrs, $actor, $before, $wasConfirmed): CalendarItem {
             // Re-check version under the transaction (no silent overwrite).
             $fresh = CalendarItem::query()->whereKey($item->getKey())->lockForUpdate()->firstOrFail();
             if ((int) $data['version'] !== (int) $fresh->version) {
@@ -143,6 +144,19 @@ class ItemService
                     ReminderPlanner::materialize($fresh);
                 } elseif ($dateChanged || $assigneeChanged) {
                     ReminderPlanner::reschedule($fresh);
+                }
+
+                // Material date change on a confirmed item (T-08,
+                // 009-D17): an immediate mandatory notice carrying
+                // before/after + the actor, via the ledger.
+                $materialDateChanged = ($before['due_date'] ?? null) !== ($after['due_date'] ?? null)
+                    || ($before['starts_at'] ?? null) !== ($after['starts_at'] ?? null)
+                    || ($before['ends_at'] ?? null) !== ($after['ends_at'] ?? null);
+                if (! $becameConfirmed && $wasConfirmed && $materialDateChanged) {
+                    NoticeService::notifyMany($fresh, NoticeService::recipientsForItem($fresh), 'material_date_change', [
+                        'before' => $before,
+                        'after' => $after,
+                    ], $actor);
                 }
             }
 
@@ -208,8 +222,20 @@ class ItemService
 
             if ($rule['to'] === 'confirmed') {
                 ReminderPlanner::materialize($item);
+                // Immediate notice (T-08): assignee + attendees.
+                NoticeService::notifyMany($item, NoticeService::recipientsForItem($item), 'confirmed', [
+                    'before' => $before,
+                    'after' => self::snapshot($item),
+                ], $actor);
             } elseif (in_array($rule['to'], ['canceled', 'completed'], true)) {
                 ReminderPlanner::supersedePending($item);
+                if ($rule['to'] === 'canceled') {
+                    // Immediate notice (T-08): assignee + attendees.
+                    NoticeService::notifyMany($item, NoticeService::recipientsForItem($item), 'canceled', [
+                        'before' => $before,
+                        'after' => self::snapshot($item),
+                    ], $actor);
+                }
             }
 
             return $item;

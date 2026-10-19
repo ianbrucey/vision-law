@@ -790,6 +790,13 @@ Route::middleware(['auth:'.config('fortify.guard')])->group(function (): void {
     // === 009 calendaring — Batch 3 (T-07 inbox) ===
     Route::get('/notifications', [NotificationController::class, 'index'])
         ->name('notifications.index');
+    // === 009 calendaring — Batch 3b (T-08 ack / snooze) ===
+    Route::post('/notifications/{delivery}/acknowledge', [NotificationController::class, 'acknowledge'])
+        ->name('notifications.acknowledge');
+    Route::post('/notifications/{delivery}/ack', [NotificationController::class, 'acknowledge'])
+        ->name('notifications.ack');
+    Route::post('/notifications/{delivery}/snooze', [NotificationController::class, 'snooze'])
+        ->name('notifications.snooze');
 });
 
 require __DIR__.'/share.php';
