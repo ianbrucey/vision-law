@@ -9,6 +9,7 @@ use App\Models\Matter;
 use App\Models\User;
 use App\Services\AccessControl;
 use App\Services\AuditLogger;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rule;
@@ -464,7 +465,40 @@ class ItemService
             $validated['all_day'] = filter_var($data['all_day'], FILTER_VALIDATE_BOOLEAN);
         }
 
+        // Time-zone law (009-D23, T-15): timed items store UTC
+        // instants. An offset-bearing input is already an instant
+        // and is kept verbatim; a NAIVE local time is interpreted
+        // in the item's originating IANA zone and converted to UTC
+        // (DST-safe via Carbon: an ambiguous fall-back wall time
+        // resolves to its first occurrence).
+        $originTz = isset($validated['timezone']) && is_string($validated['timezone']) && $validated['timezone'] !== ''
+            ? $validated['timezone']
+            : ($existing !== null ? $existing->timezone : 'UTC');
+        foreach (['starts_at', 'ends_at'] as $instantKey) {
+            if (isset($validated[$instantKey]) && is_string($validated[$instantKey])) {
+                $validated[$instantKey] = self::normalizeInstant($validated[$instantKey], $originTz);
+            }
+        }
+
         return $validated;
+    }
+
+    /**
+     * Convert a naive local datetime string in $tz to a UTC ISO
+     * string; offset-bearing strings pass through unchanged.
+     */
+    private static function normalizeInstant(string $value, string $tz): string
+    {
+        $trimmed = trim($value);
+        if (preg_match('/(z|[+-]\d{2}:?\d{2})$/i', $trimmed) === 1) {
+            return $value;
+        }
+
+        if (! in_array($tz, timezone_identifiers_list(), true)) {
+            $tz = 'UTC';
+        }
+
+        return Carbon::parse($trimmed, $tz)->setTimezone('UTC')->toIso8601String();
     }
 
     /**

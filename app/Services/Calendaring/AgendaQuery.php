@@ -5,6 +5,7 @@ namespace App\Services\Calendaring;
 use App\Models\AuditEvent;
 use App\Models\CalendarItem;
 use App\Models\Matter;
+use App\Models\ReminderPreference;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Carbon;
@@ -23,16 +24,23 @@ class AgendaQuery
      *     anchor: string,
      *     start: string|null,
      *     end: string|null,
+     *     viewer_timezone: string,
      *     items: Collection<int, CalendarItem>,
      *     groups: array<string, Collection<int, CalendarItem>>,
      *     counts: array{total: int, by_status: array<string, int>, by_type: array<string, int>}
      * }
      */
-    public static function forUser(User $user, string $mode = 'list', ?string $anchor = null, array $filters = []): array
+    public static function forUser(User $user, string $mode = 'list', ?string $anchor = null, array $filters = [], ?string $viewerTimezone = null): array
     {
         if (! in_array($mode, self::MODES, true)) {
             $mode = 'list';
         }
+
+        // 009-D23 (T-15): timed items group and window by the VIEWER's
+        // zone; date-only items keep their stored calendar date in
+        // every zone. The viewer zone is the explicit argument, else
+        // the user's reminder-preference zone, else UTC.
+        $viewerTimezone = self::validTimezone($viewerTimezone) ?? self::viewerTimezoneFor($user);
 
         $anchorDate = $anchor !== null && $anchor !== '' ? Carbon::parse($anchor)->startOfDay() : now()->startOfDay();
 
@@ -47,8 +55,8 @@ class AgendaQuery
 
         if ($start !== null && $end !== null) {
             $query->whereRaw(
-                'coalesce(calendar_items.due_date, calendar_items.occurrence_date, calendar_items.starts_at::date) between ? and ?',
-                [$start->toDateString(), $end->toDateString()]
+                'coalesce(calendar_items.due_date, calendar_items.occurrence_date, (calendar_items.starts_at at time zone ?)::date) between ? and ?',
+                [$viewerTimezone, $start->toDateString(), $end->toDateString()]
             );
         }
 
@@ -61,7 +69,7 @@ class AgendaQuery
             ->groupBy('calendar_items.type')->pluck('c', 'k')->map(fn ($v) => (int) $v)->all();
 
         $items = $query->with(['matter', 'assignee'])
-            ->orderByRaw('coalesce(calendar_items.due_date, calendar_items.occurrence_date, calendar_items.starts_at::date) asc nulls last')
+            ->orderByRaw('coalesce(calendar_items.due_date, calendar_items.occurrence_date, (calendar_items.starts_at at time zone ?)::date) asc nulls last', [$viewerTimezone])
             ->orderBy('calendar_items.starts_at')
             ->orderBy('calendar_items.title')
             ->orderBy('calendar_items.id')
@@ -71,7 +79,8 @@ class AgendaQuery
 
         $groups = [];
         foreach ($items as $item) {
-            $key = self::effectiveDate($item) ?? 'undated';
+            $key = self::effectiveDate($item, $viewerTimezone) ?? 'undated';
+            $item->setAttribute('viewer_date', $key === 'undated' ? null : $key);
             $groups[$key] ??= new Collection;
             $groups[$key]->push($item);
         }
@@ -82,6 +91,7 @@ class AgendaQuery
             'anchor' => $anchorDate->toDateString(),
             'start' => $start?->toDateString(),
             'end' => $end?->toDateString(),
+            'viewer_timezone' => $viewerTimezone,
             'items' => $items,
             'groups' => $groups,
             'counts' => [
@@ -167,8 +177,10 @@ class AgendaQuery
         return $query;
     }
 
-    public static function effectiveDate(CalendarItem $item): ?string
+    public static function effectiveDate(CalendarItem $item, ?string $viewerTimezone = null): ?string
     {
+        // Date-only values are zone-stable by law (009-D23): they are
+        // returned verbatim for every viewer zone.
         if ($item->due_date !== null) {
             return $item->due_date->toDateString();
         }
@@ -176,10 +188,33 @@ class AgendaQuery
             return $item->occurrence_date->toDateString();
         }
         if ($item->starts_at !== null) {
-            return $item->starts_at->toDateString();
+            $tz = self::validTimezone($viewerTimezone) ?? 'UTC';
+
+            return Carbon::instance($item->starts_at)->setTimezone($tz)->toDateString();
         }
 
         return null;
+    }
+
+    /**
+     * The zone an agenda renders in for a user: their reminder
+     * preference zone when set, else UTC.
+     */
+    public static function viewerTimezoneFor(User $user): string
+    {
+        $pref = ReminderPreference::query()->where('user_id', $user->getKey())->first();
+        $tz = $pref !== null ? self::validTimezone($pref->timezone) : null;
+
+        return $tz ?? 'UTC';
+    }
+
+    private static function validTimezone(?string $tz): ?string
+    {
+        if ($tz === null || $tz === '') {
+            return null;
+        }
+
+        return in_array($tz, timezone_identifiers_list(), true) ? $tz : null;
     }
 
     /**

@@ -22,6 +22,8 @@
             ['label' => 'Status', 'value' => ucfirst(str_replace('_', ' ', $item->status))],
             ['label' => 'Type', 'value' => ucfirst($item->type)],
             ['label' => 'Due date', 'value' => $item->due_date?->toDateString() ?? '—'],
+            ['label' => 'Starts', 'value' => $item->starts_at ? fmtDT($item->starts_at->copy()->setTimezone($item->timezone ?: 'UTC')) . ' ' . ($item->timezone ?: 'UTC') : '—'],
+            ['label' => 'Ends', 'value' => $item->ends_at ? fmtDT($item->ends_at->copy()->setTimezone($item->timezone ?: 'UTC')) . ' ' . ($item->timezone ?: 'UTC') : '—'],
             ['label' => 'Cutoff', 'value' => $item->cutoff_time ? substr((string) $item->cutoff_time, 0, 5) : '—'],
             ['label' => 'Jurisdiction', 'value' => $item->jurisdiction ?? '—'],
             ['label' => 'Assignee', 'value' => $item->assignee?->name ?? 'Unassigned'],

@@ -24,7 +24,7 @@ class CalendarController extends Controller
         $actor = $this->actor($request);
         [$mode, $anchor, $filters] = $this->params($request, $actor);
 
-        $result = AgendaQuery::forUser($actor, $mode, $anchor, $filters);
+        $result = AgendaQuery::forUser($actor, $mode, $anchor, $filters, $this->viewerTimezone($request));
 
         return view('calendaring.calendar.index', [
             'result' => $result,
@@ -43,13 +43,14 @@ class CalendarController extends Controller
         $actor = $this->actor($request);
         [$mode, $anchor, $filters] = $this->params($request, $actor);
 
-        $result = AgendaQuery::forUser($actor, $mode, $anchor, $filters);
+        $result = AgendaQuery::forUser($actor, $mode, $anchor, $filters, $this->viewerTimezone($request));
 
         return response()->json([
             'mode' => $result['mode'],
             'anchor' => $result['anchor'],
             'start' => $result['start'],
             'end' => $result['end'],
+            'viewer_timezone' => $result['viewer_timezone'],
             'counts' => $result['counts'],
             'items' => $result['items']->map(fn (CalendarItem $item) => $this->itemJson($item))->values(),
         ]);
@@ -220,7 +221,7 @@ class CalendarController extends Controller
             'status' => $item->status,
             'classification' => $item->classification,
             'due_date' => $item->due_date?->toDateString(),
-            'effective_date' => AgendaQuery::effectiveDate($item),
+            'effective_date' => $item->getAttribute('viewer_date') ?? AgendaQuery::effectiveDate($item),
             'assignee_id' => $item->assignee_id,
             'changed' => (bool) $item->getAttribute('changed'),
             'changed_from' => $item->getAttribute('changed_from'),
@@ -228,6 +229,18 @@ class CalendarController extends Controller
             'before_status' => $item->getAttribute('changed_from'),
             'after_status' => $item->getAttribute('changed_to'),
         ];
+    }
+
+    /**
+     * Optional ?tz= viewer-zone override (009-D23, T-15); invalid
+     * values are ignored and AgendaQuery falls back to the user's
+     * preference zone.
+     */
+    private function viewerTimezone(Request $request): ?string
+    {
+        $tz = $request->query('tz');
+
+        return is_string($tz) && $tz !== '' ? $tz : null;
     }
 
     private function canEdit(User $actor, Matter $matter): bool
