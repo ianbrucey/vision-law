@@ -56,6 +56,16 @@
                 <span class="text-[13px] text-vl-mut">Trigger: {{ $batch->inputs['trigger_date'] ?? '' }}</span>
                 <span class="text-[13px] text-vl-mut">Instantiated {{ $batch->created_at?->toDateString() }}</span>
             </div>
+            @if ($canEdit)
+                <form method="POST" action="{{ route('calendar.instantiations.recalculate.preview', [$matter, $batch]) }}" class="pb-3">
+                    @csrf
+                    <div class="grid gap-x-5 min-[821px]:grid-cols-2">
+                        <x-ui.field name="trigger_date" label="New trigger date" type="date" required />
+                        <x-ui.field name="timezone" label="Time zone" value="America/New_York" />
+                    </div>
+                    <x-ui.button variant="secondary" type="submit">Preview recalculation</x-ui.button>
+                </form>
+            @endif
         @empty
             <p class="text-[14.5px] text-vl-mut pt-3">No template instantiations for this matter yet.</p>
         @endforelse

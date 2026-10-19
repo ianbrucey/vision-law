@@ -824,6 +824,13 @@ Route::middleware(['auth:'.config('fortify.guard')])->group(function (): void {
     Route::post('/matters/{matter}/deadline-instantiations', [DeadlineInstantiationController::class, 'store'])
         ->middleware('matter.access:edit')
         ->name('calendar.instantiations.store');
+    // === 009 calendaring — Batch 4b (T-13 recalculation) ===
+    Route::post('/matters/{matter}/deadline-instantiations/{batch}/recalculate/preview', [DeadlineInstantiationController::class, 'recalculatePreview'])
+        ->middleware('matter.access:edit')
+        ->name('calendar.instantiations.recalculate.preview');
+    Route::post('/matters/{matter}/deadline-instantiations/{batch}/recalculate', [DeadlineInstantiationController::class, 'recalculate'])
+        ->middleware('matter.access:edit')
+        ->name('calendar.instantiations.recalculate');
     // === 009 calendaring — Batch 3 (T-07 inbox) ===
     Route::get('/notifications', [NotificationController::class, 'index'])
         ->name('notifications.index');

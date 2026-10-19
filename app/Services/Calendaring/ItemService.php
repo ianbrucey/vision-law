@@ -22,6 +22,7 @@ class ItemService
         'classification', 'jurisdiction', 'due_date', 'cutoff_time', 'starts_at', 'ends_at',
         'all_day', 'timezone', 'location', 'meeting_url', 'assignee_id',
         'escalation_owner_id', 'reviewer_id', 'source', 'template_version_id',
+        'instantiation_batch_id', 'date_overridden',
         'rule_key', 'inputs', 'calc_trace', 'series_id', 'occurrence_date', 'recurrence_rule',
     ];
 
@@ -113,6 +114,18 @@ class ItemService
             }
 
             $fresh->fill($attrs);
+
+            // Manual-override marking (009 T-13, 009-D21): a user
+            // edit that moves the date of a template-generated item
+            // marks it overridden, so recalculation preserves it
+            // unless overrides are explicitly reset.
+            $filledSnapshot = self::snapshot($fresh);
+            if ($fresh->source === 'template'
+                && (($before['due_date'] ?? null) !== ($filledSnapshot['due_date'] ?? null)
+                    || ($before['starts_at'] ?? null) !== ($filledSnapshot['starts_at'] ?? null))) {
+                $fresh->date_overridden = true;
+            }
+
             $fresh->version = (int) $fresh->version + 1;
             $fresh->updated_by = (string) $actor->getKey();
             $fresh->save();
@@ -417,6 +430,8 @@ class ItemService
             'reviewer_id' => ['nullable', 'uuid'],
             'source' => ['sometimes', 'string', 'max:30'],
             'template_version_id' => ['nullable', 'uuid'],
+            'instantiation_batch_id' => ['nullable', 'uuid'],
+            'date_overridden' => ['sometimes', 'boolean'],
             'rule_key' => ['nullable', 'string', 'max:255'],
             'inputs' => ['nullable', 'array'],
             'calc_trace' => ['nullable', 'array'],

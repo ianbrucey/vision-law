@@ -9,6 +9,7 @@ use App\Models\InstantiationBatch;
 use App\Models\Matter;
 use App\Models\User;
 use App\Services\Calendaring\InstantiationService;
+use App\Services\Calendaring\RecalculationService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -66,6 +67,84 @@ class DeadlineInstantiationController extends Controller
         return redirect()
             ->route('matters.calendar', $matter)
             ->with('toast', ['tone' => 'ok', 'message' => 'Template instantiated: '.$batch->items()->count().' items created.']);
+    }
+
+    public function recalculatePreview(Request $request, string $matter, string $batch): JsonResponse|View
+    {
+        $matterModel = $this->matter($request);
+        $batchModel = $this->resolveBatch($matterModel, $batch);
+        $newInputs = $this->extractRecalculationInputs($request, $batchModel);
+        $resetOverrides = $request->boolean('reset_overrides');
+
+        $preview = RecalculationService::preview($batchModel, $newInputs, $resetOverrides);
+
+        if ($request->wantsJson()) {
+            return response()->json([
+                'batch_id' => $preview['batch_id'],
+                'inputs' => $preview['inputs'],
+                'entries' => array_map(fn (array $entry) => $this->diffResource($entry), $preview['entries']),
+            ]);
+        }
+
+        return view('calendaring.instantiations.recalculate-preview', [
+            'matter' => $matterModel,
+            'batch' => $batchModel,
+            'inputs' => $preview['inputs'],
+            'entries' => $preview['entries'],
+            'resetOverrides' => $resetOverrides,
+        ]);
+    }
+
+    public function recalculate(Request $request, string $matter, string $batch): JsonResponse|RedirectResponse
+    {
+        $actor = $this->actor($request);
+        $matterModel = $this->matter($request);
+        $batchModel = $this->resolveBatch($matterModel, $batch);
+        $newInputs = $this->extractRecalculationInputs($request, $batchModel);
+        $resetOverrides = $request->boolean('reset_overrides');
+
+        $result = RecalculationService::apply($batchModel, $newInputs, $actor, $resetOverrides);
+
+        if ($request->wantsJson()) {
+            return response()->json([
+                'batch' => $this->batchResource($result['batch']),
+                'superseded' => array_map(fn (CalendarItem $item) => $this->itemResource($item), $result['superseded']),
+                'successors' => array_map(fn (CalendarItem $item) => $this->itemResource($item), $result['successors']),
+                'preserved' => array_map(fn (CalendarItem $item) => $this->itemResource($item), $result['preserved']),
+            ]);
+        }
+
+        return redirect()
+            ->route('matters.calendar', $matterModel)
+            ->with('toast', ['tone' => 'ok', 'message' => 'Recalculation applied: '.count($result['successors']).' items superseded.']);
+    }
+
+    /**
+     * Recalculation inputs overlay the batch's stored inputs: the
+     * caller supplies only what changed (e.g. a new trigger date).
+     *
+     * @return array<string, mixed>
+     */
+    protected function extractRecalculationInputs(Request $request, InstantiationBatch $batch): array
+    {
+        return array_merge($batch->inputs ?? [], $this->extractInputs($request));
+    }
+
+    /**
+     * @param  array<string, mixed>  $entry
+     * @return array<string, mixed>
+     */
+    protected function diffResource(array $entry): array
+    {
+        return [
+            'item_id' => $entry['item_id'],
+            'rule_key' => $entry['rule_key'],
+            'old_date' => $entry['old_date'],
+            'new_date' => $entry['new_date'],
+            'changed' => (bool) $entry['changed'],
+            'date_overridden' => (bool) $entry['date_overridden'],
+            'preserved' => (bool) $entry['preserved'],
+        ];
     }
 
     /**
