@@ -736,6 +736,12 @@ Route::middleware(['auth:'.config('fortify.guard')])->group(function (): void {
 // Item routes are addressed by item id (not nested under matter): the
 // controller resolves item -> matter -> AccessControl server-side.
 Route::middleware(['auth:'.config('fortify.guard')])->group(function (): void {
+    Route::get('/calendar', [CalendarController::class, 'index'])
+        ->name('calendar.index');
+    Route::get('/calendar/agenda', [CalendarController::class, 'agenda'])
+        ->name('calendar.agenda');
+    Route::post('/calendar/filters', [CalendarController::class, 'saveFilters'])
+        ->name('calendar.filters');
     Route::get('/matters/{matter}/calendar', [CalendarController::class, 'matterCalendar'])
         ->middleware('matter.access:view')
         ->name('matters.calendar');

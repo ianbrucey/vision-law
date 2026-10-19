@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Models\CalendarItem;
 use App\Models\MatterGrant;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\Helpers\FixtureLoader;
@@ -78,5 +79,61 @@ class CalendaringAuthorizationTest extends TestCase
             ->get(route('calendar.items.show', $item))
             ->assertNotFound()
             ->assertDontSee($item->title);
+    }
+
+    public function test_no_existence_leak_via_search_counts_export_or_feed(): void
+    {
+        $admin = $this->loader->user('user-admin');
+        $rival = $this->loader->user('user-rival');
+        $restrictedItem = $this->loader->calendarItem('item-internal-note');
+        $restrictedMatter = $this->loader->matter('matter-restricted');
+
+        // Agenda search for the restricted title returns nothing for the
+        // grantless org admin, in HTML and JSON, and counts exclude it.
+        $search = $this->actingAs($admin)->getJson(route('calendar.agenda', [
+            'mode' => 'list',
+            'search' => $restrictedItem->title,
+        ]));
+        $search->assertOk();
+        $this->assertSame([], $search->json('items'));
+        $this->assertSame(0, $search->json('counts.total'));
+
+        // HTML search page: the query itself is echoed in the search box
+        // (the user's own input, not leaked content), so the leak pins are
+        // the matter title's absence here and both titles' absence on the
+        // unfiltered agenda page.
+        $this->actingAs($admin)->get(route('calendar.index', [
+            'mode' => 'list',
+            'search' => $restrictedItem->title,
+        ]))->assertOk()
+            ->assertDontSee($restrictedMatter->title);
+
+        $this->actingAs($admin)->get(route('calendar.index', ['mode' => 'list']))
+            ->assertOk()
+            ->assertDontSee($restrictedItem->title)
+            ->assertDontSee($restrictedMatter->title);
+
+        // Counts on the unfiltered agenda exclude restricted + rival items:
+        // admin sees only the unrestricted Sterling matters (matter-1 + matter-2).
+        $all = $this->actingAs($admin)->getJson(route('calendar.agenda', ['mode' => 'list']));
+        $all->assertOk();
+        $expected = CalendarItem::query()->whereIn('matter_id', [
+            (string) $this->loader->matter('matter-1')->getKey(),
+            (string) $this->loader->matter('matter-2')->getKey(),
+        ])->count();
+        $this->assertSame($expected, $all->json('counts.total'));
+        $titles = collect($all->json('items'))->pluck('title')->all();
+        $this->assertNotContains($restrictedItem->title, $titles);
+
+        // Cross-org: rival's agenda contains none of Sterling's titles.
+        $rivalAgenda = $this->actingAs($rival)->getJson(route('calendar.agenda', ['mode' => 'list']));
+        $rivalAgenda->assertOk();
+        $rivalTitles = collect($rivalAgenda->json('items'))->pluck('title')->all();
+        $this->assertNotContains('Summary judgment response due', $rivalTitles);
+        $this->assertNotContains($restrictedItem->title, $rivalTitles);
+
+        // NOTE (Batch 5 / T-14): export and feed assertions are added here
+        // when those endpoints land — search/counts/agenda paths are pinned
+        // above for Batch 1.
     }
 }

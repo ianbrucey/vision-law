@@ -6,6 +6,10 @@ use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
+/**
+ * @property string $user_id
+ * @property array<string, mixed> $filters
+ */
 class CalendarFilterPreference extends Model
 {
     use HasUuids;

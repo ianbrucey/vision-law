@@ -6,6 +6,7 @@
             <span>Calendar</span>
         </x-slot>
         <x-slot name="actions">
+            <x-ui.button variant="secondary" href="{{ route('calendar.index') }}">Unified agenda</x-ui.button>
         </x-slot>
     </x-ui.page-header>
 
