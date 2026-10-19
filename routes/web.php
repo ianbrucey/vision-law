@@ -16,6 +16,7 @@ use App\Http\Controllers\Auth\TwoFactorQrCodeImageController;
 use App\Http\Controllers\Auth\TwoFactorSettingsController;
 use App\Http\Controllers\Calendaring\CalendarController;
 use App\Http\Controllers\Calendaring\CalendarItemController;
+use App\Http\Controllers\Calendaring\CalendarRecurrenceController;
 use App\Http\Controllers\Calendaring\CalendarTaskController;
 use App\Http\Controllers\CommentController;
 use App\Http\Controllers\DocumentActivityController;
@@ -782,6 +783,9 @@ Route::middleware(['auth:'.config('fortify.guard')])->group(function (): void {
         ->name('calendar.tasks.dependencies.apply-move');
     Route::post('/calendar/items/{item}/checklist/{entry}/toggle', [CalendarTaskController::class, 'toggleChecklist'])
         ->name('calendar.tasks.checklist.toggle');
+    // === 009 calendaring — Batch 2 (T-05 recurrence) ===
+    Route::post('/calendar/items/{item}/recurrence', [CalendarRecurrenceController::class, 'update'])
+        ->name('calendar.items.recurrence');
 });
 
 require __DIR__.'/share.php';

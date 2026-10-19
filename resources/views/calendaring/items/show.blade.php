@@ -135,6 +135,20 @@
         </x-ui.card>
     @endif
 
+    @if ($item->series_id)
+        <x-ui.card title="Recurrence" class="mt-6">
+            <p>Series occurrence {{ $item->occurrence_date?->toDateString() ?? '—' }}@if ($item->recurrence_detached) (detached from series edits)@endif</p>
+            @if ($canEdit)
+                <form method="POST" action="{{ route('calendar.items.recurrence', $item) }}" class="mt-4">
+                    @csrf
+                    <x-ui.select name="scope" label="Edit scope" :options="['this' => 'This occurrence only', 'following' => 'This and following', 'series' => 'Whole series (future occurrences)']" value="this" />
+                    <x-ui.field name="title" label="Title" :value="$item->title" />
+                    <x-ui.button variant="primary" type="submit">Apply recurrence edit</x-ui.button>
+                </form>
+            @endif
+        </x-ui.card>
+    @endif
+
     <x-ui.card title="Explanation" class="mt-6">
         <p>{{ $explanation['summary'] ?? 'Manual entry' }}</p>
         <x-ui.kv :items="[

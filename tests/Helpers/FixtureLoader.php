@@ -22,6 +22,7 @@ use App\Models\TaskDependency;
 use App\Models\Team;
 use App\Models\User;
 use App\Services\AuditLogger;
+use App\Services\Calendaring\RecurrenceService;
 use App\Services\DocumentIngestService;
 use App\Services\DocumentStore;
 use App\Services\MalwareScanner;
@@ -1143,43 +1144,33 @@ class FixtureLoader
         $orgId = (string) $matter->org_id;
         $timezone = (string) ($item['timezone'] ?? 'UTC');
 
-        // Recurrence fixture: materialize the declared occurrences as
-        // distinct rows sharing one series_id (009-D14, minimal T-01 form).
+        // Recurrence fixture (T-05): create the anchor, then let
+        // RecurrenceService materialize the series. Convention: the
+        // anchor counts as the first occurrence (series_id = anchor id),
+        // so a fixture declaring occurrences:3 yields exactly 3 rows.
         if (isset($item['recurrence']) && is_array($item['recurrence'])) {
             $rec = $item['recurrence'];
-            $count = (int) ($rec['occurrences'] ?? 1);
             $base = isset($rec['starts_on']) ? $this->parseFixtureDate((string) $rec['starts_on']) : null;
-            $seriesId = (string) Str::uuid();
-            $firstId = null;
+            $rule = $rec;
+            $rule['starts_on'] = $base;
+            $rule['count'] = (int) ($rec['occurrences'] ?? $rec['count'] ?? 1);
 
-            for ($i = 0; $i < $count; $i++) {
-                $occ = $base !== null ? Carbon::parse($base) : null;
-                if ($occ !== null) {
-                    $interval = (int) ($rec['interval'] ?? 1) * $i;
-                    match ((string) ($rec['freq'] ?? 'weekly')) {
-                        'daily' => $occ->addDays($interval),
-                        'monthly' => $occ->addMonths($interval),
-                        default => $occ->addWeeks($interval),
-                    };
-                }
+            $anchor = CalendarItem::firstOrCreate(
+                [
+                    'matter_id' => (string) $matter->getKey(),
+                    'title' => (string) $item['title'],
+                    'occurrence_date' => $base,
+                ],
+                $this->calendaringItemAttributes($item, $orgId, $timezone) + [
+                    'occurrence_date' => $base,
+                    'due_date' => $base,
+                    'recurrence_rule' => $rule,
+                ]
+            );
 
-                $row = CalendarItem::firstOrCreate(
-                    [
-                        'matter_id' => (string) $matter->getKey(),
-                        'title' => (string) $item['title'],
-                        'occurrence_date' => $occ?->toDateString(),
-                    ],
-                    $this->calendaringItemAttributes($item, $orgId, $timezone) + [
-                        'series_id' => $seriesId,
-                        'occurrence_date' => $occ?->toDateString(),
-                        'due_date' => $occ?->toDateString(),
-                        'recurrence_rule' => $rec,
-                    ]
-                );
-                $firstId ??= (string) $row->getKey();
-            }
+            RecurrenceService::materialize($anchor);
 
-            $this->ids[(string) $item['id']] = (string) $firstId;
+            $this->ids[(string) $item['id']] = (string) $anchor->getKey();
 
             return;
         }

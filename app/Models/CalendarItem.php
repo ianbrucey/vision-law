@@ -45,6 +45,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * @property array<string, mixed>|null $recurrence_rule
  * @property CarbonInterface|null $completed_at
  * @property string|null $completed_by
+ * @property bool $recurrence_detached
  * @property string|null $created_by
  * @property string|null $updated_by
  * @property CarbonInterface $created_at
@@ -107,6 +108,7 @@ class CalendarItem extends Model
         'recurrence_rule',
         'completed_at',
         'completed_by',
+        'recurrence_detached',
         'created_by',
         'updated_by',
     ];
@@ -127,6 +129,7 @@ class CalendarItem extends Model
             'calc_trace' => 'array',
             'recurrence_rule' => 'array',
             'completed_at' => 'datetime',
+            'recurrence_detached' => 'boolean',
         ];
     }
 
