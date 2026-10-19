@@ -5,6 +5,8 @@ namespace App\Providers;
 use App\Http\Responses\FailedTwoFactorLoginResponse as AppFailedTwoFactorLoginResponse;
 use App\Http\Responses\RegisterResponse as AppRegisterResponse;
 use App\Listeners\EnforceSessionPolicies;
+use App\Services\Calendaring\Channels\EmailChannel;
+use App\Services\Calendaring\Channels\InAppChannel;
 use App\Services\DocumentStore;
 use App\Services\LocalDocumentStore;
 use App\Services\Ocr\OcrProvider;
@@ -60,6 +62,11 @@ class AppServiceProvider extends ServiceProvider
         // recovery code). Sanctioned contract hook; the POST backend is
         // untouched.
         $this->app->bind(FailedTwoFactorLoginResponseContract::class, AppFailedTwoFactorLoginResponse::class);
+
+        // Spec 009 T-07: reminder channels are container-bound under
+        // string keys so tests can substitute doubles per channel.
+        $this->app->bind('calendaring.channel.in_app', InAppChannel::class);
+        $this->app->bind('calendaring.channel.email', EmailChannel::class);
     }
 
     /**

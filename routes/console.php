@@ -18,3 +18,6 @@ Schedule::command('documents:sweep-stale-scans')->everyFiveMinutes();
 // 007 T-09: nightly retention evaluation — flag documents at
 // retention thresholds and auto-queue destroy/archive dispositions.
 Schedule::command('retention:evaluate')->daily();
+
+// 009 T-07: reminder dispatch (materialize + claim + send pipeline).
+Schedule::command('reminders:dispatch')->everyMinute();

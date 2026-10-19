@@ -18,6 +18,7 @@ use App\Http\Controllers\Calendaring\CalendarController;
 use App\Http\Controllers\Calendaring\CalendarItemController;
 use App\Http\Controllers\Calendaring\CalendarRecurrenceController;
 use App\Http\Controllers\Calendaring\CalendarTaskController;
+use App\Http\Controllers\Calendaring\NotificationController;
 use App\Http\Controllers\CommentController;
 use App\Http\Controllers\DocumentActivityController;
 use App\Http\Controllers\DocumentController;
@@ -786,6 +787,9 @@ Route::middleware(['auth:'.config('fortify.guard')])->group(function (): void {
     // === 009 calendaring — Batch 2 (T-05 recurrence) ===
     Route::post('/calendar/items/{item}/recurrence', [CalendarRecurrenceController::class, 'update'])
         ->name('calendar.items.recurrence');
+    // === 009 calendaring — Batch 3 (T-07 inbox) ===
+    Route::get('/notifications', [NotificationController::class, 'index'])
+        ->name('notifications.index');
 });
 
 require __DIR__.'/share.php';
