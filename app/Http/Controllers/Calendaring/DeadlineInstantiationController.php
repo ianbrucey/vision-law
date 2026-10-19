@@ -33,7 +33,7 @@ class DeadlineInstantiationController extends Controller
         $version = $this->resolveVersion($request, $matter);
         $inputs = $this->extractInputs($request);
 
-        $result = InstantiationService::preview($matter, $version, $inputs);
+        $result = InstantiationService::preview($matter, $version, $inputs, $actor);
 
         if ($request->wantsJson()) {
             return response()->json($result);
@@ -71,12 +71,13 @@ class DeadlineInstantiationController extends Controller
 
     public function recalculatePreview(Request $request, string $matter, string $batch): JsonResponse|View
     {
+        $actor = $this->actor($request);
         $matterModel = $this->matter($request);
         $batchModel = $this->resolveBatch($matterModel, $batch);
         $newInputs = $this->extractRecalculationInputs($request, $batchModel);
         $resetOverrides = $request->boolean('reset_overrides');
 
-        $preview = RecalculationService::preview($batchModel, $newInputs, $resetOverrides);
+        $preview = RecalculationService::preview($batchModel, $newInputs, $resetOverrides, $actor);
 
         if ($request->wantsJson()) {
             return response()->json([

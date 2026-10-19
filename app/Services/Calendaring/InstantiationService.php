@@ -21,8 +21,9 @@ use InvalidArgumentException;
  * Template instantiation (009 T-12, 009-D20).
  *
  * Preview is a pure DeadlineEngine computation over a PUBLISHED
- * template version: it persists nothing — no batch, no items, no
- * audit row. Confirm is the only writer and runs in ONE transaction:
+ * template version: it persists no batch and no items (T-16 added
+ * the 009-D24 calendar.instantiation.previewed audit row when an
+ * actor is supplied). Confirm is the only item writer and runs in ONE transaction:
  * batch row, generated items (status confirmed, source=template,
  * full engine trace as provenance), dependency edges, checklist
  * entries, and per-item reminder policies declared by the template
@@ -107,12 +108,23 @@ class InstantiationService
      * @throws ValidationException when the version is not published
      *                             or the inputs cannot be computed
      */
-    public static function preview(Matter $matter, DeadlineTemplateVersion $version, array $inputs): array
+    public static function preview(Matter $matter, DeadlineTemplateVersion $version, array $inputs, ?User $actor = null): array
     {
         self::assertVersionUsable($matter, $version);
 
         $normalized = self::normalizeInputs($inputs, $version);
         $computed = self::compute($version, $normalized);
+
+        // Audit (009-D24, emitter added in T-16): previewing is a
+        // material action even though it persists no items. Callers
+        // without an actor (pure computations) skip the row.
+        if ($actor !== null) {
+            AuditLogger::log('calendar.instantiation.previewed', $actor, [
+                'template_version_id' => (string) $version->getKey(),
+                'template_version' => (int) $version->version,
+                'item_count' => count($computed['items']),
+            ], $matter);
+        }
 
         return [
             'template_version_id' => (string) $version->getKey(),
@@ -296,6 +308,14 @@ class InstantiationService
             ])->save();
 
             AuditLogger::log('calendar.template.instantiated', $actor, [
+                'batch_id' => (string) $batch->getKey(),
+                'template_version_id' => (string) $version->getKey(),
+                'template_version' => (int) $version->version,
+                'item_count' => count($createdByKey),
+            ], $matter);
+
+            // 009-D24 name for the same action (emitter added in T-16).
+            AuditLogger::log('calendar.instantiation.confirmed', $actor, [
                 'batch_id' => (string) $batch->getKey(),
                 'template_version_id' => (string) $version->getKey(),
                 'template_version' => (int) $version->version,

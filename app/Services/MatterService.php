@@ -205,6 +205,36 @@ class MatterService
     }
 
     /**
+     * Ethical-wall toggle (009-D04, emitter added in T-16 for
+     * 009-D24): requires matter `manage` authority (enforced by the
+     * caller via AccessControl / route middleware) and is audited
+     * as matter.restricted.changed with before/after. A no-change
+     * toggle writes nothing.
+     */
+    public static function setRestricted(Matter $matter, bool $restricted, User $actor): Matter
+    {
+        AccessControl::authorize($actor, 'manage', $matter);
+
+        if ((bool) $matter->restricted === $restricted) {
+            return $matter;
+        }
+
+        return DB::transaction(function () use ($matter, $restricted, $actor): Matter {
+            $before = (bool) $matter->restricted;
+            $matter->forceFill(['restricted' => $restricted])->save();
+
+            AuditLogger::log('matter.restricted.changed', $actor, [
+                'actor_id' => (string) $actor->getKey(),
+                'matter_id' => (string) $matter->getKey(),
+                'before' => ['restricted' => $before],
+                'after' => ['restricted' => $restricted],
+            ], $matter);
+
+            return $matter->refresh();
+        });
+    }
+
+    /**
      * Soft delete. 409 if CLOSED (close first); 403 unless the actor is the
      * matter owner or an org admin.
      *

@@ -326,6 +326,30 @@ class MatterController extends Controller
             ->with('toast', ['tone' => 'ok', 'message' => "Matter moved to {$label}."]);
     }
 
+    /**
+     * Ethical-wall toggle (009-D04; route carries matter.access:manage,
+     * the service re-checks and audits matter.restricted.changed).
+     */
+    public function setRestricted(Request $request): JsonResponse|RedirectResponse
+    {
+        $matter = $this->authorizedMatter($request);
+        $actor = $this->actor($request);
+
+        $validated = $request->validate([
+            'restricted' => ['required', 'boolean'],
+        ]);
+
+        $updated = MatterService::setRestricted($matter, (bool) $validated['restricted'], $actor);
+
+        if ($request->wantsJson()) {
+            return response()->json($this->resource($updated));
+        }
+
+        return redirect()
+            ->route('matters.show', $matter)
+            ->with('toast', ['tone' => 'ok', 'message' => $updated->restricted ? 'Matter restricted (ethical wall on).' : 'Matter restriction removed.']);
+    }
+
     public function close(Request $request): JsonResponse
     {
         $matter = $this->authorizedMatter($request);
@@ -807,6 +831,7 @@ class MatterController extends Controller
             'matter_type' => $matter->matter_type,
             'client_name' => $matter->client_name,
             'description' => $matter->description,
+            'restricted' => (bool) $matter->restricted,
             'closed_at' => $matter->closed_at?->toIso8601String(),
             'created_at' => $matter->created_at?->toIso8601String(),
             'updated_at' => $matter->updated_at?->toIso8601String(),

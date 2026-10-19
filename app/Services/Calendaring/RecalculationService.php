@@ -51,7 +51,7 @@ class RecalculationService
      *
      * @throws ValidationException
      */
-    public static function preview(InstantiationBatch $batch, array $newInputs, bool $resetOverrides = false): array
+    public static function preview(InstantiationBatch $batch, array $newInputs, bool $resetOverrides = false, ?User $actor = null): array
     {
         $version = $batch->templateVersion;
         if ($version === null) {
@@ -101,6 +101,17 @@ class RecalculationService
                 'preserved' => $preserved,
                 'trace' => $trace,
             ];
+        }
+
+        // Audit (009-D24, emitter added in T-16): a proposal is a
+        // material action even though it mutates nothing. Internal
+        // calls from apply() pass no actor and skip the row.
+        if ($actor !== null) {
+            AuditLogger::log('calendar.recalculation.proposed', $actor, [
+                'batch_id' => (string) $batch->getKey(),
+                'template_version_id' => (string) $batch->template_version_id,
+                'changed_count' => count(array_filter($entries, fn (array $e) => (bool) $e['changed'])),
+            ], $batch->matter);
         }
 
         return [
@@ -230,6 +241,15 @@ class RecalculationService
             $batch->update(['inputs' => $normalized]);
 
             AuditLogger::log('calendar.template.recalculated', $actor, [
+                'batch_id' => (string) $batch->getKey(),
+                'template_version_id' => (string) $batch->template_version_id,
+                'superseded_count' => count($superseded),
+                'preserved_count' => count($preserved),
+                'reset_overrides' => $resetOverrides,
+            ], $matter);
+
+            // 009-D24 name for the same action (emitter added in T-16).
+            AuditLogger::log('calendar.recalculation.applied', $actor, [
                 'batch_id' => (string) $batch->getKey(),
                 'template_version_id' => (string) $batch->template_version_id,
                 'superseded_count' => count($superseded),

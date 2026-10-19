@@ -317,6 +317,9 @@ Route::middleware(['auth:'.config('fortify.guard')])->group(function (): void {
     Route::post('/matters/{matter}/close', [MatterController::class, 'close'])
         ->middleware('matter.access:manage')
         ->name('matters.close');
+    Route::post('/matters/{matter}/restricted', [MatterController::class, 'setRestricted'])
+        ->middleware('matter.access:manage')
+        ->name('matters.restricted');
     Route::get('/matters/{matter}/summary', [MatterController::class, 'summary'])
         ->middleware('matter.access:view')
         ->name('matters.summary');
