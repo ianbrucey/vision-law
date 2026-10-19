@@ -1,6 +1,6 @@
 # 009 — Legal calendaring, tasks, reminders, and deadline templates — Strategic brief
 
-**Status:** DRAFT — awaiting Ian Bruce approval. Council resolves the open decisions (O-01…O-07) before Plan.
+**Status:** APPROVED — Ian Bruce, 2026-10-19. Council resolves the open decisions (O-01…O-07) before Plan.
 **Author:** Lotus (orchestrator)
 **Date:** 2026-10-13
 
