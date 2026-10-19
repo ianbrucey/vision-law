@@ -16,6 +16,7 @@ use App\Http\Controllers\Auth\TwoFactorChallengeController;
 use App\Http\Controllers\Auth\TwoFactorQrCodeImageController;
 use App\Http\Controllers\Auth\TwoFactorSettingsController;
 use App\Http\Controllers\Calendaring\CalendarController;
+use App\Http\Controllers\Calendaring\CalendarExternalController;
 use App\Http\Controllers\Calendaring\CalendarItemController;
 use App\Http\Controllers\Calendaring\CalendarRecurrenceController;
 use App\Http\Controllers\Calendaring\CalendarTaskController;
@@ -841,6 +842,27 @@ Route::middleware(['auth:'.config('fortify.guard')])->group(function (): void {
         ->name('notifications.ack');
     Route::post('/notifications/{delivery}/snooze', [NotificationController::class, 'snooze'])
         ->name('notifications.snooze');
+    // === 009 calendaring — Batch 5 (T-14 external coordination, Phase A) ===
+    Route::get('/calendar/export.ics', [CalendarExternalController::class, 'export'])
+        ->name('calendar.export');
+    Route::post('/calendar/feeds', [CalendarExternalController::class, 'storeFeed'])
+        ->name('calendar.feeds.store');
+    Route::delete('/calendar/feeds/{feed}', [CalendarExternalController::class, 'destroyFeed'])
+        ->name('calendar.feeds.destroy');
+    Route::post('/calendar/items/{item}/shares', [CalendarExternalController::class, 'storeShare'])
+        ->name('calendar.shares.store');
+    Route::delete('/calendar/shares/{share}', [CalendarExternalController::class, 'revokeShare'])
+        ->name('calendar.shares.revoke');
+    Route::post('/calendar/items/{item}/invite', [CalendarExternalController::class, 'invite'])
+        ->name('calendar.items.invite');
 });
+
+// === 009 calendaring — Batch 5 (T-14 public token surfaces) ===
+// Token-gated, no session auth: the sha256 hash lookup is the gate;
+// revoked/unknown tokens 404 with no existence signal (009-D22).
+Route::get('/feeds/calendar/{token}.ics', [CalendarExternalController::class, 'feed'])
+    ->name('calendar.feed.fetch');
+Route::get('/guest/calendar/{token}', [CalendarExternalController::class, 'guest'])
+    ->name('calendar.guest.show');
 
 require __DIR__.'/share.php';

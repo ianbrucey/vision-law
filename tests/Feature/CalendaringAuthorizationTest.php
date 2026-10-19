@@ -132,8 +132,37 @@ class CalendaringAuthorizationTest extends TestCase
         $this->assertNotContains('Summary judgment response due', $rivalTitles);
         $this->assertNotContains($restrictedItem->title, $rivalTitles);
 
-        // NOTE (Batch 5 / T-14): export and feed assertions are added here
-        // when those endpoints land — search/counts/agenda paths are pinned
-        // above for Batch 1.
+        // Export (Batch 5 / T-14): the grantless org admin's ICS export
+        // contains the authorized matter-1 titles and NONE of the
+        // restricted or rival titles.
+        $export = $this->actingAs($admin)->get(route('calendar.export'));
+        $export->assertOk();
+        $exportBody = (string) $export->getContent();
+        $this->assertStringContainsString('Summary judgment response due', $exportBody);
+        $this->assertStringNotContainsString($restrictedItem->title, $exportBody);
+        $this->assertStringNotContainsString($restrictedMatter->title, $exportBody);
+        $this->assertStringNotContainsString('Rival Confidential Matter', $exportBody);
+
+        // Rival's export contains none of Sterling's titles either.
+        $rivalExport = $this->actingAs($rival)->get(route('calendar.export'));
+        $rivalExport->assertOk();
+        $rivalBody = (string) $rivalExport->getContent();
+        $this->assertStringNotContainsString('Summary judgment response due', $rivalBody);
+        $this->assertStringNotContainsString($restrictedItem->title, $rivalBody);
+
+        // Feed (Batch 5 / T-14): the admin's own subscription feed is
+        // re-scoped at fetch time — restricted items stay absent even
+        // though the feed token itself is valid.
+        $feed = $this->actingAs($admin)->postJson(route('calendar.feeds.store'));
+        $feed->assertCreated();
+        $feedBody = (string) $this->get('/feeds/calendar/'.$feed->json('token').'.ics')->assertOk()->getContent();
+        $this->assertStringContainsString('Summary judgment response due', $feedBody);
+        $this->assertStringNotContainsString($restrictedItem->title, $feedBody);
+        $this->assertStringNotContainsString($restrictedMatter->title, $feedBody);
+
+        // The revoked fixture feed 404s with no existence signal.
+        $revokedToken = $this->loader->calendaringToken('feed-revoked');
+        $this->assertNotNull($revokedToken);
+        $this->get('/feeds/calendar/'.$revokedToken.'.ics')->assertNotFound();
     }
 }

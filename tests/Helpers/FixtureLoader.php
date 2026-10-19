@@ -2,7 +2,9 @@
 
 namespace Tests\Helpers;
 
+use App\Models\CalendarFeed;
 use App\Models\CalendarItem;
+use App\Models\CalendarShare;
 use App\Models\ChecklistItem;
 use App\Models\DeadlineTemplate;
 use App\Models\DeadlineTemplateVersion;
@@ -71,6 +73,16 @@ class FixtureLoader
      * row already existed.
      */
     private ?string $expiredShareToken = null;
+
+    /**
+     * Plaintext 009 feed/share tokens (T-14). Only the SHA-256 hash is
+     * stored in the DB; the plain value is kept here so tests can call
+     * the public token URLs. Null on re-load when the row already
+     * existed.
+     *
+     * @var array<string, string|null>
+     */
+    private array $calendaringTokens = [];
 
     /** @var array<string, mixed> */
     private array $data;
@@ -1056,9 +1068,8 @@ class FixtureLoader
      *
      * Base types are persisted; reminder_preference is wired in
      * T-06; deadline_template is wired in T-10 (009); calendar_feed /
-     * guest_share / golden_cases have no tables yet — their symbolic
-     * ids are recorded and persistence is skipped gracefully (later
-     * batches wire real loading).
+     * guest_share are wired in T-14 (009); golden_cases are read from
+     * the JSON directly by the engine test.
      */
     public static function loadCalendaringFixtures(): self
     {
@@ -1104,10 +1115,14 @@ class FixtureLoader
                     $this->loadCalendaringDeadlineTemplate($item);
                     break;
                 case 'calendar_feed':
+                    $this->loadCalendaringFeed($item);
+                    break;
                 case 'guest_share':
+                    $this->loadCalendaringShare($item);
+                    break;
                 case 'golden_cases':
-                    // Tables arrive in later batches — record the symbolic
-                    // id so callers can resolve it, skip persistence.
+                    // Golden cases are read from the JSON directly by the
+                    // engine test — record the symbolic id only.
                     $this->ids[(string) $item['id']] = (string) Str::uuid();
                     break;
                 default:
@@ -1143,6 +1158,115 @@ class FixtureLoader
     public function calendarItem(string $key): CalendarItem
     {
         return CalendarItem::findOrFail($this->id($key));
+    }
+
+    public function calendarFeed(string $key): CalendarFeed
+    {
+        return CalendarFeed::findOrFail($this->id($key));
+    }
+
+    public function calendarShare(string $key): CalendarShare
+    {
+        return CalendarShare::findOrFail($this->id($key));
+    }
+
+    /**
+     * Plain token for a 009 feed/share fixture (T-14), or null when the
+     * row pre-existed this load and its token is unknowable.
+     */
+    public function calendaringToken(string $key): ?string
+    {
+        return $this->calendaringTokens[$key] ?? null;
+    }
+
+    /**
+     * T-14 (009): persist a fixture calendar_feed. The plain token is
+     * generated at load, only its sha256 hash is stored, and the plain
+     * value is exposed via calendaringToken().
+     *
+     * @param  array<string, mixed>  $item
+     */
+    private function loadCalendaringFeed(array $item): void
+    {
+        $userId = $this->ids[(string) $item['user']];
+        $revoked = (bool) ($item['revoked'] ?? false);
+
+        $existing = CalendarFeed::query()
+            ->where('user_id', $userId)
+            ->when($revoked, fn ($q) => $q->whereNotNull('revoked_at'), fn ($q) => $q->whereNull('revoked_at'))
+            ->first();
+
+        if ($existing !== null) {
+            $this->ids[(string) $item['id']] = (string) $existing->getKey();
+            $this->calendaringTokens[(string) $item['id']] = null;
+
+            return;
+        }
+
+        $plain = Str::random(48);
+        $feed = CalendarFeed::create([
+            'user_id' => $userId,
+            'token_hash' => hash('sha256', $plain),
+            'revoked_at' => $revoked ? now() : null,
+        ]);
+
+        $this->ids[(string) $item['id']] = (string) $feed->getKey();
+        $this->calendaringTokens[(string) $item['id']] = $plain;
+    }
+
+    /**
+     * T-14 (009): persist a fixture guest_share — one CalendarShare
+     * row per shared item (calendar_shares is per-item). The
+     * symbolic id resolves to the FIRST item's share; its plain
+     * token is exposed via calendaringToken().
+     *
+     * @param  array<string, mixed>  $item
+     */
+    private function loadCalendaringShare(array $item): void
+    {
+        $revoked = (bool) ($item['revoked'] ?? false);
+        /** @var list<string> $itemKeys */
+        $itemKeys = isset($item['items']) && is_array($item['items']) ? array_values($item['items']) : [];
+
+        $firstShareId = null;
+        $firstToken = null;
+
+        foreach ($itemKeys as $index => $itemKey) {
+            $calendarItem = $this->calendarItem((string) $itemKey);
+
+            $existing = CalendarShare::query()
+                ->where('item_id', (string) $calendarItem->getKey())
+                ->where('guest_email', (string) ($item['guest_email'] ?? ''))
+                ->when($revoked, fn ($q) => $q->whereNotNull('revoked_at'), fn ($q) => $q->whereNull('revoked_at'))
+                ->first();
+
+            if ($existing !== null) {
+                if ($index === 0) {
+                    $firstShareId = (string) $existing->getKey();
+                }
+
+                continue;
+            }
+
+            $plain = Str::random(48);
+            $share = CalendarShare::create([
+                'item_id' => (string) $calendarItem->getKey(),
+                'guest_email' => (string) ($item['guest_email'] ?? ''),
+                'fields' => ['title', 'date', 'time', 'location', 'description'],
+                'token_hash' => hash('sha256', $plain),
+                'expires_at' => null,
+                'revoked_at' => $revoked ? now() : null,
+                'created_by' => null,
+            ]);
+
+            if ($index === 0) {
+                $firstShareId = (string) $share->getKey();
+                $firstToken = $plain;
+            }
+        }
+
+        $this->ids[(string) $item['id']] = $firstShareId ?? (string) Str::uuid();
+        $this->calendaringTokens[(string) $item['id']] = $firstToken;
     }
 
     public function deadlineTemplate(string $key): DeadlineTemplate

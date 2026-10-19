@@ -49,6 +49,14 @@ class AuthenticatedByDefaultTest extends TestCase
         ['GET', 's/{token}'],
         ['POST', 's/{token}'],
         ['POST', 's/{token}/download'],
+        // Spec 009 Phase A external coordination (009-D22): the per-user
+        // ICS subscription feed and the outside-counsel guest view are
+        // deliberately sessionless; the opaque token IS the credential
+        // (only its sha256 hash is stored; revoked/unknown → 404), and
+        // feed content is re-scoped to the owner's current matter
+        // authorization at fetch time.
+        ['GET', 'feeds/calendar/{token}.ics'],
+        ['GET', 'guest/calendar/{token}'],
     ];
 
     /**
