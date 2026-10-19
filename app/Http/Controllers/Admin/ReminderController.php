@@ -63,9 +63,19 @@ class ReminderController extends Controller
     /**
      * @throws ValidationException
      */
-    public function replay(Request $request, ReminderDelivery $delivery): JsonResponse|RedirectResponse
+    public function replay(Request $request, string $delivery): JsonResponse|RedirectResponse
     {
         $admin = $this->admin($request);
+
+        // String id + manual lookup, like the other admin controllers:
+        // implicit model binding would 404 on an unknown id before
+        // the setup-mode middleware can redirect a restricted
+        // session (005 C-01 probes every admin.* route with a random
+        // UUID and expects the enrollment redirect).
+        $delivery = ReminderDelivery::query()->whereKey($delivery)->first();
+        if ($delivery === null) {
+            abort(404);
+        }
 
         // Same org only — a cross-org row is not visible here.
         if ((string) $delivery->org_id !== (string) $admin->org_id) {

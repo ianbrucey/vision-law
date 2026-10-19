@@ -4,16 +4,8 @@
 
     <x-ui.card title="Deliveries">
         <form method="GET" action="{{ route('admin.reminders.index') }}">
-            <label>
-                Status
-                <select name="status">
-                    <option value="">All statuses</option>
-                    @foreach ($statuses as $option)
-                        <option value="{{ $option }}" @selected($status === $option)>{{ $option }}</option>
-                    @endforeach
-                </select>
-            </label>
-            <button type="submit">Filter</button>
+            <x-ui.select name="status" label="Status" :options="array_combine($statuses, $statuses)" placeholder="All statuses" :value="$status" />
+            <x-ui.button variant="primary" type="submit">Filter</x-ui.button>
         </form>
 
         @if ($deliveries->isEmpty())
@@ -50,7 +42,7 @@
                                 @if (in_array($delivery->status, $replayable, true))
                                     <form method="POST" action="{{ route('admin.reminders.replay', $delivery) }}">
                                         @csrf
-                                        <button type="submit">Replay</button>
+                                        <x-ui.button variant="secondary" size="sm" type="submit">Replay</x-ui.button>
                                     </form>
                                 @endif
                             </td>

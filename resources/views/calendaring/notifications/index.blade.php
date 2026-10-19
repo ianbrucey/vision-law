@@ -29,15 +29,12 @@
                         @if ($delivery->status === 'sent' || $delivery->status === 'snoozed')
                             <form method="POST" action="{{ route('notifications.acknowledge', $delivery) }}">
                                 @csrf
-                                <button type="submit">Acknowledge</button>
+                                <x-ui.button variant="secondary" size="sm" type="submit">Acknowledge</x-ui.button>
                             </form>
                             <form method="POST" action="{{ route('notifications.snooze', $delivery) }}">
                                 @csrf
-                                <label>
-                                    Snooze until
-                                    <input type="datetime-local" name="until">
-                                </label>
-                                <button type="submit">Snooze</button>
+                                <x-ui.field name="until" label="Snooze until" type="datetime-local" />
+                                <x-ui.button variant="secondary" size="sm" type="submit">Snooze</x-ui.button>
                             </form>
                         @endif
                     </li>
