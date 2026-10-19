@@ -19,6 +19,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
  *
  * @property CarbonInterface|null $closed_at
  * @property CarbonInterface|null $deleted_at
+ * @property bool $restricted
  */
 class Matter extends Model
 {
@@ -69,6 +70,7 @@ class Matter extends Model
         'closed_at',
         'template_id',
         'template_version',
+        'restricted',
     ];
 
     /**
@@ -79,6 +81,7 @@ class Matter extends Model
         return [
             'closed_at' => 'datetime',
             'template_version' => 'integer',
+            'restricted' => 'boolean',
         ];
     }
 
@@ -115,14 +118,10 @@ class Matter extends Model
     {
         $query->where('matters.org_id', $actor->org_id);
 
-        if ($actor->hasRole('org_admin')) {
-            return $query;
-        }
-
         $actorId = $actor->getKey();
         $knownRoles = array_keys(AccessControl::ROLE_RANK);
 
-        return $query->where(function ($scope) use ($actorId, $knownRoles): void {
+        $grantExists = function ($scope) use ($actorId, $knownRoles): void {
             $scope->whereExists(function ($exists) use ($actorId, $knownRoles): void {
                 $exists->selectRaw('1')
                     ->from('matter_grants')
@@ -145,7 +144,21 @@ class Matter extends Model
                             ->orWhere('matter_grants.expires_at', '>', now());
                     });
             });
-        });
+        };
+
+        // 009-D04: org_admin sees all unrestricted matters, plus restricted
+        // matters only where a valid grant exists (mirrors AccessControl).
+        // outside_counsel ignores the org default, as in AccessControl.
+        if ($actor->hasRole('org_admin') && ! $actor->hasRole('outside_counsel')) {
+            return $query->where(function ($scope) use ($grantExists): void {
+                $scope->where('matters.restricted', false)
+                    ->orWhere(function ($restrictedScope) use ($grantExists): void {
+                        $grantExists($restrictedScope);
+                    });
+            });
+        }
+
+        return $query->where($grantExists);
     }
 
     /**
@@ -220,5 +233,13 @@ class Matter extends Model
     public function commentReads(): HasMany
     {
         return $this->hasMany(MatterCommentRead::class, 'matter_id');
+    }
+
+    /**
+     * @return HasMany<CalendarItem, $this>
+     */
+    public function calendarItems(): HasMany
+    {
+        return $this->hasMany(CalendarItem::class, 'matter_id');
     }
 }

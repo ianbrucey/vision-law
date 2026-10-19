@@ -2,11 +2,13 @@
 
 namespace Tests\Helpers;
 
+use App\Models\CalendarItem;
 use App\Models\Document;
 use App\Models\DocumentFolder;
 use App\Models\DocumentShare;
 use App\Models\DocumentVersion;
 use App\Models\Invitation;
+use App\Models\ItemAttendee;
 use App\Models\Matter;
 use App\Models\MatterComment;
 use App\Models\MatterDocumentLog;
@@ -536,7 +538,11 @@ class FixtureLoader
     {
         $admin = User::where('org_id', $orgId)
             ->whereHas('roles', fn ($query) => $query->where('name', 'org_admin'))
-            ->firstOrFail();
+            ->first();
+
+        // 009 fixtures: the rival org has no org_admin user — fall back to
+        // any user in the org as the recorded granter.
+        $admin ??= User::where('org_id', $orgId)->firstOrFail();
 
         return (string) $admin->getKey();
     }
@@ -1026,6 +1032,203 @@ class FixtureLoader
             'created_at' => $updatedAt->copy()->subDays(7),
             'updated_at' => $updatedAt,
         ])->save();
+    }
+
+    /**
+     * Loads specs/009-calendaring/04-fixtures.json — the SINGLE canonical
+     * fixture definition for calendaring (009 T-01).
+     *
+     * Base types are persisted; reminder_preference / calendar_feed /
+     * guest_share / deadline_template / golden_cases have no tables yet
+     * in Batch 1 — their symbolic ids are recorded and persistence is
+     * skipped gracefully (later batches wire real loading).
+     */
+    public static function loadCalendaringFixtures(): self
+    {
+        $loader = new self(base_path('specs/009-calendaring/04-fixtures.json'));
+        $loader->runCalendaringFixtures();
+
+        return $loader;
+    }
+
+    private function runCalendaringFixtures(): void
+    {
+        foreach ($this->data['fixtures'] ?? [] as $item) {
+            /** @var array<string, mixed> $item */
+            switch ($item['type']) {
+                case 'organization':
+                    $this->loadMatterOrg($item);
+                    break;
+                case 'user':
+                    $this->loadMatterUser($item);
+                    break;
+                case 'matter':
+                    $this->loadMatterMatter($item);
+                    if (isset($item['restricted'])) {
+                        $this->matter((string) $item['id'])->forceFill([
+                            'restricted' => (bool) $item['restricted'],
+                        ])->save();
+                    }
+                    break;
+                case 'grant':
+                    $this->loadMatterGrant(
+                        $this->ids[$item['org']],
+                        $this->ids[$item['matter']],
+                        $item
+                    );
+                    break;
+                case 'calendar_item':
+                    $this->loadCalendaringItem($item);
+                    break;
+                case 'reminder_preference':
+                case 'calendar_feed':
+                case 'guest_share':
+                case 'deadline_template':
+                case 'golden_cases':
+                    // Tables arrive in later batches — record the symbolic
+                    // id so callers can resolve it, skip persistence.
+                    $this->ids[(string) $item['id']] = (string) Str::uuid();
+                    break;
+                default:
+                    throw new \RuntimeException("Unknown 009 fixture type: {$item['type']}");
+            }
+        }
+
+        $this->flushPendingLinks();
+
+        app(PermissionRegistrar::class)->forgetCachedPermissions();
+    }
+
+    public function calendarItem(string $key): CalendarItem
+    {
+        return CalendarItem::findOrFail($this->id($key));
+    }
+
+    /**
+     * @param  array<string, mixed>  $item
+     */
+    private function loadCalendaringItem(array $item): void
+    {
+        $matter = $this->matter((string) $item['matter']);
+        $orgId = (string) $matter->org_id;
+        $timezone = (string) ($item['timezone'] ?? 'UTC');
+
+        // Recurrence fixture: materialize the declared occurrences as
+        // distinct rows sharing one series_id (009-D14, minimal T-01 form).
+        if (isset($item['recurrence']) && is_array($item['recurrence'])) {
+            $rec = $item['recurrence'];
+            $count = (int) ($rec['occurrences'] ?? 1);
+            $base = isset($rec['starts_on']) ? $this->parseFixtureDate((string) $rec['starts_on']) : null;
+            $seriesId = (string) Str::uuid();
+            $firstId = null;
+
+            for ($i = 0; $i < $count; $i++) {
+                $occ = $base !== null ? Carbon::parse($base) : null;
+                if ($occ !== null) {
+                    $interval = (int) ($rec['interval'] ?? 1) * $i;
+                    match ((string) ($rec['freq'] ?? 'weekly')) {
+                        'daily' => $occ->addDays($interval),
+                        'monthly' => $occ->addMonths($interval),
+                        default => $occ->addWeeks($interval),
+                    };
+                }
+
+                $row = CalendarItem::firstOrCreate(
+                    [
+                        'matter_id' => (string) $matter->getKey(),
+                        'title' => (string) $item['title'],
+                        'occurrence_date' => $occ?->toDateString(),
+                    ],
+                    $this->calendaringItemAttributes($item, $orgId, $timezone) + [
+                        'series_id' => $seriesId,
+                        'occurrence_date' => $occ?->toDateString(),
+                        'due_date' => $occ?->toDateString(),
+                        'recurrence_rule' => $rec,
+                    ]
+                );
+                $firstId ??= (string) $row->getKey();
+            }
+
+            $this->ids[(string) $item['id']] = (string) $firstId;
+
+            return;
+        }
+
+        $startsAt = null;
+        $endsAt = null;
+        if (isset($item['starts_at'])) {
+            $startsAt = Carbon::parse((string) $item['starts_at'], $timezone)->setTimezone('UTC');
+        }
+        if (isset($item['ends_at'])) {
+            $endsAt = Carbon::parse((string) $item['ends_at'], $timezone)->setTimezone('UTC');
+        }
+
+        // NOTE (T-01): checklist, depends_on and reminder_policy keys are
+        // intentionally ignored here — later batches extend this loader.
+        $row = CalendarItem::firstOrCreate(
+            [
+                'matter_id' => (string) $matter->getKey(),
+                'title' => (string) $item['title'],
+            ],
+            $this->calendaringItemAttributes($item, $orgId, $timezone) + [
+                'starts_at' => $startsAt,
+                'ends_at' => $endsAt,
+            ]
+        );
+
+        $this->ids[(string) $item['id']] = (string) $row->getKey();
+
+        foreach ($item['attendees'] ?? [] as $attendee) {
+            /** @var array<string, mixed> $attendee */
+            ItemAttendee::firstOrCreate(
+                [
+                    'item_id' => (string) $row->getKey(),
+                    'user_id' => isset($attendee['user']) ? $this->ids[$attendee['user']] : null,
+                    'email' => $attendee['email'] ?? null,
+                ],
+                [
+                    'name' => $attendee['name'] ?? null,
+                ]
+            );
+        }
+    }
+
+    /**
+     * @param  array<string, mixed>  $item
+     * @return array<string, mixed>
+     */
+    private function calendaringItemAttributes(array $item, string $orgId, string $timezone): array
+    {
+        return [
+            'org_id' => $orgId,
+            'type' => (string) ($item['item_type'] ?? 'task'),
+            'description' => $item['description'] ?? null,
+            'visibility' => (string) ($item['visibility'] ?? 'matter'),
+            'status' => (string) ($item['status'] ?? 'draft'),
+            'task_status' => $item['task_status'] ?? null,
+            'classification' => $item['classification'] ?? null,
+            'jurisdiction' => $item['jurisdiction'] ?? null,
+            'due_date' => isset($item['due_date']) ? $this->parseFixtureDate((string) $item['due_date']) : null,
+            'cutoff_time' => $item['cutoff_time'] ?? null,
+            'all_day' => (bool) ($item['all_day'] ?? false),
+            'timezone' => $timezone,
+            'location' => $item['location'] ?? null,
+            'meeting_url' => $item['meeting_url'] ?? null,
+            'assignee_id' => isset($item['assignee']) ? $this->ids[$item['assignee']] : null,
+            'escalation_owner_id' => isset($item['escalation_owner']) ? $this->ids[$item['escalation_owner']] : null,
+            'reviewer_id' => isset($item['reviewer']) ? $this->ids[$item['reviewer']] : null,
+            'version' => 1,
+            'source' => (string) ($item['source'] ?? 'manual'),
+        ];
+    }
+
+    private function parseFixtureDate(string $value): string
+    {
+        if (preg_match('/^([+-])(\d+)([hd])$/', $value) === 1) {
+            return $this->parseRelativeTime($value)->toDateString();
+        }
+
+        return Carbon::parse($value)->toDateString();
     }
 
     /**

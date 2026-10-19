@@ -97,7 +97,10 @@ class AccessControl
         $candidates = [];
 
         // Org default from the matrix. outside_counsel ignores it unconditionally.
-        if (! $user->hasRole('outside_counsel') && $user->hasRole('org_admin')) {
+        // 009-D04: restricted (ethical-wall) matters skip the org default —
+        // grants below still apply. Default false = zero behavior change.
+        $restricted = (bool) ($matter->restricted ?? false);
+        if (! $restricted && ! $user->hasRole('outside_counsel') && $user->hasRole('org_admin')) {
             $candidates[] = 'matter_owner';
         }
 

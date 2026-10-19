@@ -14,6 +14,7 @@ use App\Http\Controllers\Auth\RegisteredUserController;
 use App\Http\Controllers\Auth\TwoFactorChallengeController;
 use App\Http\Controllers\Auth\TwoFactorQrCodeImageController;
 use App\Http\Controllers\Auth\TwoFactorSettingsController;
+use App\Http\Controllers\Calendaring\CalendarItemController;
 use App\Http\Controllers\CommentController;
 use App\Http\Controllers\DocumentActivityController;
 use App\Http\Controllers\DocumentController;
@@ -728,6 +729,14 @@ Route::middleware(['auth:'.config('fortify.guard')])->group(function (): void {
     Route::get('/matters/{matter}/documents/{document}/activity', [DocumentActivityController::class, 'index'])
         ->middleware('matter.access:view')
         ->name('documents.activity');
+});
+
+// === 009 calendaring — Batch 1 ===
+// Item routes are addressed by item id (not nested under matter): the
+// controller resolves item -> matter -> AccessControl server-side.
+Route::middleware(['auth:'.config('fortify.guard')])->group(function (): void {
+    Route::get('/calendar/items/{item}', [CalendarItemController::class, 'show'])
+        ->name('calendar.items.show');
 });
 
 require __DIR__.'/share.php';
