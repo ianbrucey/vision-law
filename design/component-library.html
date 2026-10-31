@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Vision Law — Component Library (Glass / Aurora)</title>
+<style>
+  :root{
+    --bg:#070b16; --glass:rgba(255,255,255,.045); --glass2:rgba(255,255,255,.07);
+    --line:rgba(255,255,255,.09); --txt:#e8ecf5; --mut:#8b94ab;
+    --acc:#7c6cff; --acc2:#4f7cff; --ok:#34c77b; --warn:#e8a13a; --bad:#e5534b; --cyan:#3fc1c9;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:radial-gradient(1200px 700px at 70% -10%,#16224a 0%,var(--bg) 55%) fixed,var(--bg);color:var(--txt);
+       font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Inter,Roboto,sans-serif;font-size:14px;line-height:1.45;padding:22px}
+  .wrap{max-width:1020px;margin:0 auto}
+  h1{font-size:22px} h1 span{color:var(--acc)}
+  .sub{color:var(--mut);margin:4px 0 18px;font-size:13px}
+  .sect{font-size:11px;letter-spacing:.12em;color:var(--mut);text-transform:uppercase;font-weight:700;margin:26px 0 10px}
+  .card{background:var(--glass);border:1px solid var(--line);border-radius:16px;padding:14px;backdrop-filter:blur(8px)}
+  .row{display:flex;gap:10px;flex-wrap:wrap;align-items:flex-start}
+  .lbl{font-size:11px;color:var(--mut);margin-top:6px}
+  code{background:rgba(255,255,255,.06);border:1px solid var(--line);border-radius:6px;padding:1px 6px;font-size:12px}
+  pre{background:rgba(0,0,0,.35);border:1px solid var(--line);border-radius:12px;padding:12px;font-size:12px;overflow:auto;color:#c9d4f2}
+  /* tokens */
+  .sw{display:flex;flex-direction:column;gap:4px;min-width:104px}
+  .sw i{height:34px;border-radius:9px;border:1px solid var(--line)}
+  .sw b{font-size:12px}.sw span{font-size:11px;color:var(--mut)}
+  /* buttons */
+  .btn{border:1px solid var(--line);background:var(--glass2);color:var(--txt);padding:9px 15px;border-radius:11px;font-weight:600;cursor:pointer;font-size:13.5px}
+  .btn.primary{background:var(--acc);border-color:var(--acc);color:#fff}
+  .btn.danger{background:rgba(229,83,75,.15);border-color:rgba(229,83,75,.5);color:var(--bad)}
+  .fab{background:linear-gradient(135deg,var(--acc),var(--acc2));color:#fff;border:none;border-radius:999px;padding:12px 16px;font-weight:700;box-shadow:0 8px 24px rgba(124,108,255,.4);cursor:pointer}
+  /* pills & states */
+  .pill{font-size:10.5px;font-weight:800;letter-spacing:.05em;padding:3px 10px;border-radius:999px;display:inline-block}
+  .pill.acc{background:var(--acc);color:#fff}
+  .pill.amber{background:rgba(232,161,58,.18);color:var(--warn);border:1px solid rgba(232,161,58,.5)}
+  .pill.ghost{border:1px solid var(--line);color:var(--mut)}
+  .st{font-size:10px;font-weight:800;letter-spacing:.04em;padding:2px 8px;border-radius:999px}
+  .st.ok{background:rgba(52,199,123,.14);color:var(--ok)} .st.warn{background:rgba(232,161,58,.14);color:var(--warn)}
+  .st.bad{background:rgba(229,83,75,.14);color:var(--bad)} .st.mid{background:rgba(63,193,201,.13);color:var(--cyan)}
+  .band{font-size:11px;font-weight:800;letter-spacing:.06em;padding:3px 9px;border-radius:999px}
+  .band.strong{background:rgba(52,199,123,.15);color:var(--ok);border:1px solid rgba(52,199,123,.4)}
+  .band.viable{background:rgba(63,193,201,.13);color:var(--cyan);border:1px solid rgba(63,193,201,.4)}
+  .band.gray{background:rgba(232,161,58,.13);color:var(--warn);border:1px solid rgba(232,161,58,.45)}
+  .band.fail{background:rgba(229,83,75,.13);color:var(--bad);border:1px solid rgba(229,83,75,.45)}
+  /* tabs */
+  .tab{border:1px solid var(--line);background:var(--glass);color:var(--mut);padding:7px 14px;border-radius:999px;font-size:13px;font-weight:600;cursor:pointer}
+  .tab.on{background:var(--acc);border-color:var(--acc);color:#fff}
+  /* stage rail */
+  .stage{display:flex;align-items:center;gap:9px;padding:5px 8px;border-radius:9px;font-size:13px;color:var(--mut)}
+  .stage .dot{width:19px;height:19px;border-radius:50%;border:1.6px solid var(--line);display:flex;align-items:center;justify-content:center;font-size:10px;flex:none}
+  .stage.done{color:var(--txt)} .stage.done .dot{border-color:var(--ok);color:var(--ok)}
+  .stage.now{background:linear-gradient(90deg,rgba(124,108,255,.18),transparent);color:#fff;font-weight:600}
+  .stage.now .dot{border-color:var(--acc);background:var(--acc);color:#fff;box-shadow:0 0 0 4px rgba(124,108,255,.22)}
+  /* protocol box */
+  .proto{border:1px dashed rgba(124,108,255,.45);border-radius:12px;padding:10px;background:rgba(124,108,255,.06);font-size:13px}
+  .proto .ptools{font-size:12px;color:var(--mut);margin-top:4px}
+  /* claim / element rows */
+  .elrow{display:flex;gap:9px;align-items:flex-start;padding:7px 9px;border-radius:10px;margin-top:6px;background:rgba(255,255,255,.025);font-size:13px}
+  .elrow small{color:var(--mut);display:block;font-size:12px}
+  .gapitem{font-size:12.5px;padding:8px 10px;border-left:3px solid var(--warn);background:rgba(232,161,58,.07);border-radius:0 9px 9px 0}
+  .gapitem b{color:var(--warn)}
+  /* chat */
+  .msg{max-width:88%;padding:10px 12px;border-radius:14px;font-size:13.5px}
+  .msg.agent{background:var(--glass2);border:1px solid var(--line);border-bottom-left-radius:4px}
+  .msg.user{background:linear-gradient(135deg,rgba(124,108,255,.35),rgba(79,124,255,.3));border-bottom-right-radius:4px;margin-left:auto}
+  .msg .who{font-size:10.5px;color:var(--mut);letter-spacing:.08em;text-transform:uppercase;margin-bottom:4px;font-weight:700}
+  .msg.agent .who{color:var(--acc)}
+  .sysmsg{font-size:11.5px;color:var(--mut);border:1px dashed var(--line);padding:4px 12px;border-radius:999px;background:rgba(255,255,255,.02);width:fit-content;margin:0 auto}
+  .checkpoint{border:1.5px solid rgba(232,161,58,.55);background:rgba(232,161,58,.07);border-radius:14px;padding:12px}
+  .checkpoint .h{font-weight:800;font-size:12px;letter-spacing:.07em;color:var(--warn);text-transform:uppercase;margin-bottom:6px}
+  .composer{display:flex;gap:8px;align-items:center}
+  .composer input{flex:1;background:rgba(255,255,255,.05);border:1px solid var(--line);border-radius:999px;padding:11px 15px;color:var(--txt);font-size:13.5px}
+  .iconbtn{width:42px;height:42px;border-radius:50%;border:1px solid var(--line);background:var(--glass);color:var(--mut);font-size:16px;cursor:pointer;flex:none}
+  .sendbtn{width:42px;height:42px;border-radius:50%;border:none;background:var(--acc);color:#fff;font-size:16px;cursor:pointer;flex:none}
+  /* evidence */
+  .doc{display:flex;gap:11px;padding:10px;border:1px solid var(--line);border-radius:12px;background:rgba(255,255,255,.025);align-items:flex-start}
+  .dic{width:34px;height:38px;border-radius:8px;background:var(--glass2);display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:800;color:var(--acc2);border:1px solid var(--line);flex:none}
+  .doc b{font-size:13.5px}.doc small{color:var(--mut);display:block;font-size:12px}
+  .tag{font-size:10.5px;border:1px solid var(--line);border-radius:999px;padding:1px 8px;color:var(--mut)}
+  .tag.hot{color:var(--warn);border-color:rgba(232,161,58,.5)}
+  /* blocks & passes */
+  .block{border:1px solid var(--line);border-radius:11px;padding:10px 12px;background:rgba(255,255,255,.025);font-size:13.5px}
+  .block .bk{font-size:10.5px;color:var(--mut);letter-spacing:.08em;text-transform:uppercase;font-weight:700;margin-bottom:3px}
+  .pass{display:flex;gap:8px;align-items:center;font-size:13px;padding:7px 10px;border:1px solid var(--line);border-radius:10px;background:rgba(255,255,255,.02)}
+  .bar2{height:5px;border-radius:99px;background:rgba(255,255,255,.1);overflow:hidden}
+  .bar2 i{display:block;height:100%;width:64%;background:linear-gradient(90deg,var(--acc),var(--acc2))}
+  .count{background:var(--glass2);border:1px solid var(--line);border-radius:11px;padding:8px 10px;min-width:96px}
+  .count b{font-size:17px;display:block}.count span{font-size:11px;color:var(--mut)}
+  .avatar2{width:32px;height:32px;border-radius:50%;background:linear-gradient(135deg,var(--acc),var(--acc2));display:flex;align-items:center;justify-content:center;font-weight:700;font-size:12px}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:14px} @media(max-width:760px){.grid2{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>VISION<span>LAW</span> — Component Library</h1>
+  <div class="sub">Glass / Aurora design system · extracted from the Spec 012 mockups, Oct 30 2026 · companion to <code>STYLE_GUIDE.md</code> · every component below is live HTML using the production token set</div>
+
+  <div class="sect">1 · Color tokens</div>
+  <div class="card"><div class="row">
+    <div class="sw"><i style="background:#070b16"></i><b>--bg</b><span>#070b16</span></div>
+    <div class="sw"><i style="background:rgba(255,255,255,.05)"></i><b>--glass</b><span>white 4.5%</span></div>
+    <div class="sw"><i style="background:#7c6cff"></i><b>--acc violet</b><span>agent · action</span></div>
+    <div class="sw"><i style="background:#4f7cff"></i><b>--acc-2 blue</b><span>gradient pair</span></div>
+    <div class="sw"><i style="background:#e8a13a"></i><b>--warn amber</b><span>human decision</span></div>
+    <div class="sw"><i style="background:#34c77b"></i><b>--ok green</b><span>settled truth</span></div>
+    <div class="sw"><i style="background:#3fc1c9"></i><b>--cyan</b><span>viable</span></div>
+    <div class="sw"><i style="background:#e5534b"></i><b>--bad red</b><span>refuted</span></div>
+    <div class="sw"><i style="background:#e8ecf5"></i><b>--txt</b><span>#e8ecf5</span></div>
+    <div class="sw"><i style="background:#8b94ab"></i><b>--mut</b><span>#8b94ab</span></div>
+  </div>
+  <pre>:root{
+  --bg:#070b16; --glass:rgba(255,255,255,.045); --glass2:rgba(255,255,255,.07);
+  --line:rgba(255,255,255,.09); --txt:#e8ecf5; --mut:#8b94ab;
+  --acc:#7c6cff; --acc2:#4f7cff; --ok:#34c77b; --warn:#e8a13a; --bad:#e5534b; --cyan:#3fc1c9;
+}</pre></div>
+
+  <div class="sect">2 · Buttons &amp; actions</div>
+  <div class="card"><div class="row">
+    <button class="btn primary">Primary — the one action</button>
+    <button class="btn">Secondary / ghost</button>
+    <button class="btn danger">Destructive</button>
+    <button class="fab">▦ Case record (FAB)</button>
+    <div class="avatar2">IB</div>
+  </div><div class="lbl">Violet is reserved for the primary action and agent-owned affordances.</div></div>
+
+  <div class="sect">3 · Pills, state chips, bands</div>
+  <div class="card">
+    <div class="row">
+      <span class="pill acc">ASSESSMENT PROTOCOL</span><span class="pill amber">1 CHECKPOINT WAITING</span><span class="pill ghost">MAT-2026-014</span>
+    </div>
+    <div class="row" style="margin-top:10px">
+      <span class="st ok">ESTABLISHED</span><span class="st ok">SATISFIED</span><span class="st mid">ASSERTED</span>
+      <span class="st warn">DISPUTED</span><span class="st warn">OPEN</span><span class="st warn">★ CENTER OF GRAVITY</span><span class="st bad">REFUTED</span>
+    </div>
+    <div class="row" style="margin-top:10px">
+      <span class="band strong">STRONG</span><span class="band viable">VIABLE</span><span class="band gray">GRAY ZONE</span><span class="band fail">FAILING</span>
+    </div>
+    <div class="lbl">State language is shared with the Battlefield Model — never invent a synonym.</div>
+  </div>
+
+  <div class="sect">4 · Tabs</div>
+  <div class="card"><div class="row">
+    <button class="tab on">Battlefield</button><button class="tab">Evidence</button><button class="tab">Narrative</button><button class="tab">Outline &amp; Draft</button>
+  </div></div>
+
+  <div class="grid2">
+    <div>
+      <div class="sect">5 · Stage rail + protocol box</div>
+      <div class="card">
+        <div class="stage done"><div class="dot">✓</div>Intake</div>
+        <div class="stage done"><div class="dot">✓</div>Fact cartography</div>
+        <div class="stage now"><div class="dot">●</div>Assessment</div>
+        <div class="stage"><div class="dot"></div>Computation</div>
+        <div class="stage"><div class="dot"></div>Draft</div>
+        <div class="proto" style="margin-top:10px"><b>Active protocol: ASSESSMENT</b>
+          <div class="ptools">Tools in hand: brain queries · CourtListener · assessment writer<br>Tools withheld: drafting · outline</div></div>
+      </div>
+    </div>
+    <div>
+      <div class="sect">6 · Counts + progress + gaps</div>
+      <div class="card">
+        <div class="row"><div class="count"><b>34</b><span>facts</span></div><div class="count"><b>3</b><span>open gaps</span></div><div class="count"><b>0.66</b><span>claim 2 char.</span></div></div>
+        <div class="lbl">Stage 10 of 14</div><div class="bar2"><i></i></div>
+        <div class="gapitem" style="margin-top:10px"><b>Gap #1:</b> Can she document the breakage? Flips the penalty claim.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="sect">7 · Claim card + element rows</div>
+  <div class="card">
+    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><b style="font-size:15px">Claim 2 — Waiting-time penalties</b><span class="band viable">VIABLE</span><span style="margin-left:auto;font-size:12px;color:var(--mut)">characterization <b style="color:var(--txt);font-size:15px">0.66</b></span></div>
+    <div class="elrow"><span class="st ok">SATISFIED</span><div>Unpaid past the 72-hour mark<small>Final pay was short when it came</small></div></div>
+    <div class="elrow"><span class="st warn">★ CENTER OF GRAVITY</span><div>Willfulness<small>Her good-faith-dispute defense attacks here</small></div></div>
+  </div>
+
+  <div class="sect">8 · Chat — bubbles, system lines, checkpoint, composer</div>
+  <div class="card" style="display:flex;flex-direction:column;gap:10px">
+    <div class="sysmsg">Protocol change: STRATEGY → ASSESSMENT · tool set updated</div>
+    <div class="msg agent"><div class="who">Agent · Assessment protocol</div>Claim 1 computes <b>strong — 0.78</b>. Claim 2 hinges on willfulness.</div>
+    <div class="msg user"><div class="who">You</div>Run the attack simulation against us.</div>
+    <div class="checkpoint"><div class="h">⚠ Checkpoint — your call required</div>
+      The third claim sits in the gray zone (0.52). Hold it, or file all three?
+      <div class="row" style="margin-top:10px"><button class="btn primary">Hold pending discovery</button><button class="btn">File all three</button></div></div>
+    <div class="composer"><button class="iconbtn">＋</button><input placeholder="Message the agent…"><button class="iconbtn" style="color:var(--acc)">🎙</button><button class="sendbtn">↑</button></div>
+    <div class="lbl">Amber = a human owes a decision. The composer carries upload (＋) and voice (🎙) as first-class citizens.</div>
+  </div>
+
+  <div class="grid2">
+    <div>
+      <div class="sect">9 · Evidence row</div>
+      <div class="doc"><div class="dic">TXT</div><div><b>Text thread — 23 screenshots</b><small>Demand + response captured</small>
+        <div class="row" style="gap:5px;margin-top:5px"><span class="tag hot">willfulness</span><span class="tag hot">gap #3</span><span class="tag">extracted ✓</span></div></div></div>
+    </div>
+    <div>
+      <div class="sect">10 · Draft blocks + verification passes</div>
+      <div class="block"><div class="bk">Outline — node 3</div>Willfulness — pre-answer the good-faith attack</div>
+      <div class="pass" style="margin-top:8px"><span style="color:var(--ok);font-weight:800">✓</span> Citation verification — re-read at source</div>
+      <div class="pass" style="margin-top:6px"><span style="color:var(--warn);font-weight:800">…</span> Adversarial review — runs at Draft protocol</div>
+    </div>
+  </div>
+
+  <div class="sub" style="margin-top:26px">Living reference — when a new component earns its place in a mockup, it gets added here with its class names before it ships in the app.</div>
+</div>
+</body>
+</html>
