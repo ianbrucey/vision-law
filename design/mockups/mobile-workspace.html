@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Vision Law — Mobile Workspace (Mockup)</title>
+<style>
+  :root{
+    --bg:#070b16; --glass:rgba(255,255,255,.05); --glass2:rgba(255,255,255,.08);
+    --line:rgba(255,255,255,.1); --txt:#e8ecf5; --mut:#8b94ab;
+    --acc:#7c6cff; --acc2:#4f7cff; --ok:#34c77b; --warn:#e8a13a; --bad:#e5534b; --cyan:#3fc1c9;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+  body{background:#04060d;color:var(--txt);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Inter,Roboto,sans-serif;font-size:14px}
+  .phone{max-width:430px;margin:0 auto;min-height:100dvh;background:radial-gradient(600px 400px at 80% -5%,#1a2650 0%,var(--bg) 60%);display:flex;flex-direction:column;position:relative}
+  @media (min-width:480px){.phone{border-left:1px solid var(--line);border-right:1px solid var(--line)}}
+  /* demo switcher */
+  .demo{display:flex;gap:6px;justify-content:center;padding:8px;background:rgba(255,255,255,.03);border-bottom:1px dashed var(--line);font-size:11px}
+  .demo button{border:1px solid var(--line);background:var(--glass);color:var(--mut);border-radius:999px;padding:5px 11px;font-size:11.5px;font-weight:700;cursor:pointer}
+  .demo button.on{background:var(--acc);color:#fff;border-color:var(--acc)}
+  .demo span{align-self:center;color:var(--mut);letter-spacing:.08em}
+  /* app bar */
+  .appbar{display:flex;align-items:center;gap:10px;padding:12px 14px 8px}
+  .back{font-size:20px;color:var(--mut);background:none;border:none;cursor:pointer;padding:2px 4px}
+  .appbar .ttl{font-weight:700;font-size:15.5px;line-height:1.2}
+  .appbar .sub{font-size:11.5px;color:var(--mut)}
+  .avatar{margin-left:auto;width:32px;height:32px;border-radius:50%;background:linear-gradient(135deg,var(--acc),var(--acc2));display:flex;align-items:center;justify-content:center;font-weight:700;font-size:12px;flex:none}
+  /* position strip */
+  .pos{margin:2px 12px 10px;border:1px solid rgba(124,108,255,.4);background:rgba(124,108,255,.07);border-radius:14px;padding:10px 12px}
+  .pos .r1{display:flex;align-items:center;gap:8px;font-size:13px}
+  .pos .r1 b{font-size:13.5px}
+  .pill{font-size:10.5px;font-weight:800;letter-spacing:.05em;background:var(--acc);color:#fff;border-radius:999px;padding:2px 9px}
+  .pill.amber{background:rgba(232,161,58,.18);color:var(--warn);border:1px solid rgba(232,161,58,.5)}
+  .bar{height:5px;border-radius:99px;background:rgba(255,255,255,.1);margin-top:8px;overflow:hidden}
+  .bar i{display:block;height:100%;width:64%;background:linear-gradient(90deg,var(--acc),var(--acc2));border-radius:99px}
+  .pos .r2{display:flex;gap:12px;margin-top:7px;font-size:11.5px;color:var(--mut);flex-wrap:wrap}
+  .pos .r2 b{color:var(--txt)}
+  /* views */
+  .views{flex:1;overflow-y:auto;padding:0 12px 12px;display:flex;flex-direction:column}
+  .view{display:none;flex-direction:column;gap:9px}
+  .view.on{display:flex}
+  /* chat */
+  .msg{max-width:88%;padding:10px 12px;border-radius:16px;font-size:14px;line-height:1.45}
+  .msg.agent{background:var(--glass2);border:1px solid var(--line);align-self:flex-start;border-bottom-left-radius:5px}
+  .msg.user{background:linear-gradient(135deg,rgba(124,108,255,.4),rgba(79,124,255,.35));align-self:flex-end;border-bottom-right-radius:5px}
+  .msg .who{font-size:10px;color:var(--acc);letter-spacing:.09em;text-transform:uppercase;margin-bottom:3px;font-weight:800}
+  .msg.user .who{color:rgba(255,255,255,.75)}
+  .sysmsg{align-self:center;font-size:11px;color:var(--mut);border:1px dashed var(--line);padding:3px 11px;border-radius:999px}
+  .checkpoint{border:1.5px solid rgba(232,161,58,.55);background:rgba(232,161,58,.07);border-radius:16px;padding:12px}
+  .checkpoint .h{font-weight:800;font-size:11px;letter-spacing:.07em;color:var(--warn);text-transform:uppercase;margin-bottom:5px}
+  .cp-btns{display:flex;flex-direction:column;gap:7px;margin-top:10px}
+  .cp-btns button{border:1px solid var(--line);background:var(--glass2);color:var(--txt);padding:11px;border-radius:12px;font-size:14px;font-weight:600;cursor:pointer;text-align:left}
+  .cp-btns button.primary{background:var(--acc);border-color:var(--acc);color:#fff}
+  .cp-btns button:disabled{opacity:.4}
+  .cp-done{display:none;font-size:12.5px;color:var(--ok);font-weight:600;margin-top:9px}
+  .quickrow{display:flex;gap:7px;flex-wrap:wrap}
+  .quickrow button{border:1px solid rgba(124,108,255,.5);background:rgba(124,108,255,.1);color:var(--txt);border-radius:999px;padding:7px 12px;font-size:12.5px;cursor:pointer}
+  /* composer */
+  .composer{display:flex;gap:7px;padding:9px 12px calc(9px + env(safe-area-inset-bottom));border-top:1px solid var(--line);background:rgba(9,12,22,.92);backdrop-filter:blur(8px)}
+  .composer .iconbtn{width:42px;height:42px;border-radius:50%;border:1px solid var(--line);background:var(--glass);color:var(--mut);font-size:17px;cursor:pointer;flex:none}
+  .composer input{flex:1;background:rgba(255,255,255,.05);border:1px solid var(--line);border-radius:999px;padding:0 15px;color:var(--txt);font-size:14px;min-width:0}
+  .composer .send{width:42px;height:42px;border-radius:50%;border:none;background:var(--acc);color:#fff;font-size:16px;cursor:pointer;flex:none}
+  .composer.hidden{display:none}
+  /* record cards */
+  .card{background:var(--glass);border:1px solid var(--line);border-radius:16px;padding:13px}
+  .card h4{font-size:14.5px;display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+  .band{font-size:10px;font-weight:800;letter-spacing:.05em;padding:2px 8px;border-radius:999px}
+  .band.strong{background:rgba(52,199,123,.15);color:var(--ok);border:1px solid rgba(52,199,123,.4)}
+  .band.viable{background:rgba(63,193,201,.13);color:var(--cyan);border:1px solid rgba(63,193,201,.4)}
+  .band.gray{background:rgba(232,161,58,.13);color:var(--warn);border:1px solid rgba(232,161,58,.45)}
+  .score{margin-left:auto;font-size:11.5px;color:var(--mut)} .score b{color:var(--txt);font-size:14px}
+  .elrow{display:flex;gap:8px;padding:7px 8px;border-radius:10px;margin-top:6px;background:rgba(255,255,255,.03);font-size:13px;align-items:flex-start}
+  .st{font-size:9.5px;font-weight:800;letter-spacing:.04em;padding:2px 7px;border-radius:999px;flex:none;margin-top:1px}
+  .st.ok{background:rgba(52,199,123,.14);color:var(--ok)} .st.warn{background:rgba(232,161,58,.14);color:var(--warn)}
+  .elrow small{color:var(--mut);display:block;font-size:11.5px}
+  .cog{border-color:rgba(232,161,58,.5)}
+  .gapitem{font-size:12.5px;padding:8px 10px;border-left:3px solid var(--warn);background:rgba(232,161,58,.06);border-radius:0 10px 10px 0}
+  .secttl{font-size:11px;letter-spacing:.12em;color:var(--mut);text-transform:uppercase;font-weight:700;margin-top:4px}
+  /* evidence */
+  .doc{display:flex;gap:10px;padding:11px;border:1px solid var(--line);border-radius:14px;background:rgba(255,255,255,.03)}
+  .dic{width:32px;height:36px;border-radius:8px;background:var(--glass2);display:flex;align-items:center;justify-content:center;font-size:9.5px;font-weight:800;color:var(--acc2);border:1px solid var(--line);flex:none}
+  .doc b{font-size:13.5px}.doc small{color:var(--mut);display:block;font-size:11.5px}
+  .tags{display:flex;gap:5px;flex-wrap:wrap;margin-top:5px}
+  .tag{font-size:10px;border:1px solid var(--line);border-radius:999px;padding:1px 7px;color:var(--mut)}
+  .tag.hot{color:var(--warn);border-color:rgba(232,161,58,.5)}
+  .block{border:1px solid var(--line);border-radius:12px;padding:11px 12px;background:rgba(255,255,255,.03);font-size:13.5px}
+  .block .bk{font-size:10px;color:var(--mut);letter-spacing:.08em;text-transform:uppercase;font-weight:700;margin-bottom:3px}
+  .pass{display:flex;gap:8px;align-items:center;font-size:13px;padding:8px 10px;border:1px solid var(--line);border-radius:10px;background:rgba(255,255,255,.02)}
+  /* bottom nav */
+  .botnav{display:flex;border-top:1px solid var(--line);background:rgba(9,12,22,.95);padding-bottom:env(safe-area-inset-bottom)}
+  .botnav button{flex:1;background:none;border:none;color:var(--mut);padding:9px 0 7px;font-size:10.5px;font-weight:700;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:2px}
+  .botnav button .ic{font-size:19px}
+  .botnav button.on{color:var(--acc)}
+  .botnav.hidden{display:none}
+  /* drawer (layout B) */
+  .drawer{position:absolute;left:0;right:0;bottom:0;top:12%;background:#0d1322;border-top:1px solid var(--acc);border-radius:22px 22px 0 0;transform:translateY(105%);transition:transform .32s ease;z-index:30;display:flex;flex-direction:column;box-shadow:0 -18px 50px rgba(0,0,0,.55)}
+  .drawer.open{transform:translateY(0)}
+  .drawer .grab{width:44px;height:5px;border-radius:99px;background:rgba(255,255,255,.25);margin:9px auto 4px}
+  .drawer .dhead{display:flex;align-items:center;padding:4px 16px 10px;font-weight:700}
+  .drawer .dhead button{margin-left:auto;background:var(--glass2);border:1px solid var(--line);color:var(--txt);border-radius:999px;padding:5px 13px;cursor:pointer;font-size:12.5px}
+  .drawer .dbody{overflow-y:auto;padding:0 12px 20px;display:flex;flex-direction:column;gap:9px}
+  .scrim{position:absolute;inset:0;background:rgba(0,0,0,.5);opacity:0;pointer-events:none;transition:opacity .3s;z-index:25}
+  .scrim.on{opacity:1;pointer-events:auto}
+  .fab{position:absolute;right:14px;bottom:86px;z-index:20;background:linear-gradient(135deg,var(--acc),var(--acc2));color:#fff;border:none;border-radius:999px;padding:12px 16px;font-weight:700;font-size:13px;cursor:pointer;box-shadow:0 8px 24px rgba(124,108,255,.4);display:none}
+  .fab.show{display:block}
+  .note{font-size:11px;color:var(--mut);text-align:center;padding:6px 14px 0}
+</style>
+</head>
+<body>
+<div class="phone" id="phone">
+
+  <div class="demo"><span>MOCKUP LAYOUT</span>
+    <button id="layA" class="on">A · Tabbed workspace</button>
+    <button id="layB">B · Chat-first + record sheet</button>
+  </div>
+
+  <div class="appbar">
+    <button class="back">‹</button>
+    <div><div class="ttl">Bell — wage matter</div><div class="sub">MAT-2026-014 · Work product</div></div>
+    <div class="avatar">IB</div>
+  </div>
+
+  <div class="pos">
+    <div class="r1"><span class="pill">ASSESSMENT PROTOCOL</span><b>Stage 10 of 14</b></div>
+    <div class="bar"><i></i></div>
+    <div class="r2"><span><b>3</b> claims</span><span><b>34</b> facts</span><span><b>14</b> docs</span><span style="color:var(--warn)"><b style="color:var(--warn)">3</b> open gaps</span><span class="pill amber">1 checkpoint waiting</span></div>
+  </div>
+
+  <div class="views" id="views">
+
+    <!-- CHAT -->
+    <div class="view on" id="v-chat">
+      <div class="sysmsg">Intake complete · protocol: STRATEGY → ASSESSMENT</div>
+      <div class="msg agent"><div class="who">Agent</div>Assessment is done. Claim 1 (unpaid wages) computes <b>strong — 0.78</b>. Claim 2 (penalties) is <b>viable — 0.66</b> and hinges on <b>willfulness</b> — her breakage story is a good-faith attack aimed right at it. Most valuable missing fact: whether she can document the breakage.</div>
+      <div class="msg user"><div class="who">You</div>What do you need from me?</div>
+      <div class="checkpoint" id="cp">
+        <div class="h">⚠ Checkpoint — your call</div>
+        <div style="font-size:13.5px">The third claim is in the <b>gray zone (0.52)</b> — assessments split, and it turns on documents in her hands. Hold it pending discovery, or file all three now?</div>
+        <div class="cp-btns">
+          <button class="primary" id="bHold">Hold pending discovery</button>
+          <button id="bFile">File all three now</button>
+        </div>
+        <div class="cp-done" id="cpDone"></div>
+      </div>
+      <div class="sysmsg">— or answer by voice —</div>
+      <div class="quickrow">
+        <button class="qr">🎙 Hold it</button>
+        <button class="qr">🎙 Explain the risk first</button>
+        <button class="qr">Upload the full text export</button>
+      </div>
+    </div>
+
+    <!-- RECORD -->
+    <div class="view" id="v-record">
+      <div class="secttl">Battlefield — live from the record</div>
+      <div class="card">
+        <h4>Claim 1 — Unpaid wages <span class="band strong">STRONG</span><span class="score">char. <b>0.78</b></span></h4>
+        <div class="elrow"><span class="st ok">ESTABL.</span><div>Employment relationship<small>Posting · texts · pay history</small></div></div>
+        <div class="elrow"><span class="st warn">DISPUTED</span><div>Wages earned &amp; unpaid (~$200)<small>She claims breakage offsets — undocumented</small></div></div>
+        <div class="elrow"><span class="st warn">OPEN</span><div>No lawful offset<small>Turns on Gap #1</small></div></div>
+      </div>
+      <div class="card cog">
+        <h4>Claim 2 — Waiting-time penalties <span class="band viable">VIABLE</span><span class="score">char. <b>0.66</b></span></h4>
+        <div class="elrow"><span class="st ok">SATISFIED</span><div>Unpaid past the 72-hour mark</div></div>
+        <div class="elrow"><span class="st warn">★ CENTER OF GRAVITY</span><div>Willfulness<small>Good-faith-dispute attack lands here</small></div></div>
+      </div>
+      <div class="card" style="opacity:.75">
+        <h4>Claim 3 <span class="band gray">HELD / GRAY ZONE</span><span class="score">char. <b>0.52</b></span></h4>
+        <div class="elrow"><span class="st warn">YOUR CALL</span><div>Waiting at the checkpoint in Chat</div></div>
+      </div>
+      <div class="secttl">Open gaps — priced by leverage</div>
+      <div class="gapitem"><b>#1</b> Can she document the breakage? Flips Claim 2.</div>
+      <div class="gapitem"><b>#2</b> Exact final-pay date — penalty day count.</div>
+      <div class="gapitem"><b>#3</b> Full text-thread export (screenshots partial).</div>
+    </div>
+
+    <!-- EVIDENCE -->
+    <div class="view" id="v-evid">
+      <div class="secttl">Evidence — analyzed on arrival</div>
+      <div class="doc"><div class="dic">TXT</div><div><b>Text thread — Romine (23 screenshots)</b><small>Demand + response captured</small><div class="tags"><span class="tag hot">willfulness</span><span class="tag hot">gap #3</span><span class="tag">extracted ✓</span></div></div></div>
+      <div class="doc"><div class="dic">WEB</div><div><b>Caregiver job posting (archived)</b><small>Employment + rate</small><div class="tags"><span class="tag">element: employment</span><span class="tag">extracted ✓</span></div></div></div>
+      <div class="doc"><div class="dic">PAY</div><div><b>Payment records — final pay</b><small>$300 deducted at final payment</small><div class="tags"><span class="tag hot">gap #2: exact date</span><span class="tag">partial</span></div></div></div>
+      <div class="doc"><div class="dic">PDF</div><div><b>Demand letter draft (unsent)</b><small>Prepared by agent — your approval required</small><div class="tags"><span class="tag">draft</span><span class="tag">nothing leaves without you</span></div></div></div>
+    </div>
+
+    <!-- DRAFT -->
+    <div class="view" id="v-draft">
+      <div class="secttl">Outline — built in simulation order</div>
+      <div class="block"><div class="bk">Node 1</div>Introduction &amp; parties</div>
+      <div class="block"><div class="bk">Node 2</div>Employment &amp; the final pay — lead with strongest facts</div>
+      <div class="block"><div class="bk">Node 3</div>Willfulness — pre-answer the good-faith attack <span style="color:var(--warn)">(center of gravity — largest section)</span></div>
+      <div class="block"><div class="bk">Node 4</div>Relief &amp; penalty arithmetic</div>
+      <div class="secttl">Verification passes</div>
+      <div class="pass"><span style="color:var(--ok);font-weight:800">✓</span> Citations re-read at source</div>
+      <div class="pass"><span style="color:var(--ok);font-weight:800">✓</span> Facts traced to provenance</div>
+      <div class="pass"><span style="color:var(--warn);font-weight:800">…</span> Adversarial review — runs at Draft</div>
+      <div class="pass"><span style="color:var(--warn);font-weight:800">…</span> Prose review — runs at Draft</div>
+      <div class="note">Drafting tools stay locked until computation completes — the agent can't jump ahead, and neither can this screen.</div>
+    </div>
+  </div>
+
+  <button class="fab" id="fab">▦ Case record</button>
+
+  <div class="composer" id="composer">
+    <button class="iconbtn" title="Upload a document">＋</button>
+    <input placeholder="Message the agent…">
+    <button class="iconbtn" title="Speak instead of typing" style="color:var(--acc)">🎙</button>
+    <button class="send">↑</button>
+  </div>
+
+  <div class="botnav" id="botnav">
+    <button class="on" data-v="v-chat"><span class="ic">💬</span>Chat</button>
+    <button data-v="v-record"><span class="ic">▦</span>Record</button>
+    <button data-v="v-evid"><span class="ic">🗂</span>Evidence</button>
+    <button data-v="v-draft"><span class="ic">✎</span>Draft</button>
+  </div>
+
+  <div class="scrim" id="scrim"></div>
+  <div class="drawer" id="drawer">
+    <div class="grab"></div>
+    <div class="dhead">Case record <button id="dClose">Done</button></div>
+    <div class="dbody" id="dbody"></div>
+  </div>
+</div>
+
+<script>
+  const views={chat:document.getElementById('v-chat'),record:document.getElementById('v-record'),
+               evid:document.getElementById('v-evid'),draft:document.getElementById('v-draft')};
+  const navBtns=[...document.querySelectorAll('.botnav button')];
+  function show(id){Object.values(views).forEach(v=>v.classList.remove('on'));views[id].classList.add('on');
+    navBtns.forEach(b=>b.classList.toggle('on',b.dataset.v==='v-'+id));
+    document.getElementById('views').scrollTop=0;}
+  navBtns.forEach(b=>b.addEventListener('click',()=>show(b.dataset.v.slice(2))));
+
+  // checkpoint
+  function decide(t){document.getElementById('bHold').disabled=true;document.getElementById('bFile').disabled=true;
+    const d=document.getElementById('cpDone');d.style.display='block';
+    d.textContent='✓ Recorded under your name: '+t;
+    const c=views.chat;const m=document.createElement('div');m.className='msg agent';
+    m.innerHTML='<div class="who">Agent</div>Recorded. Next: computation at pleading mode, then the full simulation — including the attack I\'d run against us if I were her lawyer.';
+    c.appendChild(m);m.scrollIntoView({behavior:'smooth',block:'end'});}
+  document.getElementById('bHold').addEventListener('click',()=>decide('hold the gray-zone claim pending discovery.'));
+  document.getElementById('bFile').addEventListener('click',()=>decide('file all three claims now.'));
+  document.querySelectorAll('.qr').forEach(b=>b.addEventListener('click',()=>{
+    const c=views.chat;const m=document.createElement('div');m.className='msg user';
+    m.innerHTML='<div class="who">You · voice</div>'+b.textContent.replace('🎙 ','');
+    c.appendChild(m);m.scrollIntoView({behavior:'smooth',block:'end'});}));
+
+  // layout switcher
+  const layA=document.getElementById('layA'),layB=document.getElementById('layB'),
+        botnav=document.getElementById('botnav'),fab=document.getElementById('fab'),
+        drawer=document.getElementById('drawer'),scrim=document.getElementById('scrim'),
+        dbody=document.getElementById('dbody');
+  // drawer reuses the Record view content
+  dbody.appendChild(views.record.cloneNode(true)); dbody.firstChild.classList.add('on'); dbody.firstChild.style.display='flex';
+  function setLayout(b){const isB=b==='B';
+    layA.classList.toggle('on',!isB);layB.classList.toggle('on',isB);
+    botnav.classList.toggle('hidden',isB);fab.classList.toggle('show',isB);
+    if(isB){show('chat');} closeDrawer();}
+  function openDrawer(){drawer.classList.add('open');scrim.classList.add('on')}
+  function closeDrawer(){drawer.classList.remove('open');scrim.classList.remove('on')}
+  layA.addEventListener('click',()=>setLayout('A'));
+  layB.addEventListener('click',()=>setLayout('B'));
+  fab.addEventListener('click',openDrawer);
+  document.getElementById('dClose').addEventListener('click',closeDrawer);
+  scrim.addEventListener('click',closeDrawer);
+</script>
+</body>
+</html>
