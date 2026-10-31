@@ -24,6 +24,11 @@ use Tests\TestCase;
  * - layouts/app.blade.php is the sanctioned home of the nav drawer (door 5):
  *   the drawer is layout infrastructure required by the mobile standards —
  *   keyboard-operable, Escape-closes, focus-trapped — not an ad-hoc dialog.
+ * - Spec 012 (Slice 1, 2026-10-31): the Glass/Aurora workspace views
+ *   (matters/workspace*, layouts/workspace.blade.php) are exempt from doors
+ *   2 and 3 — a separate, Ian-approved design system with its own component
+ *   library (design/STYLE_GUIDE.md); door 1 still applies (tokens live in
+ *   resources/css/workspace.css). Recorded in docs/UI_Standards.md.
  * - Door 8 (leak sentinels) from UI_Standards.md is NOT re-implemented here:
  *   it is already enforced by tests/Architecture/LeakSentinelTest.php
  *   (spec 001, verdict C-14). This ticket's "7 doors" are the 7 in 06-plan.md.
@@ -88,11 +93,30 @@ class VisionUiTest extends TestCase
         );
     }
 
+    /**
+     * Whether a view belongs to the Spec 012 Glass/Aurora workspace
+     * surface (matters/workspace*, layouts/workspace.blade.php). That
+     * surface runs under its own design contract (design/STYLE_GUIDE.md,
+     * Ian's direction 2026-10-30) with its own component library — doors 2
+     * and 3 exempt it, recorded in docs/UI_Standards.md (door exemptions).
+     * Door 1 (raw hex) still applies: Glass/Aurora tokens live in
+     * resources/css/workspace.css, never inline in views.
+     */
+    private function isGaWorkspace(string $relative): bool
+    {
+        return $relative === 'layouts/workspace.blade.php'
+            || $relative === 'matters/workspace.blade.php'
+            || str_starts_with($relative, 'matters/workspace/');
+    }
+
     /** Door 2 — buttons only via <x-ui.button> (mail templates exempt). */
     private function door2Buttons(string $root): array
     {
         return $this->scan($root, function (string $relative, string $line): bool {
             if (str_starts_with($relative, 'components/ui/') || str_starts_with($relative, 'mail/')) {
+                return false;
+            }
+            if ($this->isGaWorkspace($relative)) {
                 return false;
             }
 
@@ -110,6 +134,9 @@ class VisionUiTest extends TestCase
     {
         return $this->scan($root, function (string $relative, string $line): bool {
             if (str_starts_with($relative, 'components/ui/')) {
+                return false;
+            }
+            if ($this->isGaWorkspace($relative)) {
                 return false;
             }
             // Spec 007 T-10 exemption (docs/UI_Standards.md): the preview

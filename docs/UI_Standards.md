@@ -218,6 +218,16 @@ with the first UI feature; `tests/Architecture/` does not exist yet):
   `w-full` and has no 44px minimum, so converting would break the approved
   toolbar AND the mobile gate). Both carry `min-h-[44px]` and accessible names;
   only these two ids are exempt.
+- `resources/views/matters/workspace.blade.php`, `resources/views/matters/workspace/*`
+  and `resources/views/layouts/workspace.blade.php` (the Spec 012
+  Glass/Aurora agent workspace, recorded 2026-10-31, spec 012 Slice 1) are
+  exempt from doors 2 and 3: the workspace runs under its own design
+  contract (`design/STYLE_GUIDE.md`, Ian's direction 2026-10-30) whose
+  component library (tabs, checkpoint cards, bottom nav, chat composer) is
+  raw HTML by design and cannot be served by the spec 002 light-theme
+  `<x-ui.button>` or the four form wrappers. Door 1 still applies in full:
+  Glass/Aurora color values live as tokens in
+  `resources/css/workspace.css`, never as raw hex in views.
 - Leak sentinels (door 8) are enforced by spec 001's
   `tests/Architecture/LeakSentinelTest.php` (verdict C-14), not duplicated
   per UI feature.

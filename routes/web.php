@@ -41,6 +41,7 @@ use App\Http\Controllers\InvitationController;
 use App\Http\Controllers\LinkController;
 use App\Http\Controllers\MatterController;
 use App\Http\Controllers\MatterGrantController;
+use App\Http\Controllers\MatterWorkspaceController;
 use App\Http\Controllers\PartyController;
 use App\Http\Controllers\SessionController;
 use App\Http\Controllers\TemplateController;
@@ -867,5 +868,17 @@ Route::get('/feeds/calendar/{token}.ics', [CalendarExternalController::class, 'f
     ->name('calendar.feed.fetch');
 Route::get('/guest/calendar/{token}', [CalendarExternalController::class, 'guest'])
     ->name('calendar.guest.show');
+
+// === 012 agent workspace (Slice 1 — UX preview) ===
+// Front-end only: the Glass/Aurora matter workspace + agent chat surface.
+// Renders the matter's identity with clearly-labeled sample case content
+// from the view layer; no Brain schema and no chat persistence yet
+// (build-sequence steps 2–3). Authorization is the same
+// RequireMatterAccess :view gate as the matter detail screen.
+Route::middleware(['auth:'.config('fortify.guard')])->group(function (): void {
+    Route::get('/matters/{matter}/workspace', MatterWorkspaceController::class)
+        ->middleware('matter.access:view')
+        ->name('matters.workspace');
+});
 
 require __DIR__.'/share.php';

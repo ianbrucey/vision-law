@@ -20,6 +20,7 @@
         </x-slot>
         <x-slot name="actions">
             <x-ui.status type="matter" :value="$matter->lifecycle_state" />
+            <x-ui.button variant="secondary" href="{{ route('matters.workspace', $matter) }}">Agent workspace</x-ui.button>
             @if ($canManage && count($legalNextStates) > 0)
                 <x-ui.button variant="secondary" type="button" @click="$dispatch('vl-open-modal', { id: 'transition-modal' })">
                     Transition state

@@ -90,6 +90,15 @@
   .count b{font-size:17px;display:block}.count span{font-size:11px;color:var(--mut)}
   .avatar2{width:32px;height:32px;border-radius:50%;background:linear-gradient(135deg,var(--acc),var(--acc2));display:flex;align-items:center;justify-content:center;font-weight:700;font-size:12px}
   .grid2{display:grid;grid-template-columns:1fr 1fr;gap:14px} @media(max-width:760px){.grid2{grid-template-columns:1fr}}
+  /* phone components — added 2026-10-31 when they shipped in the app (Spec 012 Slice 1); classes shown unprefixed, app CSS scopes them as .ga-* */
+  .pos{border:1px solid rgba(124,108,255,.4);background:rgba(124,108,255,.07);border-radius:14px;padding:10px 12px;max-width:390px}
+  .pos .r1{display:flex;align-items:center;gap:8px;font-size:13px;flex-wrap:wrap}
+  .botnav{display:flex;border-top:1px solid var(--line);background:rgba(9,12,22,.95);max-width:390px;border-radius:12px;overflow:hidden}
+  .botnav button{flex:1;background:none;border:none;color:var(--mut);padding:9px 0 7px;font-size:10.5px;font-weight:700;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:2px}
+  .botnav button .ic{font-size:19px}
+  .botnav button.on{color:var(--acc)}
+  .quickrow{display:flex;gap:7px;flex-wrap:wrap}
+  .quickrow button{border:1px solid rgba(124,108,255,.5);background:rgba(124,108,255,.1);color:var(--txt);border-radius:999px;padding:7px 12px;font-size:12.5px;cursor:pointer}
 </style>
 </head>
 <body>
@@ -199,6 +208,28 @@
       <div class="pass" style="margin-top:8px"><span style="color:var(--ok);font-weight:800">✓</span> Citation verification — re-read at source</div>
       <div class="pass" style="margin-top:6px"><span style="color:var(--warn);font-weight:800">…</span> Adversarial review — runs at Draft protocol</div>
     </div>
+  </div>
+
+  <div class="sect">11 · Phone — position strip, bottom nav, quick replies</div>
+  <div class="card">
+    <div class="lbl">Position strip (<code>.pos</code>) — the case position at a glance under the app bar: protocol pill, stage x of 14, progress bar, counts, checkpoint state.</div>
+    <div class="pos" style="margin-top:8px">
+      <div class="r1"><span class="pill acc">ASSESSMENT PROTOCOL</span><b>Stage 10 of 14</b></div>
+      <div class="bar2" style="margin-top:8px"><i></i></div>
+      <div class="row" style="margin-top:7px;font-size:11.5px;color:var(--mut)"><span><b style="color:var(--txt)">3</b> claims</span><span><b style="color:var(--txt)">34</b> facts</span><span><b style="color:var(--txt)">14</b> docs</span><span class="pill amber">1 CHECKPOINT WAITING</span></div>
+    </div>
+    <div class="lbl" style="margin-top:14px">Bottom nav (<code>.botnav</code>) — Layout A's four views; Chat is the default. One conversation, four doors into the same record.</div>
+    <div class="botnav" style="margin-top:8px">
+      <button class="on"><span class="ic">💬</span>Chat</button>
+      <button><span class="ic">▦</span>Record</button>
+      <button><span class="ic">🗂</span>Evidence</button>
+      <button><span class="ic">✎</span>Draft</button>
+    </div>
+    <div class="lbl" style="margin-top:14px">Quick replies (<code>.quickrow</code>) — multiple-choice / voice answers as first-class composer citizens; tapping one answers as the user.</div>
+    <div class="quickrow" style="margin-top:8px">
+      <button>🎙 Hold it</button><button>🎙 Explain the risk first</button><button>Upload the full text export</button>
+    </div>
+    <div class="lbl">Added 2026-10-31 — these shipped in the app with Spec 012 Slice 1 (matter workspace), where the classes are scoped as <code>.ga-strip</code> / <code>.ga-botnav</code> / <code>.ga-quickrow</code>.</div>
   </div>
 
   <div class="sub" style="margin-top:26px">Living reference — when a new component earns its place in a mockup, it gets added here with its class names before it ships in the app.</div>
