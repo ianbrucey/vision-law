@@ -29,6 +29,12 @@ use Tests\TestCase;
  *   2 and 3 — a separate, Ian-approved design system with its own component
  *   library (design/STYLE_GUIDE.md); door 1 still applies (tokens live in
  *   resources/css/workspace.css). Recorded in docs/UI_Standards.md.
+ * - Spec 012 (front desk, 2026-11-01): the exemption extends to ONE more
+ *   view — home/_frontdesk.blade.php, the Glass/Aurora front-desk panel
+ *   embedded in the spec 002 home. Same design system, same component
+ *   library (component-library §12), same reasoning; the rest of the home
+ *   page is untouched and stays under all doors. Recorded in
+ *   docs/UI_Standards.md.
  * - Door 8 (leak sentinels) from UI_Standards.md is NOT re-implemented here:
  *   it is already enforced by tests/Architecture/LeakSentinelTest.php
  *   (spec 001, verdict C-14). This ticket's "7 doors" are the 7 in 06-plan.md.
@@ -94,18 +100,21 @@ class VisionUiTest extends TestCase
     }
 
     /**
-     * Whether a view belongs to the Spec 012 Glass/Aurora workspace
-     * surface (matters/workspace*, layouts/workspace.blade.php). That
-     * surface runs under its own design contract (design/STYLE_GUIDE.md,
-     * Ian's direction 2026-10-30) with its own component library — doors 2
-     * and 3 exempt it, recorded in docs/UI_Standards.md (door exemptions).
-     * Door 1 (raw hex) still applies: Glass/Aurora tokens live in
-     * resources/css/workspace.css, never inline in views.
+     * Whether a view belongs to a Spec 012 Glass/Aurora surface: the matter
+     * workspace (matters/workspace*, layouts/workspace.blade.php) or the
+     * front-desk panel on the home page (home/_frontdesk.blade.php, added
+     * 2026-11-01). Those surfaces run under their own design contract
+     * (design/STYLE_GUIDE.md, Ian's direction 2026-10-30) with their own
+     * component library — doors 2 and 3 exempt them, recorded in
+     * docs/UI_Standards.md (door exemptions). Door 1 (raw hex) still
+     * applies: Glass/Aurora tokens live in resources/css/workspace.css,
+     * never inline in views.
      */
     private function isGaWorkspace(string $relative): bool
     {
         return $relative === 'layouts/workspace.blade.php'
             || $relative === 'matters/workspace.blade.php'
+            || $relative === 'home/_frontdesk.blade.php'
             || str_starts_with($relative, 'matters/workspace/');
     }
 

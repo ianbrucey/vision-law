@@ -92,6 +92,17 @@
   .grid2{display:grid;grid-template-columns:1fr 1fr;gap:14px} @media(max-width:760px){.grid2{grid-template-columns:1fr}}
   /* phone components — added 2026-10-31 when they shipped in the app (Spec 012 Slice 1); classes shown unprefixed, app CSS scopes them as .ga-* */
   .pos{border:1px solid rgba(124,108,255,.4);background:rgba(124,108,255,.07);border-radius:14px;padding:10px 12px;max-width:390px}
+  /* front desk (§12) */
+  .fdpanel{background:#070b16;border:1px solid var(--line);border-radius:18px;padding:16px;display:flex;flex-direction:column;gap:10px}
+  .rollup{border:1px solid var(--line);background:var(--glass);border-radius:12px;padding:9px 12px;font-size:13px;line-height:1.55}
+  .rollup .k{display:block;font-size:10px;font-weight:800;letter-spacing:.07em;text-transform:uppercase;color:var(--mut);margin-bottom:2px}
+  .rollup.amber{border-color:rgba(232,161,58,.45)} .rollup.amber .k{color:var(--warn)}
+  .routecard{border:1.5px dashed rgba(124,108,255,.55);background:rgba(124,108,255,.07);border-radius:14px;padding:12px}
+  .routecard .lbl2{font-size:10px;font-weight:800;letter-spacing:.07em;text-transform:uppercase;color:var(--acc);margin:0 0 5px}
+  .routecard .t{font-size:14.5px;font-weight:700}
+  .routecard .s{font-size:12.5px;color:var(--mut);margin-top:2px;line-height:1.5}
+  .carried{border:1px solid rgba(52,199,123,.4);background:rgba(52,199,123,.06);border-radius:14px;padding:11px 13px;font-size:13px;line-height:1.55}
+  .carried .lbl2{font-size:10px;font-weight:800;letter-spacing:.07em;text-transform:uppercase;color:var(--ok);margin:0 0 5px}
   .pos .r1{display:flex;align-items:center;gap:8px;font-size:13px;flex-wrap:wrap}
   .botnav{display:flex;border-top:1px solid var(--line);background:rgba(9,12,22,.95);max-width:390px;border-radius:12px;overflow:hidden}
   .botnav button{flex:1;background:none;border:none;color:var(--mut);padding:9px 0 7px;font-size:10.5px;font-weight:700;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:2px}
@@ -230,6 +241,32 @@
       <button>🎙 Hold it</button><button>🎙 Explain the risk first</button><button>Upload the full text export</button>
     </div>
     <div class="lbl">Added 2026-10-31 — these shipped in the app with Spec 012 Slice 1 (matter workspace), where the classes are scoped as <code>.ga-strip</code> / <code>.ga-botnav</code> / <code>.ga-quickrow</code>.</div>
+  </div>
+
+  <div class="sect">12 · Front desk — panel, rollups, matter-route card, carried excerpt</div>
+  <div class="card">
+    <div class="lbl">Front-desk panel (<code>.ga-frontdesk</code>) — the Glass/Aurora chat panel that lives on the app home (Variant A): a dark card on the light page, scoped under <code>.ga</code>, the rest of Home untouched. Its header is a scope indicator: front desk (general chat) ↔ matter (in session).</div>
+    <div class="fdpanel" style="margin-top:10px">
+      <div class="msg user">What do I have going on today?</div>
+      <div class="msg agent"><div class="who">Agent · Front desk</div>Two things on the calendar and one flag. Nothing needs a decision before noon.</div>
+      <div class="rollup"><span class="k">Calendar · today</span><b>10:00 AM</b> — Call: opposing counsel check-in<br><b>4:30 PM</b> — Sunset Skate setup (personal)</div>
+      <div class="rollup amber"><span class="k">Needs attention</span><b>Sterling v. Apex Construction</b> — a checkpoint is waiting in its workspace.</div>
+      <div class="lbl">Rollup cards (<code>.ga-rollup</code>) — the front desk's cross-matter answers: read-only summaries (calendar, deadlines, flags), never a case record. Amber marks one that needs the human.</div>
+      <div class="routecard">
+        <div class="lbl2">Likely matter</div>
+        <div class="t">Sterling v. Apex Construction</div>
+        <div class="s">MAT-2026-001 · Sample routing: the agent proposes the match — nothing opens, and nothing is written to the case, until you say so.</div>
+        <div class="row" style="margin-top:10px"><button class="btn primary">Open in workspace</button><button class="btn">Not this one</button></div>
+      </div>
+      <div class="lbl">Matter-route card (<code>.ga-routecard</code>, registry type <code>matter_route.v1</code>) — dashed violet = an agent-owned surface proposing an action. The primary button performs the no-refresh handoff in place; the full record opens via a separate “Open the full workspace →” link (<code>.ga-fd-openfull</code>).</div>
+      <div class="carried">
+        <div class="lbl2">Brought from front desk · pinned intake note</div>
+        <em>“What do I have going on today?”</em> — plus the needs-attention flag on this matter.
+        <div style="margin-top:6px;font-size:11.5px;color:var(--mut)">Only this crossed over. The rest of the front-desk thread stays at the desk — that is the firewall.</div>
+      </div>
+      <div class="lbl">Carried excerpt (<code>.ga-carried</code>) — the single quoted item that crosses the desk → matter firewall, pinned at the top of the matter thread with its provenance. Green: a settled, recorded fact of the handoff.</div>
+    </div>
+    <div class="lbl">Added 2026-11-01 — shipped in the app on the home page (Spec 012 front desk), where the classes are scoped as <code>.ga-frontdesk</code> / <code>.ga-rollup</code> / <code>.ga-routecard</code> / <code>.ga-carried</code> in <code>resources/css/workspace.css</code>.</div>
   </div>
 
   <div class="sub" style="margin-top:26px">Living reference — when a new component earns its place in a mockup, it gets added here with its class names before it ships in the app.</div>

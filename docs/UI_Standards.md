@@ -228,6 +228,13 @@ with the first UI feature; `tests/Architecture/` does not exist yet):
   `<x-ui.button>` or the four form wrappers. Door 1 still applies in full:
   Glass/Aurora color values live as tokens in
   `resources/css/workspace.css`, never as raw hex in views.
+- `resources/views/home/_frontdesk.blade.php` (the Spec 012 front-desk chat
+  panel on the app home, recorded 2026-11-01) is exempt from doors 2 and 3
+  under the same Glass/Aurora reasoning as the workspace above: it is a
+  `.ga`-scoped surface from the same component library
+  (`design/component-library.html` §12) embedded in the spec 002 home —
+  the rest of `home.blade.php` is unexempt and unchanged. Door 1 still
+  applies in full.
 - Leak sentinels (door 8) are enforced by spec 001's
   `tests/Architecture/LeakSentinelTest.php` (verdict C-14), not duplicated
   per UI feature.

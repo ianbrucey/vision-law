@@ -5,7 +5,9 @@
  * design/mockups/mobile-workspace.html (phone Layout A). Tokens and color
  * discipline are law per design/STYLE_GUIDE.md. Everything is scoped under
  * .ga so the rest of the app (spec 002 light theme) is untouched; this file
- * is loaded ONLY by layouts/workspace.blade.php.
+ * is loaded by layouts/workspace.blade.php and by the home front-desk
+ * panel (home/_frontdesk.blade.php) — always inside a .ga root, never
+ * globally.
  */
 
 .ga {
@@ -1042,4 +1044,207 @@ body.ga-body {
     .ga-foot {
         padding-bottom: 84px;
     }
+}
+
+/* ---------- front desk (home panel) ---------- */
+/*
+ * Spec 012 — the front-desk chat panel embedded in the spec 002 light home
+ * (home/_frontdesk.blade.php). A dark Glass/Aurora card on the light page:
+ * the panel root carries its own background; everything stays under .ga.
+ * Reuses the chat vocabulary above (.ga-chat, .ga-msg, .ga-composer,
+ * .ga-strip, .ga-cp-btns); only the desk-specific pieces live here.
+ * App classes: .ga-frontdesk (panel), .ga-rollup (matter_route rollups),
+ * .ga-routecard (matter_route.v1 card) — component library §12.
+ */
+
+.ga-frontdesk {
+    background: var(--ga-bg);
+    border: 1px solid var(--ga-line);
+    border-radius: 18px;
+    padding: 16px;
+    box-shadow: 0 18px 44px rgba(2, 4, 10, 0.35);
+}
+
+.ga-frontdesk [hidden] {
+    display: none !important;
+}
+
+.ga-frontdesk .ga-chat {
+    max-height: 430px;
+}
+
+.ga-frontdesk .ga-quickrow {
+    display: flex;
+}
+
+.ga-fd-head {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 12px;
+    flex-wrap: wrap;
+}
+
+.ga-fd-titlewrap {
+    min-width: 0;
+}
+
+.ga-fd-title {
+    font-size: 15px;
+    font-weight: 700;
+    line-height: 1.25;
+    overflow-wrap: break-word;
+}
+
+.ga-fd-sub {
+    font-size: 11.5px;
+    color: var(--ga-mut);
+}
+
+.ga-fd-head .ga-chip-sample {
+    margin-left: 0;
+}
+
+.ga-pill.ga-ghost {
+    background: var(--ga-glass-2);
+    color: var(--ga-mut);
+    border: 1px solid var(--ga-line);
+    margin-left: auto;
+}
+
+.ga-fd-backbtn {
+    border: 1px solid var(--ga-line);
+    background: var(--ga-glass);
+    color: var(--ga-txt);
+    border-radius: 999px;
+    padding: 7px 13px;
+    font-size: 12.5px;
+    font-weight: 600;
+    cursor: pointer;
+    min-height: 44px;
+    flex: none;
+}
+
+.ga-fd-strip {
+    display: block;
+    margin: 0 0 12px;
+}
+
+/* rollup cards — the front desk's cross-matter answers (calendar, flags) */
+.ga-rollup {
+    align-self: stretch;
+    border: 1px solid var(--ga-line);
+    background: var(--ga-glass);
+    border-radius: 12px;
+    padding: 9px 12px;
+    font-size: 13px;
+    line-height: 1.55;
+}
+
+.ga-rollup .ga-rollup-k {
+    display: block;
+    font-size: 10px;
+    font-weight: 800;
+    letter-spacing: 0.07em;
+    text-transform: uppercase;
+    color: var(--ga-mut);
+    margin-bottom: 2px;
+}
+
+.ga-rollup.ga-amber {
+    border-color: rgba(232, 161, 58, 0.45);
+}
+
+.ga-rollup.ga-amber .ga-rollup-k {
+    color: var(--ga-warn);
+}
+
+/* matter-route card (matter_route.v1) — dashed violet: agent-owned surface */
+.ga-routecard {
+    align-self: stretch;
+    border: 1.5px dashed rgba(124, 108, 255, 0.55);
+    background: rgba(124, 108, 255, 0.07);
+    border-radius: 14px;
+    padding: 12px;
+}
+
+.ga-routecard-lbl {
+    font-size: 10px;
+    font-weight: 800;
+    letter-spacing: 0.07em;
+    text-transform: uppercase;
+    color: var(--ga-acc);
+    margin-bottom: 5px;
+}
+
+.ga-routecard-t {
+    font-size: 14.5px;
+    font-weight: 700;
+}
+
+.ga-routecard-s {
+    font-size: 12.5px;
+    color: var(--ga-mut);
+    margin-top: 2px;
+    line-height: 1.5;
+}
+
+/* carried excerpt — the one thing that crosses the desk → matter firewall */
+.ga-carried {
+    align-self: stretch;
+    border: 1px solid rgba(52, 199, 123, 0.4);
+    background: rgba(52, 199, 123, 0.06);
+    border-radius: 14px;
+    padding: 11px 13px;
+    font-size: 13px;
+    line-height: 1.55;
+}
+
+.ga-carried-lbl {
+    font-size: 10px;
+    font-weight: 800;
+    letter-spacing: 0.07em;
+    text-transform: uppercase;
+    color: var(--ga-ok);
+    margin-bottom: 5px;
+}
+
+.ga-carried-note {
+    margin-top: 6px;
+    font-size: 11.5px;
+    color: var(--ga-mut);
+}
+
+.ga-fd-openfull {
+    align-self: flex-start;
+    border: 1px solid rgba(124, 108, 255, 0.5);
+    background: rgba(124, 108, 255, 0.12);
+    border-radius: 11px;
+    padding: 9px 14px;
+    font-size: 13px;
+    font-weight: 700;
+    text-decoration: none;
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
+}
+
+.ga-fd-navchip {
+    text-decoration: none;
+}
+
+.ga-iconbtn:disabled {
+    opacity: 0.45;
+    cursor: default;
+}
+
+/* The home screen sits under the app-wide mobile gate (44px touch
+   targets — CalendaringMobileTest's home screen): inside the front-desk
+   panel the quick chips and the composer send meet it too. */
+.ga-frontdesk .ga-quickrow button {
+    min-height: 44px;
+}
+
+.ga-frontdesk .ga-composer .ga-send {
+    min-width: 44px;
 }

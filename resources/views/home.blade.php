@@ -60,6 +60,13 @@
             };
         @endphp
 
+        {{-- Spec 012: the front-desk chat panel (Variant A) sits above the
+             dashboard modules as the home's main panel. GA-scoped; the rest
+             of this page keeps the spec 002 theme. $routeMatter is the
+             user's first accessible matter (the same accessibleBy order as
+             the My matters module below) or null. --}}
+        @include('home._frontdesk', ['routeMatter' => $matters->first()])
+
         <div class="grid gap-6 min-[821px]:grid-cols-3">
             <x-ui.card title="My matters" class="min-[821px]:col-span-2">
                 <x-slot name="header-actions">

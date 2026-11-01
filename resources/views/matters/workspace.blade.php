@@ -19,6 +19,7 @@
                 Matter <b>{{ $matter->title }}</b> · {{ $matter->matter_number }} · <b style="color: var(--ga-warn)">Work product — privileged</b>
             </div>
             <div class="ga-topright">
+                <a class="ga-chip ga-fd-navchip" href="{{ route('app.home') }}" title="Back to the front desk on Home">&larr; Front desk</a>
                 <span class="ga-chip ga-chip-sample" title="The case content in this preview is sample data, not a real case record">Sample case data</span>
                 <span class="ga-chip ga-chip-posture">Posture: <b>{{ $demo['posture'] }}</b></span>
                 <span class="ga-chip ga-chip-mode">Mode: <b>{{ $demo['mode'] }}</b></span>
