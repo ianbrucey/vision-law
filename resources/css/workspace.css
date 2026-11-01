@@ -806,10 +806,11 @@ body.ga-body {
     display: flex;
     gap: 8px;
     margin-top: 12px;
-    align-items: center;
+    /* Buttons stay pinned to the bottom as the textarea grows. */
+    align-items: flex-end;
 }
 
-.ga-composer input[type='text'] {
+.ga-composer textarea {
     flex: 1;
     background: rgba(255, 255, 255, 0.05);
     border: 1px solid var(--ga-line);
@@ -817,7 +818,14 @@ body.ga-body {
     padding: 10px 12px;
     color: var(--ga-txt);
     font-size: 13.5px;
+    line-height: 1.45;
     min-height: 44px;
+    /* Auto-grow cap (JS sizes the box to its content): about six lines of
+       text, and never more than 40% of the viewport height. Past the cap
+       the textarea scrolls internally instead of growing further. */
+    max-height: min(140px, 40vh);
+    overflow-y: auto;
+    resize: none;
     min-width: 0;
 }
 

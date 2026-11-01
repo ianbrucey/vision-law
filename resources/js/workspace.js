@@ -52,13 +52,39 @@ document.addEventListener('alpine:init', () => {
             this.scrollChats();
         },
 
+        growComposer() {
+            const el = this.$refs.composer;
+            if (! el) {
+                return;
+            }
+            // Shrink back to auto first so deletions reduce the height too;
+            // CSS max-height caps the growth and the box scrolls past it.
+            el.style.height = 'auto';
+            el.style.height = el.scrollHeight + 'px';
+        },
+
+        composerKeydown(event) {
+            // Desktop: Enter sends, Shift+Enter inserts a newline. On the
+            // phone layout (the 820px breakpoint in workspace.css) Enter
+            // stays a newline and the send button sends.
+            if (event.key !== 'Enter' || event.shiftKey) {
+                return;
+            }
+            if (window.matchMedia('(max-width: 820px)').matches) {
+                return;
+            }
+            event.preventDefault();
+            this.send();
+        },
+
         send() {
             const text = this.draft.trim();
             if (text === '') {
                 return;
             }
-            this.extra.push({ kind: 'user', who: 'You', html: gaEscapeHtml(text) });
+            this.extra.push({ kind: 'user', who: 'You', html: gaEscapeHtml(text).replace(/\n/g, '<br>') });
             this.draft = '';
+            this.$nextTick(() => this.growComposer());
             this.tab = 'chat';
             this.scrollChats();
         },

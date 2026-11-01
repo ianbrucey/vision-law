@@ -49,7 +49,7 @@
             ＋
             <input type="file" class="ga-fileinput" x-on:change="attachSelected($event)">
         </label>
-        <input type="text" x-model="draft" placeholder="Message the agent…" aria-label="Message the agent">
+        <textarea x-model="draft" x-ref="composer" rows="1" x-on:input="growComposer()" x-on:keydown="composerKeydown($event)" placeholder="Message the agent…" aria-label="Message the agent"></textarea>
         <button type="button" class="ga-iconbtn ga-acc" title="Speak instead of typing" aria-label="Speak instead of typing">🎙</button>
         <button type="submit" class="ga-send" aria-label="Send message">↑</button>
     </form>
