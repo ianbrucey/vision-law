@@ -6,9 +6,11 @@
     (position strip, one view at a time, bottom nav, Chat default).
 
     Renders the REAL matter's identity (title, number) in the header; the
-    case content is the controller's clearly-labeled sample data — no
-    Brain records exist yet (build sequence steps 2–3). All interaction
-    is in-page Alpine state (resources/js/workspace.js).
+    case content is the controller's demo data — no Brain records exist
+    yet (build sequence steps 2–3). Rendered text is product copy only:
+    no preview/sample commentary anywhere on the surface (Ian's standing
+    rule, 2026-11-05). All interaction is in-page Alpine state
+    (resources/js/workspace.js).
 --}}
 <x-layouts.workspace :title="$matter->title . ' · Workspace · Vision Law'">
     <div class="ga" x-data="gaWorkspace">
@@ -20,7 +22,6 @@
             </div>
             <div class="ga-topright">
                 <a class="ga-chip ga-fd-navchip" href="{{ route('app.home') }}" title="Back to the front desk on Home">&larr; Front desk</a>
-                <span class="ga-chip ga-chip-sample" title="The case content in this preview is sample data, not a real case record">Sample case data</span>
                 <span class="ga-chip ga-chip-posture">Posture: <b>{{ $demo['posture'] }}</b></span>
                 <span class="ga-chip ga-chip-mode">Mode: <b>{{ $demo['mode'] }}</b></span>
                 <span class="ga-avatar" aria-hidden="true">{{ $initials }}</span>
@@ -60,8 +61,6 @@
 
             @include('matters.workspace._chat')
         </div>
-
-        <div class="ga-foot">UX preview — Vision Law Spec 012, Slice 1. Fictionalized working example based on a wage-claim pattern; all case content is sample data. Interactivity is limited to tabs, the checkpoint decision, and in-page chat state — nothing is stored or sent.</div>
 
         <nav class="ga-botnav" aria-label="Workspace">
             <button type="button" :class="{ 'ga-on': tab === 'chat' }" x-on:click="show('chat')"><span class="ga-ic">💬</span>Chat</button>

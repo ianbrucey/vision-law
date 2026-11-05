@@ -7,7 +7,8 @@
     recent-activity and security modules — all assembled by
     HomeController from existing data (010 C-03/C-09 scoping unchanged) —
     and the front-desk chat panel as the grid's right-most column. The
-    chat stays the labeled UX preview; nothing here is wired to an agent.
+    chat is wired live (Spec 012 chat slice, 2026-11-05) and renders
+    product copy only — no preview/sample/wiring commentary.
 
     When the user's organization has no matters at all, the dashboard is
     replaced by the guided empty state (010 C-04) — no placeholder

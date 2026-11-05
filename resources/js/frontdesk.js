@@ -7,15 +7,17 @@
 // body-loaded script runs, and alpine:init has fired).
 //
 // Chat slice (2026-11-05): the desk discovers its mode from
-// GET /front-desk/status. In SAMPLE mode nothing changed from the UX
-// preview: all state is in-page, nothing is sent or stored, and the
-// note under the composer says so. In LIVE mode (Laravel flag on AND
-// the agent service reachable) sends go to POST /front-desk/messages,
-// which persists the exchange server-side and streams the agent's
-// reply back as SSE; an in-flight turn can be stopped (AbortController
-// + POST /front-desk/abort). If the live agent holds no provider key,
-// the server says so and the note labels the state honestly — the UI
-// never fakes a reply.
+// GET /front-desk/status — an internal signal only; nothing about the
+// wiring is ever rendered (Ian's standing rule: product copy only, no
+// preview/sample/not-configured commentary). In LIVE mode (Laravel
+// flag on AND the agent service reachable) sends go to
+// POST /front-desk/messages, which persists the exchange server-side
+// and streams the agent's reply back as SSE; an in-flight turn can be
+// stopped (AbortController + POST /front-desk/abort). When a turn
+// cannot complete — agent unreachable, unconfigured, or errored — the
+// assistant turn itself carries one plain product line
+// (UNAVAILABLE below); internal error detail never reaches the page,
+// and the UI never fakes a reply.
 
 (() => {
     'use strict';
@@ -40,12 +42,13 @@
         const form = root.querySelector('[data-fd-form]');
         const input = root.querySelector('[data-fd-input]');
         const file = root.querySelector('[data-fd-file]');
-        const note = root.querySelector('.ga-chat-note');
 
-        // Live-mode state. mode starts 'sample' (the preview contract)
+        // The one failure line a user ever sees from this panel.
+        const UNAVAILABLE = 'Ross isn’t available right now — please try again later.';
+
+        // Live-mode state. mode starts 'sample' (internal status value)
         // and only flips when /front-desk/status confirms live.
         let mode = 'sample';
-        let agentConfigured = false;
         let conversationId = null;
         let inFlight = null; // AbortController for the streaming turn
 
@@ -101,13 +104,7 @@
             scrollThread(thread);
         };
 
-        const setNote = (text) => {
-            if (note) {
-                note.textContent = text;
-            }
-        };
-
-        // --- mode discovery: sample preview vs live agent ---
+        // --- mode discovery: internal status only, never rendered ---
         const discoverMode = async () => {
             try {
                 const res = await fetch('/front-desk/status', {
@@ -117,14 +114,8 @@
                     return;
                 }
                 const status = await res.json();
-                agentConfigured = Boolean(status.agent_configured);
                 if (status.mode === 'live') {
                     mode = 'live';
-                    if (agentConfigured) {
-                        setNote('Live — Ross at the front desk is connected. Messages are stored in your front-desk conversation.');
-                    } else {
-                        setNote('Live wiring is on, but the agent is not configured yet (no provider key on the server) — sends will return that message, not a reply.');
-                    }
                     try {
                         const conv = await fetch('/front-desk/conversation', {
                             headers: { Accept: 'application/json' },
@@ -138,7 +129,7 @@
                     }
                 }
             } catch {
-                // Status unreachable: stay in labeled sample mode.
+                // Status unreachable: stay in local-only mode.
             }
         };
 
@@ -160,17 +151,10 @@
                     signal: inFlight.signal,
                 });
                 if (!res.ok || !res.body) {
-                    let detail = 'The agent could not be reached.';
-                    try {
-                        const data = await res.json();
-                        if (data.message) {
-                            detail = data.message;
-                        }
-                    } catch {
-                        // keep the generic detail
-                    }
+                    // The server's error detail is internal; the user
+                    // gets the one product line.
                     if (body) {
-                        body.textContent = detail;
+                        body.textContent = UNAVAILABLE;
                     }
                     return;
                 }
@@ -205,7 +189,7 @@
                             }
                         } else if (event.type === 'error') {
                             if (body && streamed === '') {
-                                body.textContent = event.message || 'The agent returned an error.';
+                                body.textContent = UNAVAILABLE;
                             }
                         } else if (event.type === 'persisted' && event.message?.id) {
                             conversationId = conversationId || null;
@@ -213,13 +197,13 @@
                     }
                 }
                 if (body && streamed === '' && body.textContent === '') {
-                    body.textContent = 'The agent finished without a reply.';
+                    body.textContent = UNAVAILABLE;
                 }
             } catch (err) {
                 if (err && err.name === 'AbortError') {
-                    appendSys('Stopped — the partial reply was not saved.');
+                    appendSys('Stopped.');
                 } else if (body) {
-                    body.textContent = 'The connection to the agent was lost.';
+                    body.textContent = UNAVAILABLE;
                 }
             } finally {
                 inFlight = null;
@@ -239,8 +223,7 @@
                 }).catch(() => {});
             }
         };
-        // Exposed for a future stop button; the composer markup itself is
-        // untouched in this slice (redesign decision pending).
+        // Exposed for a future stop button.
         root.__fdStop = stopLive;
 
         // --- desk ↔ session handoff (in place; no navigation) ---
@@ -275,7 +258,7 @@
                 if (card) {
                     card.hidden = true;
                 }
-                appendSys('Route dismissed — staying at the front desk. Nothing was opened or written anywhere.');
+                appendSys('Route dismissed — staying at the front desk.');
             });
         }
 
@@ -337,7 +320,7 @@
                 const inSession = Boolean(session && !session.hidden);
                 if (mode === 'live' && !inSession) {
                     // Live sends apply to the front-desk (desk) state; the
-                    // in-session sample state keeps preview behaviour.
+                    // in-session state keeps local behaviour.
                     sendLive(text);
                 } else {
                     appendUser(text);
@@ -352,11 +335,7 @@
                 if (!picked) {
                     return;
                 }
-                appendSys(
-                    'Attachment selected: ' +
-                        picked.name +
-                        ' — preview only; nothing is uploaded or stored in this slice.'
-                );
+                appendSys('Attachment selected: ' + picked.name);
             });
         }
 

@@ -61,5 +61,4 @@
             <button type="submit" class="ga-sendtext" aria-label="Send message">Send</button>
         </div>
     </form>
-    <div class="ga-chat-note">UX preview — the agent is not connected yet, and nothing you type here is stored or sent. In the finished workspace the agent works only inside the active protocol, on this case’s record; decisions at checkpoints are recorded with your name on them.</div>
 </div>

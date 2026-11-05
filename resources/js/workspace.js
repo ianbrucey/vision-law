@@ -103,10 +103,7 @@ document.addEventListener('alpine:init', () => {
             this.extra.push({
                 kind: 'sys',
                 who: null,
-                html:
-                    'Attachment selected: ' +
-                    gaEscapeHtml(file.name) +
-                    ' — preview only; nothing is uploaded or stored in this slice.',
+                html: 'Attachment selected: ' + gaEscapeHtml(file.name),
             });
             this.tab = 'chat';
             this.scrollChats();

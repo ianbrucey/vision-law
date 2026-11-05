@@ -8,6 +8,7 @@ use App\Models\User;
 use App\Services\AgentClient;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 /**
@@ -22,6 +23,14 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
  */
 class FrontDeskChatController extends Controller
 {
+    /**
+     * The only failure line a user ever sees from the front desk. Agent
+     * service error detail (unconfigured, unreachable, provider errors)
+     * is internal: it is logged, never rendered (Ian's standing rule,
+     * 2026-11-05 — product copy only in the UI).
+     */
+    private const UNAVAILABLE_MESSAGE = 'Ross isn’t available right now — please try again later.';
+
     public function __construct(private readonly AgentClient $agent) {}
 
     /**
@@ -83,7 +92,7 @@ class FrontDeskChatController extends Controller
         if (! (bool) config('chat.live_enabled')) {
             return response()->json([
                 'code' => 'chat_not_live',
-                'message' => 'The agent is not connected yet — live chat is disabled, so this stays a sample preview and nothing was sent to an agent.',
+                'message' => self::UNAVAILABLE_MESSAGE,
                 'user_message' => $this->messagePayload($userMessage),
             ], 503);
         }
@@ -140,6 +149,13 @@ class FrontDeskChatController extends Controller
                     }
                     if (($event['type'] ?? null) === 'error') {
                         $sawError = $event;
+                        // Keep the internal detail in the log; the
+                        // browser receives the product line only.
+                        Log::warning('Front-desk agent turn failed', [
+                            'code' => $event['code'] ?? null,
+                            'message' => $event['message'] ?? null,
+                        ]);
+                        $event['message'] = self::UNAVAILABLE_MESSAGE;
                     }
                     $send($event);
                 },

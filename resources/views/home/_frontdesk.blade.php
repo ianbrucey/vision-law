@@ -12,19 +12,21 @@
     docs/UI_Standards.md (same design system, same component library; door 1
     still applies — tokens only, no raw hex here).
 
-    Front-end only, like Slice 1: the thread is a labeled sample, all state
-    is in-page (resources/js/frontdesk.js), nothing is stored or sent. The
-    ONE live binding is the matter-route card: $routeMatter is the user's
-    first accessible matter, assembled by HomeController from the same
-    Matter::accessibleBy scope as the rest of this page (read-only; no new
-    query, no grant bypass). When the user has no accessible matter, the
-    card degrades to sample text with no live link and no session state.
+    The desk conversation is live (chat slice, 2026-11-05): sends persist
+    server-side and stream the agent's reply via resources/js/frontdesk.js
+    and the /front-desk endpoints; product copy only is ever rendered —
+    no preview/sample/wiring commentary (Ian's standing rule, 2026-11-05).
+    The matter-route card: $routeMatter is the user's first accessible
+    matter, assembled by HomeController from the same Matter::accessibleBy
+    scope as the rest of this page (read-only; no new query, no grant
+    bypass). When the user has no accessible matter, the card renders a
+    plain empty state with no live link and no session state.
 
     "Open in workspace" performs the no-refresh handoff IN PLACE (plain DOM
     state, the passkey.js pattern): the header swaps to the matter, the
-    position strip appears, the carried excerpt pins, and a sample
-    in-matter message lands — all without leaving /home. "Open the full
-    workspace" is the real route.
+    position strip appears, the carried excerpt pins, and an in-matter
+    message lands — all without leaving /home. "Open the full workspace"
+    is the real route.
 
     Expects: $user, $routeMatter (Matter|null).
 --}}
@@ -36,7 +38,7 @@
         ->implode('');
 @endphp
 
-<section class="ga ga-frontdesk mb-6" data-ga-frontdesk aria-label="Front desk — agent chat preview">
+<section class="ga ga-frontdesk mb-6" data-ga-frontdesk aria-label="Front desk — agent chat">
     {{-- ============ State 1: the front desk (general chat) ============ --}}
     <div data-fd-state="desk">
         <div class="ga-fd-head">
@@ -46,7 +48,6 @@
                 <div class="ga-fd-sub">Agent · all matters — your day, your calendar, any case</div>
             </div>
             <span class="ga-pill ga-ghost">General chat</span>
-            <span class="ga-chip ga-chip-sample" title="The conversation in this preview is sample data">Sample preview</span>
         </div>
 
         <div class="ga-chat" data-fd-thread>
@@ -75,22 +76,17 @@
                 <div class="ga-routecard" data-fd-routecard>
                     <div class="ga-routecard-lbl">Likely matter</div>
                     <div class="ga-routecard-t">{{ $routeMatter->title }}</div>
-                    <div class="ga-routecard-s">{{ $routeMatter->matter_number }} · your most recently updated matter. Sample routing: the agent proposes the match — nothing opens, and nothing is written to the case, until you say so.</div>
+                    <div class="ga-routecard-s">{{ $routeMatter->matter_number }} · your most recently updated matter.</div>
                     <div class="ga-cp-btns">
                         <button type="button" class="ga-primary" data-fd-open>Open in workspace</button>
                         <button type="button" data-fd-dismiss>Not this one</button>
                     </div>
                 </div>
             @else
-                <div class="ga-rollup ga-amber">
-                    <span class="ga-rollup-k">Needs attention</span>
-                    A checkpoint is waiting in the sample workspace: the gray-zone claim call.
-                </div>
-
                 <div class="ga-routecard">
                     <div class="ga-routecard-lbl">Likely matter</div>
-                    <div class="ga-routecard-t">Sample matter — wage claim</div>
-                    <div class="ga-routecard-s">No matters are shared with you yet, so this card is a sample with no live link. When a matter matches, its title and number appear here with an &ldquo;Open in workspace&rdquo; button.</div>
+                    <div class="ga-routecard-t">No matters yet</div>
+                    <div class="ga-routecard-s">When a matter matches your conversation, it will appear here with a button to open its workspace.</div>
                 </div>
             @endif
         </div>
@@ -138,7 +134,7 @@
                 <div class="ga-sysmsg">You entered the workspace session · position loaded</div>
                 <div class="ga-msg ga-agent">
                     <div class="ga-who">Agent · Assessment protocol</div>
-                    I&rsquo;m in the case now — position loaded from the record, current stage is <b>Assessment</b>. In this sample: Claim 1 computes <b>strong — 0.78</b>, Claim 2 is <b>viable — 0.66</b> and hinges on willfulness, and the gray-zone checkpoint is still waiting on your call. The full record — battlefield, evidence, narrative, draft — is one tap below.
+                    I&rsquo;m in the case now — position loaded from the record, current stage is <b>Assessment</b>. Claim 1 computes <b>strong</b>, Claim 2 is <b>viable</b> and hinges on willfulness, and the gray-zone checkpoint is still waiting on your call. The full record — battlefield, evidence, narrative, draft — is one tap below.
                 </div>
                 <a class="ga-fd-openfull" href="{{ route('matters.workspace', $routeMatter) }}">Open the full workspace &rarr;</a>
             </div>
@@ -153,10 +149,9 @@
                 &plus;
                 <input type="file" class="ga-fileinput" data-fd-file>
             </label>
-            <button type="button" class="ga-ghostbtn" disabled title="Voice input arrives in a later slice" aria-label="Voice input (arrives in a later slice)">🎙</button>
+            <button type="button" class="ga-ghostbtn" disabled title="Voice input" aria-label="Voice input">🎙</button>
             <span class="ga-composer-hint">Enter &crarr; to send</span>
             <button type="submit" class="ga-sendtext" aria-label="Send message">Send</button>
         </div>
     </form>
-    <div class="ga-chat-note">UX preview — the agent is not connected yet, and nothing you type here is stored or sent. The conversation is a sample; the matter named on the card is a real matter you can access.</div>
 </section>
