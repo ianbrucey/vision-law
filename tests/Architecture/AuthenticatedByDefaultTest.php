@@ -57,6 +57,14 @@ class AuthenticatedByDefaultTest extends TestCase
         // authorization at fetch time.
         ['GET', 'feeds/calendar/{token}.ics'],
         ['GET', 'guest/calendar/{token}'],
+        // Spec 012 chat slice — internal tool endpoint for the private
+        // agent service (the list_my_matters loop-proof tool):
+        // deliberately sessionless; the caller is a loopback-only
+        // service, never a browser, and the shared internal token IS
+        // the credential (constant-time compare in the controller;
+        // missing/wrong token → 403). Results are re-scoped to the
+        // named user's current matter authorization at fetch time.
+        ['GET', 'api/internal/matters'],
     ];
 
     /**
