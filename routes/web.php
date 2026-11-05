@@ -36,6 +36,7 @@ use App\Http\Controllers\DocumentTextController;
 use App\Http\Controllers\DocumentUploadController;
 use App\Http\Controllers\DocumentVersionController;
 use App\Http\Controllers\FolderController;
+use App\Http\Controllers\FrontDeskChatController;
 use App\Http\Controllers\HomeController;
 use App\Http\Controllers\InvitationController;
 use App\Http\Controllers\LinkController;
@@ -879,6 +880,22 @@ Route::middleware(['auth:'.config('fortify.guard')])->group(function (): void {
     Route::get('/matters/{matter}/workspace', MatterWorkspaceController::class)
         ->middleware('matter.access:view')
         ->name('matters.workspace');
+});
+
+// === 012 chat slice — front-desk chat (live agent) ===
+// Laravel owns auth + persistence and streams the agent service's turn
+// back as SSE (FrontDeskChatController). The agent service itself is
+// loopback-only and is never routed here. Matter workspace chat is NOT
+// wired in this slice.
+Route::middleware(['auth:'.config('fortify.guard')])->group(function (): void {
+    Route::get('/front-desk/status', [FrontDeskChatController::class, 'status'])
+        ->name('front-desk.status');
+    Route::get('/front-desk/conversation', [FrontDeskChatController::class, 'conversation'])
+        ->name('front-desk.conversation');
+    Route::post('/front-desk/messages', [FrontDeskChatController::class, 'storeMessage'])
+        ->name('front-desk.messages.store');
+    Route::post('/front-desk/abort', [FrontDeskChatController::class, 'abort'])
+        ->name('front-desk.abort');
 });
 
 require __DIR__.'/share.php';
