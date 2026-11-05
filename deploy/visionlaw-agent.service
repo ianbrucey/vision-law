@@ -1,0 +1,15 @@
+[Unit]
+Description=Vision Law agent service (Spec 012 — Claude Agent SDK, loopback only)
+After=network.target visionlaw-web.service
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/opt/vision-law/agent-service
+EnvironmentFile=-/opt/vision-law/agent-service/agent.env
+ExecStart=/usr/bin/python3 /opt/vision-law/agent-service/app.py
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

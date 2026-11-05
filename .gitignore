@@ -29,3 +29,5 @@ Thumbs.db
 /webhook/.poller-etag
 /webhook/.poller-last-sha
 __pycache__/
+
+/agent-service/agent.env

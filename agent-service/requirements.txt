@@ -1,0 +1,4 @@
+# The HTTP layer is stdlib-only; the only third-party dependency is the
+# Claude Agent SDK, imported lazily by runners.py. Without it the
+# service still boots and reports agent_not_configured.
+claude-agent-sdk
