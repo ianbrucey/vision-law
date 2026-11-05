@@ -110,6 +110,23 @@
   .botnav button.on{color:var(--acc)}
   .quickrow{display:flex;gap:7px;flex-wrap:wrap}
   .quickrow button{border:1px solid rgba(124,108,255,.5);background:rgba(124,108,255,.1);color:var(--txt);border-radius:999px;padding:7px 12px;font-size:12.5px;cursor:pointer}
+  /* §13 dashboard (2026-11-04 home redesign) */
+  .dashside{background:linear-gradient(180deg,rgba(124,108,255,.07),rgba(255,255,255,.012) 42%);border:1px solid var(--line);border-radius:14px;padding:12px 10px;display:flex;flex-direction:column;gap:2px;max-width:230px}
+  .dashside a{display:flex;align-items:center;gap:11px;padding:10px;border-radius:10px;color:var(--mut);text-decoration:none;font-weight:600;border:1px solid transparent;font-size:13px}
+  .dashside a.on{background:rgba(124,108,255,.16);color:#cfc9ff;border-color:rgba(124,108,255,.45)}
+  .dashtile{background:var(--glass);border:1px solid var(--line);border-radius:14px;padding:13px 15px;min-width:150px}
+  .dashtile .n{font-size:21px;font-weight:700;color:#b3aaff}
+  .dashtile.green .n{color:var(--green)}
+  .dashtile .l{color:var(--mut);font-size:12.5px;margin-top:1px}
+  .dashmcard{display:flex;flex-direction:column;background:var(--glass);border:1px solid var(--line);border-radius:18px;padding:16px;text-decoration:none;color:var(--ink);max-width:280px}
+  .dashmcard .num{color:var(--mut);font-size:11px;font-weight:700;letter-spacing:.08em}
+  .dashmcard .t{font-size:15px;font-weight:700;margin:6px 0 3px}
+  .dashmcard .s{color:var(--mut);font-size:12.5px}
+  .dashmcard .f{display:flex;align-items:center;justify-content:space-between;margin-top:14px}
+  .dashmcard .upd{color:var(--mut);font-size:11.5px}
+  .dashtag{font-size:10px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;padding:2px 8px;border-radius:999px;border:1px solid rgba(124,108,255,.45);background:rgba(124,108,255,.16);color:#cfc9ff}
+  .dashstat .v{font-size:24px;font-weight:700;line-height:1.2}
+  .dashstat .l{color:var(--mut);font-size:12.5px}
 </style>
 </head>
 <body>
@@ -267,6 +284,36 @@
       <div class="lbl">Carried excerpt (<code>.ga-carried</code>) — the single quoted item that crosses the desk → matter firewall, pinned at the top of the matter thread with its provenance. Green: a settled, recorded fact of the handoff.</div>
     </div>
     <div class="lbl">Added 2026-11-01 — shipped in the app on the home page (Spec 012 front desk), where the classes are scoped as <code>.ga-frontdesk</code> / <code>.ga-rollup</code> / <code>.ga-routecard</code> / <code>.ga-carried</code> in <code>resources/css/workspace.css</code>.</div>
+  </div>
+
+  <div class="sect">13 · Home dashboard — sidebar nav, today tile, matter card, dashboard stat</div>
+  <div class="card">
+    <div class="lbl">Dashboard shell (app classes <code>.ga-dash-side</code> / <code>.ga-dash-nav</code>, in <code>resources/css/workspace.css</code>) — the Spec 012 home redesign (2026-11-04): a persistent sidebar menu on the left edge of the app home, with the §12 front-desk panel moved into the main grid's right-most column (drag-resizable; the sidebar collapses). Phone: the sidebar hides, a top bar carries the brand, and a bottom nav (Chat default / Matters / Today / More) switches panels. Below, the library's preview forms of the dashboard's components.</div>
+    <div class="row" style="align-items:flex-start;margin-top:10px">
+      <div class="dashside">
+        <a href="#" class="on">⌂ Home</a>
+        <a href="#">▤ Matters</a>
+        <a href="#">◷ Calendar</a>
+        <a href="#">▦ Templates</a>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:10px">
+        <div class="dashtile"><div class="n">3</div><div class="l">Due within 7 days</div></div>
+        <div class="lbl">Today tile (<code>.ga-tile</code>) — one real count from the home's data contract (due today / due within 7 days / active matters); violet = upcoming work, green = the active-matter count. No tile exists without a real source behind it.</div>
+        <div class="dashtile green"><div class="n">4</div><div class="l">Active matters</div></div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:10px">
+        <a class="dashmcard" href="#">
+          <span class="num">MAT-2026-0041</span>
+          <span class="t">Bruce v. SnatchMasters LLC</span>
+          <span class="s">Wrongful repossession · Gwinnett County</span>
+          <span class="f"><span class="dashtag">Discovery</span><span class="upd">Updated 2h ago</span></span>
+        </a>
+        <div class="lbl">Matter card (<code>.ga-mcard</code>) — MAT number, title, client/type line, lifecycle tag (tones mirror <code>Ui\Status</code>), relative last update. The whole card is the link into the matter; a working text + stage filter sits above the grid.</div>
+        <div class="dashstat"><div class="v">1</div><div class="l">Overdue</div></div>
+        <div class="lbl">Dashboard stat (<code>.ga-stat</code>) — the deadlines module's count-over-label pairs (overdue / due within 7 days / unacknowledged mandatory reminders).</div>
+      </div>
+    </div>
+    <div class="lbl">Added 2026-11-04 — shipped in the app as the app home (<code>layouts/dashboard.blade.php</code> + <code>home.blade.php</code>), classes scoped <code>.ga-dash-*</code> / <code>.ga-tile</code> / <code>.ga-mcard</code> / <code>.ga-stat</code> in <code>resources/css/workspace.css</code>; shell interactions in <code>resources/js/dashboard.js</code>.</div>
   </div>
 
   <div class="sub" style="margin-top:26px">Living reference — when a new component earns its place in a mockup, it gets added here with its class names before it ships in the app.</div>
