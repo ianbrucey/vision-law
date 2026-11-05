@@ -46,6 +46,7 @@ use App\Http\Controllers\MatterWorkspaceController;
 use App\Http\Controllers\PartyController;
 use App\Http\Controllers\SessionController;
 use App\Http\Controllers\TemplateController;
+use App\Http\Controllers\VoiceTranscribeController;
 use App\Http\Middleware\RequireOrgAdmin;
 use App\Models\User;
 use Illuminate\Pagination\LengthAwarePaginator;
@@ -896,6 +897,11 @@ Route::middleware(['auth:'.config('fortify.guard')])->group(function (): void {
         ->name('front-desk.messages.store');
     Route::post('/front-desk/abort', [FrontDeskChatController::class, 'abort'])
         ->name('front-desk.abort');
+    // Voice mode (both composers): one finished recording in, one
+    // transcript out; transient on the server, never stored.
+    Route::post('/voice/transcribe', VoiceTranscribeController::class)
+        ->middleware('throttle:30,1')
+        ->name('voice.transcribe');
 });
 
 require __DIR__.'/share.php';

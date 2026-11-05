@@ -22,6 +22,11 @@ return [
         'key' => env('RESEND_API_KEY'),
     ],
 
+    'mistral' => [
+        'key' => env('MISTRAL_API_KEY'),
+        'transcribe_model' => env('MISTRAL_TRANSCRIBE_MODEL', 'voxtral-mini-latest'),
+    ],
+
     'ses' => [
         'key' => env('AWS_ACCESS_KEY_ID'),
         'secret' => env('AWS_SECRET_ACCESS_KEY'),
