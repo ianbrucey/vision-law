@@ -3,9 +3,11 @@
     app home (Variant A of the chat-placement mockup; front-desk routing
     flow per design/mockups/front-desk-routing-mockup.html).
 
-    A Glass/Aurora surface scoped under .ga, embedded in the spec 002 light
-    home WITHOUT re-skinning it: this partial loads the workspace stylesheet
-    itself, and every style lives in resources/css/workspace.css under .ga.
+    A Glass/Aurora surface scoped under .ga. Since the Spec 012 home
+    redesign (2026-11-04) it sits in the dashboard grid's right-most
+    column; the dashboard shell (layouts/dashboard) loads the workspace
+    stylesheet and this panel's script, and every style lives in
+    resources/css/workspace.css under .ga.
     Doors 2/3 exemption: recorded alongside the workspace exemption in
     docs/UI_Standards.md (same design system, same component library; door 1
     still applies — tokens only, no raw hex here).
@@ -26,8 +28,6 @@
 
     Expects: $user, $routeMatter (Matter|null).
 --}}
-@vite(['resources/css/workspace.css', 'resources/js/frontdesk.js'])
-
 @php
     $fdInitials = collect(explode(' ', (string) ($user->name ?? '')))
         ->filter()
