@@ -74,6 +74,9 @@ class HomeController extends Controller
             $dueWithin7 = (clone $confirmed)
                 ->whereRaw($dateExpr.' between ? and ?', [$viewerTz, $today->toDateString(), $today->copy()->addDays(7)->toDateString()])
                 ->count();
+            $dueToday = (clone $confirmed)
+                ->whereRaw($dateExpr.' = ?', [$viewerTz, $today->toDateString()])
+                ->count();
             $unackedMandatory = ReminderDelivery::query()
                 ->where('recipient_user_id', $user->getKey())
                 ->whereIn('matter_id', $accessibleIds)
@@ -86,6 +89,7 @@ class HomeController extends Controller
                 'upcoming' => $upcoming,
                 'overdue' => $overdue,
                 'dueWithin7' => $dueWithin7,
+                'dueToday' => $dueToday,
                 'unackedMandatory' => $unackedMandatory,
             ];
         }
@@ -95,6 +99,7 @@ class HomeController extends Controller
             'orgName' => $user->organization?->name,
             'matters' => $matters,
             'matterCount' => $accessibleIds->count(),
+            'activeMatterCount' => Matter::query()->accessibleBy($user)->whereNotIn('lifecycle_state', ['CLOSED', 'DISPOSITION'])->count(),
             'activity' => $activity,
             'deadlines' => $deadlines,
             'orgHasMatters' => Matter::query()->where('org_id', $user->org_id)->exists(),
