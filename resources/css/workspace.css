@@ -117,11 +117,6 @@ body.ga-body {
     color: var(--ga-txt);
 }
 
-.ga-chip-sample {
-    border-color: rgba(232, 161, 58, 0.5);
-    color: var(--ga-warn);
-}
-
 .ga-avatar {
     width: 30px;
     height: 30px;
@@ -847,10 +842,16 @@ body.ga-body {
     min-height: 34px;
 }
 
-/* Ghost icons: 32px, no circular border — the strip is the surface. */
+/* Ghost icons: 32px, no circular border — the strip is the surface.
+   min-height is stated explicitly: the app shell's base layer gives
+   every <button> a global 44px min-height, which otherwise silently
+   inflates these icons to 44px and balloons the strip to 52px at
+   every width (2026-11-05). The strip's primary action (Send) keeps
+   the 44px gate where a gate applies — see the front-desk media rule. */
 .ga-ghostbtn {
     width: 32px;
     height: 32px;
+    min-height: 32px;
     border-radius: 50%;
     border: none;
     background: transparent;
@@ -934,12 +935,6 @@ body.ga-body {
 
 .ga-fileinput {
     display: none;
-}
-
-.ga-chat-note {
-    font-size: 11.5px;
-    color: var(--ga-mut);
-    margin-top: 9px;
 }
 
 .ga-foot {
@@ -1094,7 +1089,13 @@ body.ga-body {
         display: flex;
     }
 
-    .ga-composer {
+    /* Scoped to the workspace chat column on purpose: this sticky
+       treatment pins the composer above the workspace bottom nav. The
+       front-desk composer lives in normal flow inside a height-capped
+       panel; when this rule was written against the bare .ga-composer
+       class it leaked into the desk on the dashboard and dragged its
+       composer up over the thread at load (2026-11-05 phone jumble). */
+    .ga-chatcol .ga-composer {
         /* Composer C is already one joined surface (field + strip carry
            their own borders/background); the sticky phone treatment only
            needs the dark blur behind it, no second box around it. */
@@ -1149,6 +1150,13 @@ body.ga-body {
 
 .ga-frontdesk .ga-chat {
     max-height: 430px;
+    /* The desk thread always scrolls inside its own box. This must be
+       stated here, at front-desk specificity: the workspace phone rule
+       (.ga-chat { overflow: visible } — same class, later in the file)
+       otherwise wins the tie, and on the dashboard the height-capped
+       thread then paints its overflow across the quick chips and the
+       composer (2026-11-05 phone jumble). */
+    overflow-y: auto;
 }
 
 .ga-frontdesk .ga-quickrow {
@@ -1177,10 +1185,6 @@ body.ga-body {
 .ga-fd-sub {
     font-size: 11.5px;
     color: var(--ga-mut);
-}
-
-.ga-fd-head .ga-chip-sample {
-    margin-left: 0;
 }
 
 .ga-pill.ga-ghost {
@@ -1312,18 +1316,30 @@ body.ga-body {
 }
 
 /* The home screen sits under the app-wide mobile gate (44px touch
-   targets — CalendaringMobileTest's home screen): inside the front-desk
-   panel the quick chips and the composer send meet it too. Composer C's
-   Send pill is ~29px in the workspace; at the front desk it keeps the
-   44px gate, exactly as the old square send did. The desk's mic is
-   disabled (gate-exempt) and attach is a label, not a button. */
-.ga-frontdesk .ga-quickrow button {
-    min-height: 44px;
-}
+   targets — AppHomeMobileTest's home screen at 390px): inside the
+   front-desk panel the quick chips and the composer send meet it too.
+   The gate is a phone-width rule, so it is scoped to phone widths:
+   unscoped, it inflated the desk's Composer C strip to 52px at every
+   width (2026-11-05). At phone widths the strip drops its vertical
+   padding so the 44px Send fills it exactly — gate met, strip stays
+   slim (46px including borders) instead of stacking padding on top of
+   the pill. The desk's mic is disabled (gate-exempt) and attach is a
+   label, not a button. */
+@media (max-width: 820px) {
+    .ga-frontdesk .ga-quickrow button {
+        min-height: 44px;
+    }
 
-.ga-frontdesk .ga-composer .ga-sendtext {
-    min-width: 44px;
-    min-height: 44px;
+    .ga-frontdesk .ga-composer .ga-sendtext {
+        min-width: 44px;
+        min-height: 44px;
+    }
+
+    .ga-frontdesk .ga-composer-strip {
+        padding-top: 0;
+        padding-bottom: 0;
+        min-height: 44px;
+    }
 }
 
 /* ---------- home dashboard (Spec 012 redesign, 2026-11-04) ---------- */
