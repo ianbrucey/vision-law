@@ -31,3 +31,4 @@ Thumbs.db
 __pycache__/
 
 /agent-service/agent.env
+/agent-service/.venv/
