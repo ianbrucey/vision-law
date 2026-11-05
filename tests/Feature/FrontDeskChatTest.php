@@ -18,9 +18,10 @@ use Tests\TestCase;
  * Python smoke test covers the real service). What is proven here:
  * auth gating, per-user conversation create-or-resume, user-message
  * persistence with monotonic sequence, the SSE stream shape, the
- * assistant reply persisting only on a completed turn, the labeled
- * not-configured path persisting NO fake reply, the honest
- * live-disabled response, and the internal list_my_matters tool
+ * assistant reply persisting only on a completed turn, the
+ * not-configured path persisting NO fake reply while the browser
+ * receives product copy only (internal error detail never renders),
+ * the live-disabled response, and the internal list_my_matters tool
  * endpoint's token gate + accessibleBy scoping.
  */
 class FrontDeskChatTest extends TestCase
@@ -207,6 +208,15 @@ class FrontDeskChatTest extends TestCase
         $streamed = $response->streamedContent();
         $this->assertStringContainsString('agent_not_configured', $streamed);
         $this->assertStringContainsString('"persisted":false', $streamed);
+        // The browser receives the product line; the service's internal
+        // error detail is never rendered (Ian's standing rule).
+        $errorEvent = collect(explode("\n\n", trim($streamed)))
+            ->map(fn (string $frame): ?array => json_decode((string) preg_replace('/^data: /', '', trim($frame)), true))
+            ->firstWhere('type', 'error');
+        $this->assertNotNull($errorEvent, 'expected an error event in the stream');
+        $this->assertSame('Ross isn’t available right now — please try again later.', $errorEvent['message'] ?? null);
+        $this->assertStringNotContainsString('Agent not configured', $streamed);
+        $this->assertStringNotContainsString('provider key', $streamed);
 
         $conversation = ChatConversation::query()->where('user_id', $user->id)->firstOrFail();
         $messages = $conversation->messages()->get();
@@ -214,7 +224,7 @@ class FrontDeskChatTest extends TestCase
         $this->assertSame(ChatMessage::ROLE_USER, $messages[0]->role);
     }
 
-    public function test_message_when_live_disabled_is_honest_and_sends_nothing(): void
+    public function test_message_when_live_disabled_returns_product_copy_and_sends_nothing(): void
     {
         $loader = FixtureLoader::loadMatterFixtures();
         $user = $loader->user('user-attorney');
@@ -222,7 +232,8 @@ class FrontDeskChatTest extends TestCase
 
         $this->actingAs($user)->postJson('/front-desk/messages', ['content' => 'hi'])
             ->assertStatus(503)
-            ->assertJsonPath('code', 'chat_not_live');
+            ->assertJsonPath('code', 'chat_not_live')
+            ->assertJsonPath('message', 'Ross isn’t available right now — please try again later.');
 
         $conversation = ChatConversation::query()->where('user_id', $user->id)->firstOrFail();
         $this->assertSame(1, $conversation->messages()->count());

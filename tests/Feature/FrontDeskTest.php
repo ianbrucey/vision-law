@@ -10,11 +10,12 @@ use Tests\TestCase;
 /**
  * Spec 012 — the front-desk chat panel on the app home (Variant A).
  *
- * Front-end only, like Slice 1: the panel renders a labeled sample
- * conversation on /home; the one live binding is the matter-route card,
- * which proposes the user's first accessible matter (HomeController's
- * accessibleBy scope, read-only) and links the real workspace route.
- * Chat persistence and the agent arrive in later slices.
+ * The panel renders the front-desk conversation on /home, wired live
+ * since the chat slice (persistence covered by FrontDeskChatTest). The
+ * matter-route card proposes the user's first accessible matter
+ * (HomeController's accessibleBy scope, read-only) and links the real
+ * workspace route. Rendered text is product copy only — no preview,
+ * sample, or wiring commentary anywhere on the panel (2026-11-05).
  */
 class FrontDeskTest extends TestCase
 {
@@ -43,13 +44,17 @@ class FrontDeskTest extends TestCase
             ->get('/home', $this->htmlHeaders());
 
         $response->assertOk();
-        // The panel and its sample front-desk thread.
+        // The panel and its front-desk thread.
         $response->assertSee('Front desk', false);
         $response->assertSee('General chat', false);
         $response->assertSee('What do I have going on today?', false);
         $response->assertSee('Calendar · today', false);
         $response->assertSee('Needs attention', false);
-        $response->assertSee('Sample preview', false);
+        // No dev/meta commentary is rendered (Ian's standing rule).
+        $response->assertDontSee('Sample preview', false);
+        $response->assertDontSee('UX preview', false);
+        $response->assertDontSee('ga-chat-note', false);
+        $response->assertDontSee('Sample routing', false);
         // The route card binds the real accessible matter.
         $response->assertSee('Likely matter', false);
         $response->assertSee(e($expected->title), false);
@@ -65,7 +70,7 @@ class FrontDeskTest extends TestCase
         $response->assertSee('My matters', false);
     }
 
-    public function test_front_desk_falls_back_to_sample_card_without_accessible_matter(): void
+    public function test_front_desk_falls_back_to_empty_state_without_accessible_matter(): void
     {
         $loader = FixtureLoader::loadMatterFixtures();
         $viewer = $loader->user('user-viewer'); // org has matters; no grants
@@ -81,10 +86,11 @@ class FrontDeskTest extends TestCase
 
         $response->assertOk();
         $response->assertSee('Front desk', false);
-        // Graceful fallback: sample card, explicitly no live link, and no
-        // session state is rendered at all.
-        $response->assertSee('Sample matter — wage claim', false);
-        $response->assertSee('no live link', false);
+        // Graceful fallback: a plain empty-state card (no "sample"
+        // wording), no live link, and no session state rendered at all.
+        $response->assertSee('No matters yet', false);
+        $response->assertSee('When a matter matches your conversation', false);
+        $response->assertDontSee('Sample matter', false);
         $response->assertDontSee('data-fd-open', false);
         $response->assertDontSee('Brought from front desk', false);
         $response->assertDontSee('Open the full workspace', false);

@@ -7,12 +7,13 @@ use Tests\Helpers\FixtureLoader;
 use Tests\TestCase;
 
 /**
- * Spec 012 Slice 1 — the Glass/Aurora matter workspace (UX preview).
+ * Spec 012 Slice 1 — the Glass/Aurora matter workspace.
  *
- * The surface is front-end only: it renders the real matter's identity
- * with clearly-labeled sample case content, behind the same
- * RequireMatterAccess :view gate as the matter detail screen. Chat
- * persistence and Brain data arrive in later slices.
+ * The surface renders the real matter's identity with the controller's
+ * demo case content, behind the same RequireMatterAccess :view gate as
+ * the matter detail screen. Rendered text is product copy only — no
+ * preview/sample commentary (2026-11-05). Chat persistence and Brain
+ * data arrive in later slices.
  */
 class MatterWorkspaceTest extends TestCase
 {
@@ -36,8 +37,10 @@ class MatterWorkspaceTest extends TestCase
         // The real matter's identity binds in the header.
         $response->assertSee(e($matter->matter_number), false);
         $response->assertSee(e($matter->title), false);
-        // Sample content is labeled as such, never passed off as the record.
-        $response->assertSee('Sample case data', false);
+        // No dev/meta commentary is rendered (Ian's standing rule).
+        $response->assertDontSee('Sample case data', false);
+        $response->assertDontSee('UX preview', false);
+        $response->assertDontSee('ga-chat-note', false);
         // Position rail + active protocol.
         $response->assertSee('Case Position', false);
         $response->assertSee('Active protocol: ASSESSMENT', false);
