@@ -879,6 +879,11 @@ body.ga-body {
 }
 
 .ga-composer-hint {
+    /* The strip's right group is hint + mic + send: the auto margin
+       sits on whichever element leads the group. That is the hint
+       here; at phone widths the hint is display:none and the mic
+       takes the margin over (see the 820px rule below), so the group
+       stays at the right edge at every width (2026-11-05). */
     margin-left: auto;
     padding-right: 8px;
     font-size: 11.5px;
@@ -887,13 +892,18 @@ body.ga-body {
 }
 
 .ga-sendtext {
+    /* Arrow glyph only (aria-label still reads "Send message");
+       sized as an icon pill — the front desk's phone touch gate
+       widens it to 44px (see the front-desk media rule). */
     background: var(--ga-acc);
     border: none;
     color: #fff;
     border-radius: 999px;
-    padding: 5px 14px;
+    padding: 5px 11px;
+    min-width: 29px;
     min-height: 29px;
-    font-size: 12.5px;
+    font-size: 14px;
+    line-height: 1;
     font-weight: 700;
     cursor: pointer;
     flex: none;
@@ -1112,6 +1122,14 @@ body.ga-body {
         display: none;
     }
 
+    /* With the hint gone, the mic leads the strip's right group and
+       takes over the auto margin, keeping mic + send paired at the
+       right edge. In both composers the attach is a <label>, so the
+       strip's button.ga-ghostbtn is the mic. */
+    .ga-composer-strip > button.ga-ghostbtn {
+        margin-left: auto;
+    }
+
     .ga-botnav {
         display: flex;
     }
@@ -1157,10 +1175,6 @@ body.ga-body {
        thread then paints its overflow across the quick chips and the
        composer (2026-11-05 phone jumble). */
     overflow-y: auto;
-}
-
-.ga-frontdesk .ga-quickrow {
-    display: flex;
 }
 
 .ga-fd-head {
@@ -1317,7 +1331,7 @@ body.ga-body {
 
 /* The home screen sits under the app-wide mobile gate (44px touch
    targets — AppHomeMobileTest's home screen at 390px): inside the
-   front-desk panel the quick chips and the composer send meet it too.
+   front-desk panel the composer send meets it too.
    The gate is a phone-width rule, so it is scoped to phone widths:
    unscoped, it inflated the desk's Composer C strip to 52px at every
    width (2026-11-05). At phone widths the strip drops its vertical
@@ -1326,10 +1340,6 @@ body.ga-body {
    the pill. The desk's mic is disabled (gate-exempt) and attach is a
    label, not a button. */
 @media (max-width: 820px) {
-    .ga-frontdesk .ga-quickrow button {
-        min-height: 44px;
-    }
-
     .ga-frontdesk .ga-composer .ga-sendtext {
         min-width: 44px;
         min-height: 44px;

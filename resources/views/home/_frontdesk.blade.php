@@ -149,9 +149,9 @@
                 &plus;
                 <input type="file" class="ga-fileinput" data-fd-file>
             </label>
-            <button type="button" class="ga-ghostbtn" disabled title="Voice input" aria-label="Voice input">🎙</button>
             <span class="ga-composer-hint">Enter &crarr; to send</span>
-            <button type="submit" class="ga-sendtext" aria-label="Send message">Send</button>
+            <button type="button" class="ga-ghostbtn" disabled title="Voice input" aria-label="Voice input">🎙</button>
+            <button type="submit" class="ga-sendtext" aria-label="Send message">&uarr;</button>
         </div>
     </form>
 </section>

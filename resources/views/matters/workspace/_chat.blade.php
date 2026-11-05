@@ -56,9 +56,9 @@
                 ＋
                 <input type="file" class="ga-fileinput" x-on:change="attachSelected($event)">
             </label>
-            <button type="button" class="ga-ghostbtn ga-acc" title="Speak instead of typing" aria-label="Speak instead of typing">🎙</button>
             <span class="ga-composer-hint">Enter &crarr; to send</span>
-            <button type="submit" class="ga-sendtext" aria-label="Send message">Send</button>
+            <button type="button" class="ga-ghostbtn ga-acc" title="Speak instead of typing" aria-label="Speak instead of typing">🎙</button>
+            <button type="submit" class="ga-sendtext" aria-label="Send message">↑</button>
         </div>
     </form>
 </div>
