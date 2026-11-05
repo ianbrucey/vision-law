@@ -47,7 +47,10 @@ reception: rollups/triage/routing, no case writes), in `runners.py`.
 
 Installed as the systemd unit `visionlaw-agent.service`
 (`deploy/visionlaw-agent.service` in the repo) with its env in
-`/opt/vision-law/agent-service/agent.env` (not in git):
+`/opt/vision-law/agent-service/agent.env` (not in git). The unit runs
+the service venv (`agent-service/.venv`, gitignored) so the
+`claude-agent-sdk` install is importable; rebuild it with
+`python3 -m venv agent-service/.venv && agent-service/.venv/bin/pip install -r agent-service/requirements.txt`:
 
 ```sh
 systemctl status visionlaw-agent
