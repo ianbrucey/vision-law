@@ -804,24 +804,29 @@ body.ga-body {
     min-height: 36px;
 }
 
+/* Composer C (Spec 012, Ian's pick 2026-11-05): the field takes 100% of
+   the width on its own row — no buttons beside it — joined to a slim
+   action strip as ONE surface (field: rounded top, no bottom border;
+   strip: rounded bottom). The strip carries ghost attach/mic icons on
+   the left and the send hint + labeled Send pill on the right, and is
+   where stage actions will land later. Auto-grow is unchanged: JS sizes
+   the box to its content up to the cap, then it scrolls internally. */
 .ga-composer {
-    display: flex;
-    gap: 8px;
     margin-top: 12px;
-    /* Buttons stay pinned to the bottom as the textarea grows. */
-    align-items: flex-end;
 }
 
 .ga-composer textarea {
-    flex: 1;
+    display: block;
+    width: 100%;
     background: rgba(255, 255, 255, 0.05);
     border: 1px solid var(--ga-line);
-    border-radius: 11px;
-    padding: 10px 12px;
+    border-bottom: none;
+    border-radius: 16px 16px 0 0;
+    padding: 11px 12px;
     color: var(--ga-txt);
     font-size: 13.5px;
     line-height: 1.45;
-    min-height: 44px;
+    min-height: 46px;
     /* Auto-grow cap (JS sizes the box to its content): about six lines of
        text, and never more than 40% of the viewport height. Past the cap
        the textarea scrolls internally instead of growing further. */
@@ -831,25 +836,26 @@ body.ga-body {
     min-width: 0;
 }
 
-.ga-composer .ga-send {
-    background: var(--ga-acc);
-    border: none;
-    color: #fff;
-    border-radius: 11px;
-    padding: 0 16px;
-    font-weight: 700;
-    cursor: pointer;
-    min-height: 44px;
+.ga-composer-strip {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid var(--ga-line);
+    border-radius: 0 0 16px 16px;
+    padding: 3px 6px;
+    min-height: 34px;
 }
 
-.ga-iconbtn {
-    width: 44px;
-    height: 44px;
+/* Ghost icons: 32px, no circular border — the strip is the surface. */
+.ga-ghostbtn {
+    width: 32px;
+    height: 32px;
     border-radius: 50%;
-    border: 1px solid var(--ga-line);
-    background: var(--ga-glass);
+    border: none;
+    background: transparent;
     color: var(--ga-mut);
-    font-size: 17px;
+    font-size: 16px;
     cursor: pointer;
     flex: none;
     display: flex;
@@ -857,8 +863,73 @@ body.ga-body {
     justify-content: center;
 }
 
-.ga-iconbtn.ga-acc {
+.ga-ghostbtn:hover {
+    background: rgba(255, 255, 255, 0.09);
+    color: var(--ga-txt);
+}
+
+.ga-ghostbtn.ga-acc {
     color: var(--ga-acc);
+}
+
+.ga-ghostbtn:disabled {
+    opacity: 0.45;
+    cursor: default;
+}
+
+.ga-composer-hint {
+    margin-left: auto;
+    padding-right: 8px;
+    font-size: 11.5px;
+    color: var(--ga-mut);
+    white-space: nowrap;
+}
+
+.ga-sendtext {
+    background: var(--ga-acc);
+    border: none;
+    color: #fff;
+    border-radius: 999px;
+    padding: 5px 14px;
+    min-height: 29px;
+    font-size: 12.5px;
+    font-weight: 700;
+    cursor: pointer;
+    flex: none;
+}
+
+/* Attachment chips (workspace chat): in the composer flow between the
+   field and the strip, never as separate big buttons. */
+.ga-attachchips {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+    background: rgba(255, 255, 255, 0.05);
+    border-left: 1px solid var(--ga-line);
+    border-right: 1px solid var(--ga-line);
+    padding: 6px 10px 2px;
+}
+
+.ga-attachchip {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 11.5px;
+    color: var(--ga-txt);
+    background: rgba(124, 108, 255, 0.14);
+    border: 1px solid rgba(124, 108, 255, 0.45);
+    padding: 4px 9px;
+    border-radius: 999px;
+}
+
+.ga-attachchip button {
+    background: none;
+    border: none;
+    color: var(--ga-mut);
+    cursor: pointer;
+    font-size: 11px;
+    line-height: 1;
+    padding: 0;
 }
 
 .ga-fileinput {
@@ -1024,13 +1095,20 @@ body.ga-body {
     }
 
     .ga-composer {
+        /* Composer C is already one joined surface (field + strip carry
+           their own borders/background); the sticky phone treatment only
+           needs the dark blur behind it, no second box around it. */
         position: sticky;
         bottom: 64px;
         background: rgba(9, 12, 22, 0.92);
         backdrop-filter: blur(8px);
-        border: 1px solid var(--ga-line);
         border-radius: 16px;
-        padding: 8px;
+    }
+
+    /* The send hint crowds the strip on phone widths — send stays a
+       tap on the pill. */
+    .ga-composer-hint {
+        display: none;
     }
 
     .ga-botnav {
@@ -1233,20 +1311,19 @@ body.ga-body {
     text-decoration: none;
 }
 
-.ga-iconbtn:disabled {
-    opacity: 0.45;
-    cursor: default;
-}
-
 /* The home screen sits under the app-wide mobile gate (44px touch
    targets — CalendaringMobileTest's home screen): inside the front-desk
-   panel the quick chips and the composer send meet it too. */
+   panel the quick chips and the composer send meet it too. Composer C's
+   Send pill is ~29px in the workspace; at the front desk it keeps the
+   44px gate, exactly as the old square send did. The desk's mic is
+   disabled (gate-exempt) and attach is a label, not a button. */
 .ga-frontdesk .ga-quickrow button {
     min-height: 44px;
 }
 
-.ga-frontdesk .ga-composer .ga-send {
+.ga-frontdesk .ga-composer .ga-sendtext {
     min-width: 44px;
+    min-height: 44px;
 }
 
 /* ---------- home dashboard (Spec 012 redesign, 2026-11-04) ---------- */

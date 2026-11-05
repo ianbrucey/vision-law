@@ -147,13 +147,16 @@
 
     {{-- ============ Composer (shared by both states) ============ --}}
     <form class="ga-composer" data-fd-form>
-        <label class="ga-iconbtn" title="Attach a document">
-            &plus;
-            <input type="file" class="ga-fileinput" data-fd-file>
-        </label>
         <textarea rows="1" data-fd-input placeholder="Ask about any matter, or anything…" aria-label="Message the agent"></textarea>
-        <button type="button" class="ga-iconbtn" disabled title="Voice input arrives in a later slice" aria-label="Voice input (arrives in a later slice)">🎙</button>
-        <button type="submit" class="ga-send" aria-label="Send message">&uarr;</button>
+        <div class="ga-composer-strip">
+            <label class="ga-ghostbtn" title="Attach a document">
+                &plus;
+                <input type="file" class="ga-fileinput" data-fd-file>
+            </label>
+            <button type="button" class="ga-ghostbtn" disabled title="Voice input arrives in a later slice" aria-label="Voice input (arrives in a later slice)">🎙</button>
+            <span class="ga-composer-hint">Enter &crarr; to send</span>
+            <button type="submit" class="ga-sendtext" aria-label="Send message">Send</button>
+        </div>
     </form>
     <div class="ga-chat-note">UX preview — the agent is not connected yet, and nothing you type here is stored or sent. The conversation is a sample; the matter named on the card is a real matter you can access.</div>
 </section>

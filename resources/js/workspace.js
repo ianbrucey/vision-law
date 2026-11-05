@@ -26,6 +26,7 @@ document.addEventListener('alpine:init', () => {
         cpChoice: null,
         draft: '',
         extra: [],
+        attachments: [],
 
         show(tab) {
             this.tab = tab;
@@ -95,6 +96,10 @@ document.addEventListener('alpine:init', () => {
             if (!file) {
                 return;
             }
+            // Composer C: the pick also lands as a chip in the composer
+            // flow area (above the action strip); the thread record below
+            // is unchanged from Slice 1.
+            this.attachments.push(file.name);
             this.extra.push({
                 kind: 'sys',
                 who: null,

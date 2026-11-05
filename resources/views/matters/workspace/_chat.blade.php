@@ -45,13 +45,21 @@
     </div>
 
     <form class="ga-composer" x-on:submit.prevent="send()">
-        <label class="ga-iconbtn" title="Attach a document to this case">
-            ＋
-            <input type="file" class="ga-fileinput" x-on:change="attachSelected($event)">
-        </label>
         <textarea x-model="draft" x-ref="composer" rows="1" x-on:input="growComposer()" x-on:keydown="composerKeydown($event)" placeholder="Message the agent…" aria-label="Message the agent"></textarea>
-        <button type="button" class="ga-iconbtn ga-acc" title="Speak instead of typing" aria-label="Speak instead of typing">🎙</button>
-        <button type="submit" class="ga-send" aria-label="Send message">↑</button>
+        <div class="ga-attachchips" x-show="attachments.length > 0" x-cloak>
+            <template x-for="(name, index) in attachments" :key="index">
+                <span class="ga-attachchip">📄 <span x-text="name"></span><button type="button" x-on:click="attachments.splice(index, 1)" aria-label="Remove attachment">✕</button></span>
+            </template>
+        </div>
+        <div class="ga-composer-strip">
+            <label class="ga-ghostbtn" title="Attach a document to this case">
+                ＋
+                <input type="file" class="ga-fileinput" x-on:change="attachSelected($event)">
+            </label>
+            <button type="button" class="ga-ghostbtn ga-acc" title="Speak instead of typing" aria-label="Speak instead of typing">🎙</button>
+            <span class="ga-composer-hint">Enter &crarr; to send</span>
+            <button type="submit" class="ga-sendtext" aria-label="Send message">Send</button>
+        </div>
     </form>
     <div class="ga-chat-note">UX preview — the agent is not connected yet, and nothing you type here is stored or sent. In the finished workspace the agent works only inside the active protocol, on this case’s record; decisions at checkpoints are recorded with your name on them.</div>
 </div>
