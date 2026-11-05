@@ -234,7 +234,21 @@ with the first UI feature; `tests/Architecture/` does not exist yet):
   `.ga`-scoped surface from the same component library
   (`design/component-library.html` §12) embedded in the spec 002 home —
   the rest of `home.blade.php` is unexempt and unchanged. Door 1 still
-  applies in full.
+  applies in full. (Superseded in part 2026-11-04: `home.blade.php`
+  itself became a Glass/Aurora surface in the dashboard redesign —
+  next bullet.)
+- `resources/views/layouts/dashboard.blade.php` and
+  `resources/views/home.blade.php` (the Spec 012 home dashboard
+  redesign, recorded 2026-11-04) are exempt from doors 2 and 3 under
+  the same Glass/Aurora reasoning as the workspace and front desk
+  above: the redesigned home — sidebar shell, today strip, matter
+  cards, and the front-desk panel as the grid's right-most column —
+  runs under the Glass/Aurora design contract
+  (`design/STYLE_GUIDE.md`) with its own component library
+  (`design/component-library.html` §13), whose raw-HTML components
+  cannot be served by the spec 002 light-theme `<x-ui.button>` or the
+  four form wrappers. Door 1 still applies in full: Glass/Aurora color
+  values live as tokens in `resources/css/workspace.css`.
 - Leak sentinels (door 8) are enforced by spec 001's
   `tests/Architecture/LeakSentinelTest.php` (verdict C-14), not duplicated
   per UI feature.
