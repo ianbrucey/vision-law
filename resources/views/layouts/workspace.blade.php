@@ -16,7 +16,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
     <title>{{ $title }}</title>
-    @vite(['resources/css/workspace.css', 'resources/js/workspace.js', 'resources/js/app.js'])
+    @vite(['resources/css/workspace.css', 'resources/js/workspace.js', 'resources/js/voice.js', 'resources/js/app.js'])
 </head>
 <body class="ga-body">
     {{ $content ?? $slot }}

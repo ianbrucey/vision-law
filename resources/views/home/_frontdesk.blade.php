@@ -136,7 +136,7 @@
     @endif
 
     {{-- ============ Composer (shared by both states) ============ --}}
-    <form class="ga-composer" data-fd-form>
+    <form class="ga-composer" data-fd-form data-ga-voice>
         <textarea rows="1" data-fd-input placeholder="Ask about any matter, or anything…" aria-label="Message the agent"></textarea>
         <div class="ga-composer-strip">
             <label class="ga-ghostbtn" title="Attach a document">
@@ -144,8 +144,25 @@
                 <input type="file" class="ga-fileinput" data-fd-file>
             </label>
             <span class="ga-composer-hint">Enter &crarr; to send</span>
-            <button type="button" class="ga-ghostbtn" disabled title="Voice input" aria-label="Voice input">🎙</button>
+            <button type="button" class="ga-ghostbtn" data-ga-mic title="Voice input" aria-label="Voice input">🎙</button>
             <button type="submit" class="ga-sendtext" aria-label="Send message">&uarr;</button>
+        </div>
+        {{-- Voice mode recording bar (Spec 012): swapped in for the field
+             + strip by resources/js/voice.js while recording. --}}
+        <div class="ga-recbar" data-ga-recbar hidden>
+            <div class="ga-rec-main" data-ga-rec-main>
+                <button type="button" class="ga-ghostbtn ga-rec-trash" data-ga-rec-trash title="Discard recording" aria-label="Discard recording">🗑</button>
+                <div class="ga-rec-wave" data-ga-rec-wave aria-hidden="true"></div>
+                <span class="ga-rec-timer" data-ga-rec-timer>0:00</span>
+                <button type="button" class="ga-rec-stop" data-ga-rec-stop title="Stop and transcribe" aria-label="Stop and transcribe"><i></i></button>
+                <button type="button" class="ga-sendtext" data-ga-rec-send aria-label="Send message">&uarr;</button>
+            </div>
+            <div class="ga-rec-busy" data-ga-rec-busy hidden>Transcribing&hellip;</div>
+            <div class="ga-rec-error" data-ga-rec-error hidden>
+                <span class="ga-rec-errormsg" data-ga-rec-errormsg></span>
+                <button type="button" class="ga-rec-retry" data-ga-rec-retry>Retry</button>
+                <button type="button" class="ga-ghostbtn ga-rec-trash" data-ga-rec-discard title="Discard recording" aria-label="Discard recording">🗑</button>
+            </div>
         </div>
     </form>
 </section>

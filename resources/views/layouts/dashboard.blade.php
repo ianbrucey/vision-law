@@ -46,7 +46,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
     <title>{{ $title }}</title>
-    @vite(['resources/css/workspace.css', 'resources/js/dashboard.js', 'resources/js/frontdesk.js'])
+    @vite(['resources/css/workspace.css', 'resources/js/dashboard.js', 'resources/js/frontdesk.js', 'resources/js/voice.js'])
 </head>
 <body class="ga-body">
     <div class="ga ga-dash" data-ga-dash>

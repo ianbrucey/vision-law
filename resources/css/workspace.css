@@ -2249,3 +2249,123 @@ body.ga-body {
         padding: 14px 14px 26px;
     }
 }
+
+/* Voice mode recording bar (Spec 012, Ian 2026-11-05): replaces the
+   composer field + strip in place while recording — same joined-surface
+   proportions as Composer C. Layout: trash far left (the only red),
+   live waveform (real AnalyserNode levels, driven from voice.js), the
+   timer, stop, and the send arrow at the right edge. One row tall at
+   every width; at phone widths the waveform yields space first. */
+.ga-recbar {
+    display: none;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid var(--ga-line);
+    border-radius: 16px;
+    padding: 5px 6px;
+}
+
+.ga-recbar.on {
+    display: block;
+}
+
+.ga-rec-main {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.ga-rec-main[hidden],
+.ga-rec-busy[hidden],
+.ga-rec-error[hidden] {
+    display: none;
+}
+
+.ga-rec-trash {
+    color: var(--ga-bad);
+}
+
+.ga-rec-wave {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    align-items: center;
+    gap: 2.5px;
+    height: 28px;
+    padding: 0 6px;
+    overflow: hidden;
+}
+
+.ga-rec-wave i {
+    width: 3.5px;
+    flex: none;
+    border-radius: 2px;
+    background: var(--ga-acc);
+}
+
+.ga-rec-timer {
+    font-variant-numeric: tabular-nums;
+    font-size: 13px;
+    color: var(--ga-txt);
+    min-width: 38px;
+    text-align: center;
+    flex: none;
+}
+
+.ga-rec-stop {
+    width: 32px;
+    height: 32px;
+    min-height: 32px;
+    border-radius: 50%;
+    border: 1px solid var(--ga-line);
+    background: rgba(255, 255, 255, 0.08);
+    cursor: pointer;
+    flex: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.ga-rec-stop i {
+    width: 11px;
+    height: 11px;
+    background: var(--ga-txt);
+    border-radius: 2.5px;
+    display: block;
+}
+
+.ga-rec-busy {
+    padding: 8px 10px;
+    font-size: 13px;
+    color: var(--ga-mut);
+}
+
+.ga-rec-error {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 3px 4px 3px 10px;
+    font-size: 13px;
+    color: var(--ga-txt);
+}
+
+.ga-rec-errormsg {
+    flex: 1;
+    min-width: 0;
+}
+
+.ga-rec-retry {
+    background: var(--ga-acc);
+    border: none;
+    color: #fff;
+    border-radius: 999px;
+    padding: 5px 13px;
+    min-height: 29px;
+    font-size: 12.5px;
+    font-weight: 700;
+    cursor: pointer;
+    flex: none;
+}
+
+.ga-rec-retry[hidden] {
+    display: none;
+}
