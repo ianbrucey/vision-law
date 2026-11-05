@@ -90,12 +90,6 @@
                 </div>
             @endif
         </div>
-
-        <div class="ga-quickrow" style="margin-top: 10px">
-            <button type="button" data-fd-chip="What&rsquo;s due this week?">What&rsquo;s due this week?</button>
-            <button type="button" data-fd-chip="List my matters">List my matters</button>
-            <button type="button" data-fd-chip="Anything waiting on me?">Anything waiting on me?</button>
-        </div>
     </div>
 
     @if ($routeMatter)

@@ -262,22 +262,6 @@
             });
         }
 
-        // --- quick chips: tapping one answers as the user ---
-        root.querySelectorAll('[data-fd-chip]').forEach((chip) => {
-            chip.addEventListener('click', () => {
-                const text = chip.getAttribute('data-fd-chip');
-                if (!text) {
-                    return;
-                }
-                const inSession = Boolean(session && !session.hidden);
-                if (mode === 'live' && !inSession) {
-                    sendLive(text);
-                } else {
-                    appendUser(text);
-                }
-            });
-        });
-
         // --- composer: auto-grow, same contract as the workspace ---
         const grow = () => {
             if (!input) {

@@ -55,6 +55,12 @@ class FrontDeskTest extends TestCase
         $response->assertDontSee('UX preview', false);
         $response->assertDontSee('ga-chat-note', false);
         $response->assertDontSee('Sample routing', false);
+        // The suggestion chips above the composer are gone (removed
+        // 2026-11-05 at Ian's direction) — the desk takes typed input.
+        $response->assertDontSee('data-fd-chip', false);
+        $response->assertDontSee('due this week?', false);
+        $response->assertDontSee('List my matters', false);
+        $response->assertDontSee('Anything waiting on me?', false);
         // The route card binds the real accessible matter.
         $response->assertSee('Likely matter', false);
         $response->assertSee(e($expected->title), false);
