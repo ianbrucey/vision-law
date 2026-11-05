@@ -168,8 +168,8 @@ class CalendaringAgendaTest extends TestCase
         $home->assertSeeInOrder(['Overdue audit filing', $restrictedItem->title]);
         $home->assertSee('Overdue', false);
         $content = (string) $home->getContent();
-        $this->assertMatchesRegularExpression('/>1<\/div>\s*<div class="text-\[13px\] text-vl-mut">Overdue<\/div>/', $content, 'overdue count must be 1');
-        $this->assertMatchesRegularExpression('/>1<\/div>\s*<div class="text-\[13px\] text-vl-mut">Unacknowledged mandatory reminders<\/div>/', $content, 'unacked mandatory count must be 1');
+        $this->assertMatchesRegularExpression('/>1<\/div>\s*<div class="ga-stat-l">Overdue<\/div>/', $content, 'overdue count must be 1');
+        $this->assertMatchesRegularExpression('/>1<\/div>\s*<div class="ga-stat-l">Unacknowledged mandatory reminders<\/div>/', $content, 'unacked mandatory count must be 1');
         // Draft items never appear in the module.
         $home->assertDontSee('Unconfirmed draft deadline');
 
