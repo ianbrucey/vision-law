@@ -55,6 +55,7 @@ theme; a theme changes values, never meanings.
   `liberty-dusk`, `barn-stone`, `parchment`, `walnut`, `canyon-mesa`,
   `adobe-dawn`, `americana-rwb`. Token values are transcribed from the
   approved decision mockup at Ticket 1 and verified by C-02 + visual QA.
+  **Complete values:** `tokens.md` in this folder carries the complete token values for all 25 themes, transcribed verbatim from the approved decision mockup on 2026-11-14; it is the implementation authority for C-02. (Its sections are keyed by the decision mockup's `data-theme` keys; map them to the contract slugs above when implementing.)
 - **Light sets** (`daylight`, `matte-sand`, `dawn-mist`, `parchment`,
   `adobe-dawn`) are defined and completeness-tested like the rest, but
   held out of the production switcher until 013-O02 is decided.
