@@ -1,0 +1,347 @@
+<!DOCTYPE html>
+<html lang="en" data-vs-theme="ocean-deep">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Vision Systems — The document platform that shows its work</title>
+<style>
+  /* ============ TOKENS — Ocean Deep is the :root fallback AND the default theme ============ */
+  :root, [data-vs-theme="ocean-deep"]{
+    --bg:#081826; --bg-deep:#050f18; --glass:rgba(255,255,255,.045); --glass-2:rgba(255,255,255,.075);
+    --line:rgba(255,255,255,.10); --wash:#14324e; --txt:#e7eff7; --mut:#90a9bf;
+    --acc:#5b8cff; --acc-2:#38b6c9; --ok:#34c77b; --warn:#e8a13a; --bad:#e5534b; --cyan:#3fc1c9;
+    --reading-lh:1.6; color-scheme:dark;
+  }
+  [data-vs-theme="aurora"]{
+    --bg:#070b16; --bg-deep:#04060d; --glass:rgba(255,255,255,.045); --glass-2:rgba(255,255,255,.07);
+    --line:rgba(255,255,255,.09); --wash:#16224a; --txt:#e8ecf5; --mut:#8b94ab;
+    --acc:#7c6cff; --acc-2:#4f7cff; --ok:#34c77b; --warn:#e8a13a; --bad:#e5534b; --cyan:#3fc1c9;
+    --reading-lh:1.55; color-scheme:dark;
+  }
+  [data-vs-theme="calm-deep-ocean"]{
+    --bg:#0c1e29; --bg-deep:#081520; --glass:rgba(255,255,255,.04); --glass-2:rgba(255,255,255,.065);
+    --line:rgba(255,255,255,.085); --wash:#17394a; --txt:#e4eded; --mut:#96acad;
+    --acc:#6d9fb8; --acc-2:#6fb3a4; --ok:#5bb98a; --warn:#d9a45b; --bad:#d97b72; --cyan:#6fb3b8;
+    --reading-lh:1.72; color-scheme:dark;
+  }
+  [data-vs-theme="earth-grove"]{
+    --bg:#101711; --bg-deep:#0a0f0a; --glass:rgba(255,255,255,.04); --glass-2:rgba(255,255,255,.065);
+    --line:rgba(255,255,255,.09); --wash:#1d2f1c; --txt:#e9efe4; --mut:#9aa88f;
+    --acc:#8fbf6f; --acc-2:#5f9e7a; --ok:#57c785; --warn:#dfa94e; --bad:#e0685f; --cyan:#58b8ad;
+    --reading-lh:1.6; color-scheme:dark;
+  }
+  [data-vs-theme="regal"]{
+    --bg:#0a1230; --bg-deep:#060a1f; --glass:rgba(255,255,255,.045); --glass-2:rgba(255,255,255,.07);
+    --line:rgba(255,255,255,.10); --wash:#1a2a63; --txt:#eef1fa; --mut:#9aa7cc;
+    --acc:#4f7cff; --acc-2:#2f5fe0; --ok:#3ec97e; --warn:#d4af37; --bad:#e05a52; --cyan:#46b8c9;
+    --reading-lh:1.6; color-scheme:dark;
+  }
+  [data-vs-theme="matte-slate"]{
+    --bg:#23272e; --bg-deep:#1b1f24; --glass:#2b3038; --glass-2:#333945;
+    --line:#3d434e; --wash:#23272e; --txt:#e3e6ea; --mut:#9aa1ab;
+    --acc:#7d9bb3; --acc-2:#5f8296; --ok:#6fae7e; --warn:#c99e5f; --bad:#c06a63; --cyan:#6fa3a8;
+    --reading-lh:1.6; color-scheme:dark;
+  }
+  [data-vs-theme="daylight"]{
+    --bg:#f2f0ea; --bg-deep:#e9e6dd; --glass:rgba(255,255,255,.72); --glass-2:#ffffff;
+    --line:rgba(31,42,55,.13); --wash:#dfe9f2; --txt:#22303e; --mut:#5f7080;
+    --acc:#5a54d1; --acc-2:#2f6fd0; --ok:#2f8f57; --warn:#b97e22; --bad:#c0453e; --cyan:#2b8f98;
+    --reading-lh:1.6; color-scheme:light;
+  }
+  :root{
+    --radius:16px; --radius-sm:11px;
+    --ease:cubic-bezier(.22,1,.36,1); --dur-1:.18s; --dur-2:.32s; --dur-3:.6s;
+    --font:-apple-system,BlinkMacSystemFont,"Segoe UI",Inter,Roboto,sans-serif;
+  }
+  /* matte family: genuinely flat — no blur, no glow */
+  [data-vs-theme="matte-slate"] .card, [data-vs-theme="matte-slate"] .vig,
+  [data-vs-theme="matte-slate"] .nav-in{backdrop-filter:none; box-shadow:none}
+  *{box-sizing:border-box;margin:0;padding:0}
+  html{scroll-behavior:smooth}
+  body{background:var(--bg);color:var(--txt);font-family:var(--font);font-size:15px;line-height:var(--reading-lh);
+       transition:background-color var(--dur-3) var(--ease), color var(--dur-3) var(--ease)}
+  .wash{position:fixed;inset:0;pointer-events:none;z-index:0;
+        background:radial-gradient(1200px 700px at 72% -10%, var(--wash) 0%, transparent 58%)}
+  .wrap{max-width:1120px;margin:0 auto;padding:0 20px;position:relative;z-index:1}
+  a{color:var(--acc);text-decoration:none}
+  /* cross-fade on theme change for every themed surface */
+  .card,.vig,.btn,.pill,.tile,.evi,.proto,.checkpoint,.nav-in,.step,.pack,.trust-i,.composer input,.sel{
+    transition:background-color var(--dur-3) var(--ease), border-color var(--dur-3) var(--ease), color var(--dur-3) var(--ease)}
+  /* graceful entrances */
+  .rise{opacity:0;transform:translateY(14px);transition:opacity var(--dur-3) var(--ease), transform var(--dur-3) var(--ease)}
+  .rise.in{opacity:1;transform:none}
+  /* ============ NAV ============ */
+  .nav{position:sticky;top:0;z-index:5;padding:12px 0}
+  .nav-in{display:flex;align-items:center;gap:16px;background:var(--glass);border:1px solid var(--line);
+          border-radius:14px;padding:10px 14px;backdrop-filter:blur(10px);flex-wrap:wrap}
+  .brand{font-weight:800;font-size:16px;letter-spacing:.01em;color:var(--txt)}
+  .brand span{color:var(--acc)}
+  .nav nav{display:flex;gap:16px;margin-left:8px}
+  .nav nav a{color:var(--mut);font-size:13.5px;font-weight:600}
+  .nav nav a:hover{color:var(--txt)}
+  .nav .sp{flex:1}
+  .switcher{display:flex;align-items:center;gap:8px}
+  .switcher label{font-size:10.5px;font-weight:800;letter-spacing:.09em;text-transform:uppercase;color:var(--mut)}
+  .sel{background:var(--glass-2);border:1px solid var(--line);color:var(--txt);border-radius:999px;
+       padding:8px 12px;font-size:13px;font-weight:600;cursor:pointer;min-height:38px}
+  /* ============ BUTTONS / PILLS / CHIPS / BANDS ============ */
+  .btn{border:1px solid var(--line);background:var(--glass-2);color:var(--txt);padding:10px 17px;
+       border-radius:11px;font-weight:600;cursor:pointer;font-size:14px;display:inline-block}
+  .btn:hover{border-color:var(--acc)}
+  .btn.primary{background:var(--acc);border-color:var(--acc);color:#fff}
+  .btn.primary:hover{filter:brightness(1.08)}
+  .btn.sm{padding:7px 13px;font-size:13px}
+  .pill{font-size:10.5px;font-weight:800;letter-spacing:.05em;padding:3px 10px;border-radius:999px;display:inline-block}
+  .pill.acc{background:var(--acc);color:#fff}
+  .pill.ghost{border:1px solid var(--line);color:var(--mut)}
+  .st{font-size:10px;font-weight:800;letter-spacing:.04em;padding:2px 8px;border-radius:999px;white-space:nowrap}
+  .st.ok{background:color-mix(in srgb, var(--ok) 15%, transparent);color:var(--ok)}
+  .st.warn{background:color-mix(in srgb, var(--warn) 15%, transparent);color:var(--warn)}
+  .st.bad{background:color-mix(in srgb, var(--bad) 15%, transparent);color:var(--bad)}
+  .st.mid{background:color-mix(in srgb, var(--cyan) 14%, transparent);color:var(--cyan)}
+  .band{font-size:11px;font-weight:800;letter-spacing:.06em;padding:3px 9px;border-radius:999px}
+  .band.gray{background:color-mix(in srgb, var(--warn) 13%, transparent);color:var(--warn);border:1px solid color-mix(in srgb, var(--warn) 45%, transparent)}
+  /* ============ CARDS & SECTIONS ============ */
+  .card{background:var(--glass);border:1px solid var(--line);border-radius:var(--radius);padding:18px;backdrop-filter:blur(8px)}
+  .eyebrow{font-size:11px;letter-spacing:.12em;color:var(--mut);text-transform:uppercase;font-weight:700}
+  section{padding:44px 0 8px}
+  h1{font-size:40px;line-height:1.14;letter-spacing:-.01em;margin:10px 0 14px}
+  h2{font-size:26px;line-height:1.25;margin:6px 0 8px}
+  .lede{color:var(--mut);font-size:16.5px;max-width:56ch}
+  .sub-note{color:var(--mut);font-size:13.5px;margin-top:14px}
+  .sub-note b{color:var(--ok);font-weight:700}
+  /* ============ HERO ============ */
+  .hero{display:grid;grid-template-columns:1.05fr .95fr;gap:26px;align-items:start;padding-top:30px}
+  .cta-row{display:flex;gap:10px;flex-wrap:wrap;margin-top:20px}
+  .vig{background:var(--glass);border:1px solid var(--line);border-radius:18px;padding:16px;backdrop-filter:blur(9px);
+       display:flex;flex-direction:column;gap:12px}
+  .vig .vh{display:flex;align-items:center;gap:8px}
+  .vig .vh .t{font-weight:700;font-size:14px}
+  .stage{display:flex;align-items:center;gap:9px;padding:4px 6px;border-radius:9px;font-size:13px;color:var(--mut)}
+  .stage .dot{width:19px;height:19px;border-radius:50%;border:1.6px solid var(--line);display:flex;align-items:center;justify-content:center;font-size:10px;flex:none}
+  .stage.done{color:var(--txt)} .stage.done .dot{border-color:var(--ok);color:var(--ok)}
+  .stage.now{background:linear-gradient(90deg, color-mix(in srgb, var(--acc) 18%, transparent), transparent);color:var(--txt);font-weight:600}
+  .stage.now .dot{border-color:var(--acc);background:var(--acc);color:#fff;box-shadow:0 0 0 4px color-mix(in srgb, var(--acc) 22%, transparent)}
+  .proto{border:1px dashed color-mix(in srgb, var(--acc) 45%, transparent);border-radius:12px;padding:10px 12px;
+         background:color-mix(in srgb, var(--acc) 6%, transparent);font-size:13px}
+  .proto .ptools{font-size:12px;color:var(--mut);margin-top:4px}
+  .checkpoint{border:1.5px solid color-mix(in srgb, var(--warn) 55%, transparent);
+              background:color-mix(in srgb, var(--warn) 7%, transparent);border-radius:14px;padding:12px}
+  .checkpoint .h{font-weight:800;font-size:11.5px;letter-spacing:.07em;color:var(--warn);text-transform:uppercase;margin-bottom:5px}
+  .checkpoint p{font-size:13.5px}
+  .checkpoint .row{display:flex;gap:8px;margin-top:10px}
+  .tiles{display:flex;gap:10px;flex-wrap:wrap}
+  .tile{background:var(--glass-2);border:1px solid var(--line);border-radius:11px;padding:8px 12px;min-width:100px;flex:1}
+  .tile b{font-size:19px;display:block}
+  .tile span{font-size:11px;color:var(--mut)}
+  .evi{display:flex;gap:11px;padding:10px;border:1px solid var(--line);border-radius:12px;background:color-mix(in srgb, var(--txt) 3%, transparent);align-items:flex-start}
+  .evi .dic{width:34px;height:38px;border-radius:8px;background:var(--glass-2);display:flex;align-items:center;justify-content:center;
+            font-size:10px;font-weight:800;color:var(--acc-2);border:1px solid var(--line);flex:none}
+  .evi b{font-size:13.5px}.evi small{color:var(--mut);display:block;font-size:12px}
+  .evi .anchor{margin-left:auto;flex:none}
+  .composer{display:flex;gap:8px;align-items:center}
+  .composer input{flex:1;background:color-mix(in srgb, var(--txt) 5%, transparent);border:1px solid var(--line);border-radius:999px;
+                  padding:11px 15px;color:var(--txt);font-size:13.5px;min-width:0}
+  .sendbtn{width:42px;height:42px;border-radius:50%;border:none;background:var(--acc);color:#fff;font-size:16px;cursor:pointer;flex:none}
+  /* ============ PLATFORM STEPS ============ */
+  .steps{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-top:18px}
+  .step .n{font-size:11px;font-weight:800;letter-spacing:.1em;color:var(--acc)}
+  .step h3{font-size:15.5px;margin:6px 0 5px}
+  .step p{color:var(--mut);font-size:13.5px}
+  /* ============ PACKS ============ */
+  .packs{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-top:18px}
+  .pack .field{font-size:11px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--mut)}
+  .pack h3{font-size:17px;margin:5px 0 6px}
+  .pack p{color:var(--mut);font-size:13.5px}
+  .pack .status{margin-top:12px}
+  /* ============ TRUST ============ */
+  .trust{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:18px}
+  .trust-i h3{font-size:15.5px;margin-bottom:5px}
+  .trust-i p{color:var(--mut);font-size:13.5px}
+  /* ============ CTA & FOOTER ============ */
+  .cta-band{text-align:center;padding:30px 18px}
+  .cta-band p{color:var(--mut);max-width:52ch;margin:8px auto 18px}
+  footer{border-top:1px solid var(--line);margin-top:54px;padding:26px 0 40px}
+  .fgrid{display:grid;grid-template-columns:1.4fr 1fr 1fr 1fr 1fr;gap:18px}
+  footer h4{font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--mut);margin-bottom:9px}
+  footer a{display:block;color:var(--mut);font-size:13.5px;padding:2.5px 0}
+  footer a:hover{color:var(--txt)}
+  .fline{color:var(--mut);font-size:13px;margin-top:22px}
+  @media(max-width:900px){.steps,.packs{grid-template-columns:1fr 1fr}.fgrid{grid-template-columns:1fr 1fr}}
+  @media(max-width:640px){
+    h1{font-size:31px} h2{font-size:22px}
+    .hero{grid-template-columns:1fr}
+    .steps,.packs,.trust{grid-template-columns:1fr}
+    .nav nav{display:none}
+    .fgrid{grid-template-columns:1fr}
+    section{padding:34px 0 4px}
+  }
+  @media (prefers-reduced-motion: reduce){
+    *,*::before,*::after{animation:none!important;transition:none!important;scroll-behavior:auto!important}
+    .rise{opacity:1;transform:none}
+  }
+</style>
+</head>
+<body>
+<div class="wash"></div>
+
+<header class="nav"><div class="wrap"><div class="nav-in">
+  <a class="brand" href="#">Vision<span>Systems</span></a>
+  <nav>
+    <a href="#platform">Platform</a><a href="#packs">Packs</a><a href="#trust">Trust</a><a href="#">Sign in</a>
+  </nav>
+  <div class="sp"></div>
+  <div class="switcher">
+    <label for="themeSel">Theme</label>
+    <select class="sel" id="themeSel">
+      <option value="ocean-deep" selected>Ocean Deep</option>
+      <option value="aurora">Aurora</option>
+      <option value="calm-deep-ocean">Calm Deep Ocean</option>
+      <option value="earth-grove">Earth Grove</option>
+      <option value="regal">Regal · Blue &amp; Gold</option>
+      <option value="matte-slate">Matte Slate</option>
+      <option value="daylight">Daylight</option>
+    </select>
+  </div>
+  <a class="btn primary sm" href="#cta">Request access</a>
+</div></div></header>
+
+<main class="wrap">
+
+  <!-- HERO -->
+  <div class="hero">
+    <div class="rise">
+      <div class="eyebrow">Vision Systems</div>
+      <h1>Every document. Every answer. Traceable to the page.</h1>
+      <p class="lede">Vision Systems ingests your documents, anchors every fact to the page it came from, and gives your team an agent that answers from the record — retrieval, never recall. One platform, configured for your field through vertical packs.</p>
+      <div class="cta-row">
+        <a class="btn primary" href="#cta">Request access</a>
+        <a class="btn" href="#platform">See how it works</a>
+      </div>
+      <p class="sub-note"><b>●</b> Vision Law, our legal pack, is live today.</p>
+    </div>
+
+    <div class="vig rise" aria-label="Platform workspace illustration">
+      <div class="vh"><span class="t">Workspace</span><span class="pill acc">Agent working</span><span style="flex:1"></span><span class="band gray">GRAY ZONE</span></div>
+      <div>
+        <div class="stage done"><span class="dot">✓</span> Intake</div>
+        <div class="stage done"><span class="dot">✓</span> Page anchoring</div>
+        <div class="stage now"><span class="dot">3</span> Analysis — grounded in the corpus</div>
+        <div class="stage"><span class="dot">4</span> Draft</div>
+      </div>
+      <div class="proto">Working from 3 documents in the corpus. Every claim below cites its page.
+        <div class="ptools">Sources: building code ch. 15 · services agreement · inspection report</div>
+      </div>
+      <div class="evi"><div class="dic">PDF</div><div><b>Building code — Chapter 15, Egress</b><small>142 pages · OCR confidence high</small></div><span class="st ok anchor">p. 87</span></div>
+      <div class="evi"><div class="dic">DOC</div><div><b>Services agreement — executed copy</b><small>38 pages · version 3</small></div><span class="st ok anchor">p. 12</span></div>
+      <div class="evi"><div class="dic">PDF</div><div><b>Inspection report — March intake</b><small>26 pages · 2 pages flagged for review</small></div><span class="st warn anchor">p. 4</span></div>
+      <div class="tiles">
+        <div class="tile"><b>142</b><span>pages anchored</span></div>
+        <div class="tile"><b>3</b><span>facts cited</span></div>
+        <div class="tile"><b>1</b><span>gap flagged</span></div>
+      </div>
+      <div class="checkpoint">
+        <div class="h">Checkpoint — your decision</div>
+        <p>A draft summary is ready. One fact could not be grounded and is marked as a gap, not filled in.</p>
+        <div class="row"><button class="btn primary sm" type="button">Review draft</button><button class="btn sm" type="button">See the gap</button></div>
+      </div>
+      <div class="composer"><input type="text" placeholder="Ask about your documents…" aria-label="Ask about your documents"><button class="sendbtn" type="button" aria-label="Send">↑</button></div>
+    </div>
+  </div>
+
+  <!-- PLATFORM -->
+  <section id="platform">
+    <div class="rise">
+      <div class="eyebrow">Platform</div>
+      <h2>One pipeline, from paper to proof</h2>
+    </div>
+    <div class="steps">
+      <div class="card step rise"><div class="n">01</div><h3>Ingest &amp; OCR</h3><p>Bulk uploads are scanned, validated, and read — every page OCR'd with per-page confidence, low-confidence pages flagged for a human instead of silently trusted.</p></div>
+      <div class="card step rise"><div class="n">02</div><h3>Page-anchored store</h3><p>Documents live as immutable, versioned pages. A fact is never just text — it carries the document, the version, and the page it sits on.</p></div>
+      <div class="card step rise"><div class="n">03</div><h3>A corpus you define</h3><p>Your codes, statutes, manuals, and records form the corpus the platform answers from — scoped per organization, fenced by permissions.</p></div>
+      <div class="card step rise"><div class="n">04</div><h3>A grounded agent</h3><p>The agent retrieves from that corpus and cites its pages. What it cannot ground, it marks as a gap — it never fills silence with invention.</p></div>
+      <div class="card step rise"><div class="n">05</div><h3>Drafts a human approves</h3><p>Generated documents are assembled from your templates and the record, then held at a checkpoint until a person approves the exact version.</p></div>
+      <div class="card step rise"><div class="n">06</div><h3>Audit over everything</h3><p>Every view, edit, share, and export lands in an append-only audit trail — enforced by the database, not by policy.</p></div>
+    </div>
+  </section>
+
+  <!-- PACKS -->
+  <section id="packs">
+    <div class="rise">
+      <div class="eyebrow">Packs</div>
+      <h2>One platform, many fields</h2>
+      <p class="lede">A pack gives the platform its corpus, its templates, and its workflow for one field. The engine — ingestion, anchoring, grounding, audit — never changes.</p>
+    </div>
+    <div class="packs">
+      <div class="card pack rise">
+        <div class="field">Legal</div><h3>Vision Law</h3>
+        <p>Matter management, document intelligence, deadline rules with citations, and drafting with a human checkpoint — for firms, corporate legal departments, and government agencies.</p>
+        <div class="status"><span class="st ok">FIRST PACK · LIVE</span></div>
+      </div>
+      <div class="card pack rise">
+        <div class="field">Government</div><h3>Permitting &amp; Code</h3>
+        <p>Plan review and code questions answered against your municipal code and adopted standards, with the same page-level traceability.</p>
+        <div class="status"><span class="st mid">IN DEVELOPMENT</span></div>
+      </div>
+      <div class="card pack rise">
+        <div class="field">Packs</div><h3>Your field</h3>
+        <p>If your work runs on documents and rules, a pack is corpus + templates + workflow on the same platform. Nothing about the engine is legal-specific.</p>
+        <div class="status"><span class="st warn">THE PATTERN</span></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- TRUST -->
+  <section id="trust">
+    <div class="rise">
+      <div class="eyebrow">Trust</div>
+      <h2>Built to be believed</h2>
+    </div>
+    <div class="trust">
+      <div class="card trust-i rise"><h3>Append-only audit</h3><p>Every action is recorded in a hash-chained log the database itself refuses to rewrite. If it isn't logged, it didn't happen.</p></div>
+      <div class="card trust-i rise"><h3>Retention that holds</h3><p>Versioned retention policies with legal holds that block deletion and disposition — and a tombstone when destruction is approved under dual control.</p></div>
+      <div class="card trust-i rise"><h3>Access with fences</h3><p>Organizations, teams, and per-record grants. People see exactly what they are granted — denial never leaks existence.</p></div>
+      <div class="card trust-i rise"><h3>Your data stays yours</h3><p>Full export in open formats at any time, and deletion at contract end. No lock-in, no hostage data.</p></div>
+    </div>
+  </section>
+
+  <!-- CTA -->
+  <section id="cta">
+    <div class="card cta-band rise">
+      <h2>Put your documents to work.</h2>
+      <p>Tell us about your field and your corpus. We will show you the platform running on material shaped like yours.</p>
+      <a class="btn primary" href="#">Request access</a>
+    </div>
+  </section>
+
+</main>
+
+<footer><div class="wrap">
+  <div class="fgrid">
+    <div>
+      <a class="brand" href="#">Vision<span>Systems</span></a>
+      <p class="fline">The document platform that shows its work. Vision Law is a Vision Systems pack.</p>
+    </div>
+    <div><h4>Platform</h4><a href="#platform">Ingestion &amp; OCR</a><a href="#platform">Page-anchored store</a><a href="#platform">Grounded agent</a><a href="#trust">Audit &amp; retention</a></div>
+    <div><h4>Packs</h4><a href="#packs">Vision Law</a><a href="#packs">Permitting &amp; Code</a><a href="#packs">Your field</a></div>
+    <div><h4>Company</h4><a href="#">About</a><a href="#">Security</a><a href="#">Contact</a></div>
+    <div><h4>Legal</h4><a href="#">Privacy</a><a href="#">Terms</a></div>
+  </div>
+</div></footer>
+
+<script>
+  (function(){
+    var sel = document.getElementById('themeSel');
+    sel.addEventListener('change', function(){
+      document.documentElement.setAttribute('data-vs-theme', sel.value);
+    });
+    var io = ('IntersectionObserver' in window) ? new IntersectionObserver(function(entries){
+      entries.forEach(function(e){ if(e.isIntersecting){ e.target.classList.add('in'); io.unobserve(e.target); } });
+    }, {threshold: .12}) : null;
+    document.querySelectorAll('.rise').forEach(function(el){
+      if(io){ io.observe(el); } else { el.classList.add('in'); }
+    });
+  })();
+</script>
+</body>
+</html>
