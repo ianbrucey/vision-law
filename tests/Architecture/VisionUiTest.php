@@ -38,6 +38,14 @@ use Tests\TestCase;
  * - Door 8 (leak sentinels) from UI_Standards.md is NOT re-implemented here:
  *   it is already enforced by tests/Architecture/LeakSentinelTest.php
  *   (spec 001, verdict C-14). This ticket's "7 doors" are the 7 in 06-plan.md.
+ * - Spec 013 (013-D08, approved by Ian 2026-11-14; D14(b)): door 7 was
+ *   amended from "light-only v1" to "theme token sets only" — every surface
+ *   renders from a complete theme token set named in spec 013's contract,
+ *   never from per-view dark/light variants. The scanner below is unchanged
+ *   in effect (per-view `dark:` variants and `class="dark"` toggles remain
+ *   exactly what the amended rule forbids); the token-set completeness half
+ *   of the amended rule is enforced by
+ *   tests/Architecture/VisionSystemsUiTest.php (verdict C-02).
  */
 class VisionUiTest extends TestCase
 {
@@ -215,8 +223,12 @@ class VisionUiTest extends TestCase
         );
     }
 
-    /** Door 7 — light-only: no dark: variants, no class="dark". */
-    private function door7LightOnly(string $root): array
+    /**
+     * Door 7 — theme token sets only (as amended by 013-D08): surfaces
+     * render from complete theme token sets, never from per-view dark/light
+     * variants — no `dark:` variants, no `class="dark"` toggle.
+     */
+    private function door7ThemeTokensOnly(string $root): array
     {
         return $this->scan($root, function (string $relative, string $line): bool {
             return (bool) preg_match('/\bdark:/', $line)
@@ -409,20 +421,32 @@ class VisionUiTest extends TestCase
     }
 
     // ------------------------------------------------------------------
-    // Door 7 — light-only
+    // Door 7 — theme token sets only (013-D08)
     // ------------------------------------------------------------------
 
-    public function test_door_7_light_only_no_dark_variants(): void
+    public function test_door_7_theme_token_sets_only_no_per_view_dark_variants(): void
     {
-        $this->assertSame([], $this->door7LightOnly($this->viewsRoot));
+        $this->assertSame([], $this->door7ThemeTokensOnly($this->viewsRoot));
     }
 
     public function test_door_7_trips_on_dark_variant_fixture(): void
     {
         $tmp = $this->treeWithViolation('patterns.blade.php', '<p class="dark:text-white">Dark variant</p>');
         try {
-            $offenders = $this->door7LightOnly($tmp);
+            $offenders = $this->door7ThemeTokensOnly($tmp);
             $this->assertNotEmpty($offenders, 'Door 7 did not trip on injected dark: variant.');
+            $this->assertStringContainsString('patterns.blade.php', $offenders[0]);
+        } finally {
+            $this->removeDir($tmp);
+        }
+    }
+
+    public function test_door_7_trips_on_dark_class_toggle_fixture(): void
+    {
+        $tmp = $this->treeWithViolation('patterns.blade.php', '<div class="dark">Dark class toggle</div>');
+        try {
+            $offenders = $this->door7ThemeTokensOnly($tmp);
+            $this->assertNotEmpty($offenders, 'Door 7 did not trip on injected class="dark" toggle.');
             $this->assertStringContainsString('patterns.blade.php', $offenders[0]);
         } finally {
             $this->removeDir($tmp);

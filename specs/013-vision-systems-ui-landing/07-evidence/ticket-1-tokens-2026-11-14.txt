@@ -1,0 +1,80 @@
+TASK-2026-11-14-01 — Ticket 1 (tokens slice) — gate evidence
+Date: 2026-11-14 · Branch: spec/013-vision-systems-ui · Base HEAD: 3e30bd2
+Builder: Enoch (subagent session) · Baseline evidence: baseline-2026-11-14.txt (same folder)
+
+BASELINE UNDER EXCEPTION 013-D12
+The pre-work baseline (3 failed / 281 passed at 6f0abdd) is the accepted
+baseline per decisions.md 013-D12: a run passes if it shows no failures
+beyond the named three. Zuri independently reproduced the same three
+failures on the server worktree. Rule applied to every run below.
+
+WORK DONE
+- resources/css/app.css (+814 lines): Vision Systems token layer.
+  :root carries the shared source tokens, the 013-D13 structural tokens
+  (--radius-sm 8px; --dur-1 .18s; --dur-2 .45s; --dur-3 .65s;
+  --reading-lh 1.6) and the complete Ocean Deep set as the fallback.
+  All 25 theme sets under [data-vs-theme="<contract slug>"], transcribed
+  programmatically from tokens.md (decision-mockup keys mapped to contract
+  slugs), each with the full 25-property source set + color-scheme;
+  calm/heritage blocks (13) also carry --reading-lh: 1.72.
+  Motion layer: theme cross-fade transition on [data-vs-theme] referencing
+  var(--dur-3) / var(--ease); @media (prefers-reduced-motion: reduce)
+  block neutralizing animation/transition. No --vl-* value changed;
+  resources/css/workspace.css untouched.
+- tests/Architecture/VisionSystemsUiTest.php (new, 235 lines):
+  C-02 token-layer half + C-04 (see verdicts).
+- tests/Architecture/VisionUiTest.php: door 7 updated to the amended
+  theme-token rule (013-D08; D14(b)) — scanner effect unchanged, rule
+  restated, plus a new fixture test for the class="dark" toggle.
+- docs/UI_Standards.md: stale Tokens-section prose refreshed (D14(b)) —
+  the two token families and amended door 7 now described; the --vl-*
+  table stands as that family's record.
+
+VERDICTS
+- C-02 (token-completeness + Ocean-Deep-default half): PASS —
+  test_all_25_theme_token_sets_complete_and_ocean_deep_default
+  (25 slugs x 22 contract tokens, computed :root+block sets; per-theme
+  tokens asserted directly in each block; :root fallback asserted equal
+  to the Ocean Deep block, value for value).
+  Negative control: removing the [data-vs-theme=ember] block from the
+  compiled CSS makes the test fail ("Theme [data-vs-theme=\"ember\"] is
+  missing from the compiled CSS"); restored and re-verified green.
+  The rendered-root/switcher half of C-02 is Ticket 3 scope (06-plan).
+- C-04: PASS — test_motion_tokens_and_reduced_motion_rules_present
+  (motion tokens at 013-D13 values at :root; a transition rule references
+  var(--dur-3)/var(--ease); reduced-motion block switches animation and
+  transition off).
+
+GATES (this run, in order)
+- npm run build: PASS (app CSS 82.43 kB, built in ~3s)
+- php artisan test tests/Architecture: PASS — 29 passed (1218 assertions)
+- vendor/bin/pint --test: PASS — 368 files
+- vendor/bin/phpstan analyse (level 7): PASS — no errors
+- php artisan test (full): 3 failed / 284 passed (8749 assertions) —
+  the failures are exactly the 013-D12 named three:
+  1. CalendaringAgendaTest "home deadlines module shows only authorized
+     upcoming items"
+  2. CalendaringRemindersTest "reminder delivery resolves recipients and
+     ledgers attempts"
+  3. CalendaringRemindersTest "reminder pipeline is idempotent under
+     failure"
+  Baseline delta: +3 passed vs the 281 baseline (the two new
+  VisionSystemsUiTest verdicts + the new door-7 fixture test); no new
+  failures; no test weakened, skipped, or edited outside the sanctioned
+  door-7 amendment.
+
+ENVIRONMENT NOTE (this session)
+The Step 0 toolchain had not persisted into this session's system layer
+and was restored before the gates: PHP 8.4.27 + extensions via the ondrej
+PPA; PostgreSQL 16 cluster set to port 5435 and started, vision_law role
++ vision_law_test database created per phpunit.xml; Google Chrome
+157.0.8103.78 (the Step 0 build) installed from the official .deb.
+Caution for future runs: the Hatch CVM Chromium at /opt/meta-chromium
+refuses headless startup ("Hatch WebGL domain policy is required for
+browser startup") and must not be used as CHROMIUM_BIN/the test browser —
+with it, DocumentMobileTest and PasskeyMobileTest fail on screenshots
+while AppHomeMobileTest/CalendaringMobileTest skip by design; with real
+Chrome all four pass. Test runs regenerate specs/007-010 mobile
+screenshots; that churn was reverted and is not part of this ticket.
+All test runs used TMPDIR=~/workspace/spec013/tmp (disk-backed; /tmp is
+a 512 MB tmpfs) and the local vision_law_test database only.

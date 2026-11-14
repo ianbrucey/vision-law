@@ -30,13 +30,25 @@ copy-pasting classes between views, stop — extract.
 
 ## Tokens
 
-Color palette: professional legal — deep navy ink, warm brass for attention,
-quiet paper background. Light-only v1 — with ONE scoped exception per
-[003-D01](specs/003-public-site-auth/decisions.md): the marketing landing's
-dark cinematic treatment (tokens `--vl-dark-0` … `--vl-dark-mut`) applies to
-the marketing landing page (nav, hero, trust strip, final CTA, footer) ONLY.
-Everything behind auth stays light-only; the dark hero uses tokens, not
-dark-mode variants, so door 7 stands unchanged.
+Two token families live in `resources/css/app.css`:
+
+- **The `--vl-*` family (spec 002)** — the professional legal palette in the
+  table below: deep navy ink, warm brass for attention, quiet paper
+  background. These tokens serve the app surfaces built on the `<x-ui.*>`
+  components.
+- **The Vision Systems family (spec 013)** — 25 complete theme token sets
+  scoped under `[data-vs-theme="<slug>"]`, defined once in `app.css` from
+  spec 013's contract. Values are governed by
+  `specs/013-vision-systems-ui-landing/tokens.md` (the implementation
+  authority), with structural tokens per 013-D13. Ocean Deep is the default
+  set and the `:root` fallback; the theme choice is client-side and
+  switchable without a reload. Under amended door 7 (013-D08), dark and
+  light surfaces alike render from these complete token sets — never from
+  per-view dark/light variants.
+
+The 003-D01 scoped exception (the marketing landing's `--vl-dark-*` /
+`--vl-neon*` dark cinematic tokens, in the table below) is superseded by
+013-D11: those tokens retire with the spec 013 landing rebuild (Ticket 3).
 
 | Token | Value | Used for |
 | --- | --- | --- |
