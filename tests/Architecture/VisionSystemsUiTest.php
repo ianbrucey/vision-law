@@ -2,6 +2,7 @@
 
 namespace Tests\Architecture;
 
+use Illuminate\Support\Facades\Blade;
 use Tests\TestCase;
 
 /**
@@ -158,6 +159,170 @@ class VisionSystemsUiTest extends TestCase
         $block = substr($squashed, $mediaAt, 400);
         $this->assertStringContainsString('transition:none!important', $block, 'The reduced-motion block must switch transitions off.');
         $this->assertStringContainsString('animation:none!important', $block, 'The reduced-motion block must switch animations off.');
+    }
+
+    // ------------------------------------------------------------------
+    // C-03 — components render from tokens only (Ticket 2)
+    // ------------------------------------------------------------------
+
+    public function test_vs_components_render_from_tokens_only(): void
+    {
+        // Every component in the contract inventory renders with defaults
+        // (minimal props) and carries its component class.
+        $renders = [
+            'button' => ['<x-vs.button>Save</x-vs.button>', ['<button', 'vs-btn', 'vs-btn--secondary', 'Save']],
+            'pill' => ['<x-vs.pill>MAT-2026-014</x-vs.pill>', ['vs-pill', 'vs-pill--ghost', 'MAT-2026-014']],
+            'tab' => ['<x-vs.tab>Platform</x-vs.tab>', ['<button', 'vs-tab', 'Platform']],
+            'state' => ['<x-vs.state state="established" />', ['vs-state', 'vs-state--ok', 'ESTABLISHED']],
+            'band' => ['<x-vs.band level="strong" />', ['vs-band', 'vs-band--strong', 'STRONG']],
+            'protocol' => ['<x-vs.protocol name="ASSESSMENT" tools="brain queries" />', ['vs-protocol', 'Active protocol: ASSESSMENT', 'Tools in hand: brain queries']],
+            'checkpoint' => ['<x-vs.checkpoint>Hold it, or file?</x-vs.checkpoint>', ['vs-checkpoint', 'vs-checkpoint--awaiting', 'Checkpoint — your call required', 'Hold it, or file?']],
+            'composer' => ['<x-vs.composer />', ['<form', 'vs-composer', '<textarea', 'vs-send']],
+            'count' => ['<x-vs.count value="34" label="facts" />', ['vs-count', '34', 'facts']],
+            'card' => ['<x-vs.card>Body copy</x-vs.card>', ['vs-card', 'Body copy']],
+        ];
+        foreach ($renders as $name => [$template, $needles]) {
+            $html = Blade::render($template);
+            $this->assertNotEmpty(trim($html), "Component {$name} rendered empty.");
+            foreach ($needles as $needle) {
+                $this->assertStringContainsString($needle, $html, "Component {$name} is missing [{$needle}].");
+            }
+        }
+
+        // Stage rail and evidence row take structured props.
+        $rail = Blade::render(
+            '<x-vs.stage-rail :stages="$stages" :current="1" />',
+            ['stages' => ['Intake', 'Assessment', 'Draft']],
+        );
+        foreach (['vs-rail', 'vs-stage--done', 'vs-stage--now', 'Intake', 'Assessment', 'Draft', 'aria-current="step"'] as $needle) {
+            $this->assertStringContainsString($needle, $rail, "Stage rail is missing [{$needle}].");
+        }
+
+        $row = Blade::render(
+            '<x-vs.evidence-row ext="PDF" title="Engagement letter" meta="Intake packet" anchor="p. 12" />',
+        );
+        foreach (['vs-evidence', 'vs-evidence__icon', 'PDF', 'Engagement letter', 'Intake packet', 'vs-evidence__anchor', 'p. 12'] as $needle) {
+            $this->assertStringContainsString($needle, $row, "Evidence row is missing [{$needle}].");
+        }
+
+        // Token-only rule (door 1 extended): no raw hex, rgba, or hsl value
+        // anywhere in the vs component views.
+        $files = glob(resource_path('views/components/vs/*.blade.php'));
+        $this->assertNotFalse($files);
+        $this->assertGreaterThanOrEqual(12, count($files), 'The vs component inventory is incomplete.');
+        foreach ($files as $file) {
+            $source = (string) file_get_contents($file);
+            $this->assertDoesNotMatchRegularExpression(
+                '/#[0-9a-fA-F]{3,8}\b|rgba?\s*\(|hsla?\s*\(/',
+                $source,
+                basename($file).' carries a raw color value — components reference tokens only.'
+            );
+        }
+
+        // The component classes the views emit are defined in the compiled
+        // CSS (the vs component layer in app.css).
+        $css = $this->compiledAppCss();
+        foreach (['.vs-btn', '.vs-pill', '.vs-tab', '.vs-state', '.vs-band', '.vs-stage', '.vs-protocol', '.vs-checkpoint', '.vs-composer', '.vs-evidence', '.vs-count', '.vs-card'] as $class) {
+            $this->assertStringContainsString($class, $css, "Compiled CSS is missing the {$class} component styles.");
+        }
+    }
+
+    public function test_vs_components_render_their_contract_states(): void
+    {
+        // Button variants + disabled + link form.
+        $this->assertStringContainsString('vs-btn--primary', Blade::render('<x-vs.button variant="primary">Go</x-vs.button>'));
+        $this->assertStringContainsString('vs-btn--danger', Blade::render('<x-vs.button variant="danger">Delete</x-vs.button>'));
+        $this->assertStringContainsString('vs-btn--ghost', Blade::render('<x-vs.button variant="ghost">Preview</x-vs.button>'));
+        $this->assertStringContainsString('disabled', Blade::render('<x-vs.button disabled>Go</x-vs.button>'));
+        $this->assertStringContainsString('<a ', Blade::render('<x-vs.button href="/home">Home</x-vs.button>'));
+
+        // Pill tones map to signal tokens.
+        foreach (['acc', 'ok', 'warn', 'bad', 'cyan', 'ghost'] as $tone) {
+            $this->assertStringContainsString("vs-pill--{$tone}", Blade::render("<x-vs.pill tone=\"{$tone}\">Label</x-vs.pill>"), "Pill tone {$tone} did not render.");
+        }
+
+        // Selected tab takes the accent surface.
+        $this->assertStringContainsString('vs-tab--on', Blade::render('<x-vs.tab selected>Platform</x-vs.tab>'));
+        $this->assertStringContainsString('aria-current="true"', Blade::render('<x-vs.tab href="/platform" selected>Platform</x-vs.tab>'));
+
+        // State chips: the style guide's language, never renamed — each
+        // canonical state renders its tone class and its label text.
+        $states = [
+            'established' => ['vs-state--ok', 'ESTABLISHED'],
+            'satisfied' => ['vs-state--ok', 'SATISFIED'],
+            'asserted' => ['vs-state--cyan', 'ASSERTED'],
+            'viable' => ['vs-state--cyan', 'VIABLE'],
+            'disputed' => ['vs-state--warn', 'DISPUTED'],
+            'open' => ['vs-state--warn', 'OPEN'],
+            'refuted' => ['vs-state--bad', 'REFUTED'],
+            'excluded' => ['vs-state--bad', 'EXCLUDED'],
+            'held' => ['vs-state--warn-outline', 'HELD'],
+            'checkpoint' => ['vs-state--warn-outline', 'CHECKPOINT'],
+        ];
+        foreach ($states as $state => [$class, $label]) {
+            $html = Blade::render("<x-vs.state state=\"{$state}\" />");
+            $this->assertStringContainsString($class, $html, "State {$state} rendered the wrong tone.");
+            $this->assertStringContainsString($label, $html, "State {$state} did not render its label.");
+        }
+
+        // Bands: one per level, canonical labels.
+        $bands = [
+            'strong' => ['vs-band--strong', 'STRONG'],
+            'viable' => ['vs-band--viable', 'VIABLE'],
+            'gray' => ['vs-band--gray', 'GRAY ZONE'],
+            'failing' => ['vs-band--failing', 'FAILING'],
+        ];
+        foreach ($bands as $level => [$class, $label]) {
+            $html = Blade::render("<x-vs.band level=\"{$level}\" />");
+            $this->assertStringContainsString($class, $html, "Band {$level} rendered the wrong class.");
+            $this->assertStringContainsString($label, $html, "Band {$level} did not render its label.");
+        }
+
+        // Checkpoint: awaiting vs resolved, with decision actions.
+        $awaiting = Blade::render('<x-vs.checkpoint>Decide.<x-slot:actions><x-vs.button variant="primary">Hold</x-vs.button></x-slot:actions></x-vs.checkpoint>');
+        $this->assertStringContainsString('vs-checkpoint--awaiting', $awaiting);
+        $this->assertStringContainsString('vs-checkpoint__actions', $awaiting);
+        $this->assertStringContainsString('vs-btn--primary', $awaiting);
+        $resolved = Blade::render('<x-vs.checkpoint state="resolved">Held.</x-vs.checkpoint>');
+        $this->assertStringContainsString('vs-checkpoint--resolved', $resolved);
+
+        // Composer states: empty (send disabled), typing, sending, disabled.
+        $this->assertStringContainsString('vs-composer--empty', Blade::render('<x-vs.composer />'));
+        $this->assertStringContainsString('vs-composer--typing', Blade::render('<x-vs.composer value="Draft text" />'));
+        $this->assertStringContainsString('vs-composer--sending', Blade::render('<x-vs.composer state="sending" value="Draft text" />'));
+        $disabled = Blade::render('<x-vs.composer state="disabled" />');
+        $this->assertStringContainsString('vs-composer--disabled', $disabled);
+        $this->assertStringContainsString('disabled', $disabled);
+
+        // Evidence row flagged state carries the warn tag.
+        $flagged = Blade::render('<x-vs.evidence-row title="Scan" flagged />');
+        $this->assertStringContainsString('vs-evidence--flagged', $flagged);
+        $this->assertStringContainsString('vs-tag--warn', $flagged);
+        $this->assertStringContainsString('Low confidence', $flagged);
+    }
+
+    /**
+     * Ticket 2 token-layer completion: --acc-ink, the text color on an
+     * --acc surface, transcribed from the per-theme .btn.primary
+     * overrides in tokens.md (the leftover Ticket 1 deferred — component
+     * rules, not token values). Every theme defines it; themes whose
+     * source defines no override carry the library default, white.
+     */
+    public function test_acc_ink_token_defined_for_every_theme(): void
+    {
+        $css = $this->compiledAppCss();
+        foreach (self::THEME_SLUGS as $slug) {
+            $block = $this->themeTokens($css, $slug);
+            $this->assertNotNull($block, "Theme {$slug} is missing.");
+            $this->assertArrayHasKey('--acc-ink', $block, "Theme {$slug} does not define --acc-ink.");
+        }
+
+        $ocean = $this->themeTokens($css, 'ocean-deep');
+        $this->assertSame('#032630', $ocean['--acc-ink'] ?? null, 'Ocean Deep --acc-ink must be the tokens.md override value.');
+        $aurora = $this->themeTokens($css, 'aurora');
+        $this->assertSame('#fff', $aurora['--acc-ink'] ?? null, 'Aurora defines no override — --acc-ink must be the library default.');
+        $grove = $this->themeTokens($css, 'earth-grove');
+        $this->assertSame('#0b0f0a', $grove['--acc-ink'] ?? null, 'Earth Grove --acc-ink must be the shared grove/midnight override value.');
     }
 
     // ------------------------------------------------------------------

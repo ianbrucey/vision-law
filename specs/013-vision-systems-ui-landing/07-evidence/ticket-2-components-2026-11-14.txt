@@ -1,0 +1,90 @@
+Spec 013 — Ticket 2 (components) evidence
+Date: 2026-11-14
+Branch: spec/013-vision-systems-ui
+Base: 1c9a471 (Ticket 1 token layer; pull --ff-only at start: already up to
+date, clean tree — no new commits from Zuri's Ticket 1 verification)
+
+ENVIRONMENT (restored per .github/workflows/tests.yml; the VM system layer
+does not persist between sessions)
+- PHP 8.4.27 (ondrej PPA), Composer deps from the persisted vendor/
+- PostgreSQL 16.15 on 127.0.0.1:5435, role vision_law, database
+  vision_law_test (tests run ONLY against this local test DB, per
+  phpunit.xml); pgcrypto + vector extensions present
+- Google Chrome 157.0.8103.78 at /usr/bin/google-chrome (CHROMIUM_BIN)
+- All test runs used TMPDIR=~/workspace/spec013/tmp (disk-backed)
+- Environment correction found during the gate run: CI executes the suite
+  as the Postgres superuser (tests.yml: POSTGRES_USER postgres,
+  DB_USERNAME postgres); the local vision_law role had been recreated as a
+  plain role, and the audit-events migration's REVOKE UPDATE/DELETE then
+  bit on the referential-integrity check in
+  MatterModelTest::test_matter_number_generation's cleanup (SQLSTATE
+  42501, permission denied for table audit_events) plus one further
+  failure of the same origin. ALTER ROLE vision_law SUPERUSER restored
+  CI semantics; no repository code was changed for this. First full-suite
+  run before the correction: 5 failed / 285 passed; the two extra failures
+  disappeared with the correction and are absent below.
+
+WHAT WAS BUILT
+- resources/views/components/vs/ — 12 anonymous Blade components:
+  button, pill, tab, state, band, stage-rail, protocol, checkpoint,
+  composer, evidence-row, count, card. Card is defined by
+  design/component-library.html (its stylesheet carries the .card
+  primitive used across §§3–12) and named by 03-contract.md's landing
+  table (Packs/Trust = card), so <x-vs.card> is implemented.
+- resources/css/app.css — a "Vision Systems components" section after the
+  theme layer: .vs-* classes for every component. Every color is a
+  var(--…) theme token; ok/bad/cyan borders (no -line tokens exist for
+  those signals) use color-mix(in srgb, var(--token) N%, transparent).
+  Transitions use var(--ease)/var(--dur-*).
+- --acc-ink token (the Ticket 1 leftover): tokens.md's per-theme
+  .btn.primary text-color overrides transcribed as a token into all 25
+  [data-vs-theme] blocks + the :root Ocean Deep fallback, inserted after
+  --acc-line. 16 themes carry their source override value; the 9 themes
+  whose source defines no override carry the component library's default
+  (#fff). <x-vs.button variant="primary"> renders background: var(--acc);
+  color: var(--acc-ink). The same token serves the future .statusbar
+  surface (no statusbar component exists in the Ticket 2 inventory).
+- resources/views/patterns.blade.php — a Vision Systems section (nav
+  anchor added) rendering every component in every contract variant/state
+  inside <div data-vs-theme="ocean-deep">. Route untouched (local-only).
+- tests/Architecture/VisionUiTest.php — doors 2 and 3 now recognize
+  components/vs/ as a component door beside components/ui/ (raw elements
+  lawful inside the family's own views; <x-vs.button> a sanctioned button
+  door in consuming views). Reach over non-component views unchanged —
+  all negative fixtures still trip. Rationale recorded in the class
+  docblock; the docs/UI_Standards.md amendment covering both families
+  lands at Freeze per 03-contract.md.
+
+C-03 VERDICT — PASS
+tests/Architecture/VisionSystemsUiTest.php:
+- test_vs_components_render_from_tokens_only: every inventory component
+  rendered via Blade with minimal/default props, asserting non-empty
+  markup and its marker classes/labels; a scan asserting no raw hex /
+  rgb(a) / hsl(a) in resources/views/components/vs/*.blade.php; the
+  component base classes (.vs-btn, .vs-pill, .vs-tab, .vs-state,
+  .vs-band, .vs-stage, .vs-protocol, .vs-checkpoint, .vs-composer,
+  .vs-evidence, .vs-count, .vs-card) asserted present in the compiled CSS.
+- test_vs_components_render_their_contract_states: button variants +
+  disabled + href form; all six pill tones; selected tab; all ten
+  canonical state chips (tone class + never-renamed label); all four band
+  levels; checkpoint awaiting (with actions slot) and resolved; composer
+  empty/typing/sending/disabled; flagged evidence row with warn tag.
+- test_acc_ink_token_defined_for_every_theme: all 25 themes define
+  --acc-ink; Ocean Deep #032630, Earth Grove #0b0f0a (source overrides),
+  Aurora #fff (library default).
+
+GATES
+- php artisan test tests/Architecture — 32 passed (1,415 assertions)
+- php artisan test (full) — 3 failed / 287 passed (8,946 assertions).
+  The 3 failures are exactly the accepted 013-D12 baseline:
+    * CalendaringAgendaTest — home deadlines module (overdue count)
+    * CalendaringRemindersTest — reminder delivery (line 195 assertion)
+    * CalendaringRemindersTest — reminder pipeline idempotency (line 637)
+  No failures beyond the D12 three.
+- vendor/bin/pint --test — PASS (368 files)
+- vendor/bin/phpstan analyse (level 7) — PASS, no errors
+- npm run build — PASS
+
+D14(a) FIXTURE STATUS (report-only): 04-fixtures.json still has only its
+original commit (d72e70e, the draft spec package) — the F1/F2/F3 fixture
+fixes have NOT landed on this branch. Ticket 3 remains gated on them.

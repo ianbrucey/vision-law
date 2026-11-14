@@ -10,7 +10,7 @@
     <x-slot:org>Sterling &amp; Associates</x-slot:org>
     <x-slot:userMenu>G. Granted · Attorney</x-slot:userMenu>
     <x-slot:nav>
-        <a href="#buttons">Buttons</a><a href="#forms">Forms</a><a href="#display">Display</a><a href="#feedback">Signals</a><a href="#table">Table</a><a href="#overlay">Overlays</a>
+        <a href="#buttons">Buttons</a><a href="#forms">Forms</a><a href="#display">Display</a><a href="#feedback">Signals</a><a href="#table">Table</a><a href="#overlay">Overlays</a><a href="#vision-systems">Vision Systems</a>
     </x-slot:nav>
     <x-slot:content>
         <x-ui.page-header
@@ -152,6 +152,100 @@
                     You're clear. New deadlines appear automatically from matter templates.
                 </x-ui.empty>
             </x-ui.card>
+        </section>
+
+        {{-- Vision Systems components (spec 013, Ticket 2) — rendered in the
+             default theme, Ocean Deep, on their token layer. --}}
+        <section id="vision-systems" aria-label="Vision Systems components" class="mb-8">
+            <div data-vs-theme="ocean-deep" style="background:var(--bg);color:var(--txt);font-family:var(--font);border-radius:16px;padding:20px;">
+                <h2 style="font-size:18px;font-weight:700;margin-bottom:4px;">Vision Systems components</h2>
+                <p style="color:var(--mut);font-size:13px;margin-bottom:18px;">The x-vs family on the theme token layer, shown in Ocean Deep, the default theme. Every variant and state from the component contract.</p>
+
+                <p style="color:var(--mut);font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;margin:18px 0 8px;">Buttons</p>
+                <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;">
+                    <x-vs.button variant="primary">Request access</x-vs.button>
+                    <x-vs.button variant="secondary">Open the record</x-vs.button>
+                    <x-vs.button variant="danger">Delete draft</x-vs.button>
+                    <x-vs.button variant="ghost">Preview</x-vs.button>
+                    <x-vs.button variant="primary" disabled>Primary disabled</x-vs.button>
+                    <x-vs.button variant="secondary" href="#vision-systems">Link button</x-vs.button>
+                </div>
+
+                <p style="color:var(--mut);font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;margin:18px 0 8px;">Pills &amp; tabs</p>
+                <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:10px;">
+                    <x-vs.pill tone="acc">ASSESSMENT PROTOCOL</x-vs.pill>
+                    <x-vs.pill tone="warn">1 CHECKPOINT WAITING</x-vs.pill>
+                    <x-vs.pill tone="ok">AUDIT SEALED</x-vs.pill>
+                    <x-vs.pill tone="cyan">IN REVIEW</x-vs.pill>
+                    <x-vs.pill tone="ghost">MAT-2026-014</x-vs.pill>
+                </div>
+                <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;">
+                    <x-vs.tab href="#vision-systems" selected>Platform</x-vs.tab>
+                    <x-vs.tab href="#vision-systems">Packs</x-vs.tab>
+                    <x-vs.tab href="#vision-systems">Trust</x-vs.tab>
+                    <x-vs.tab>Sign in</x-vs.tab>
+                </div>
+
+                <p style="color:var(--mut);font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;margin:18px 0 8px;">State chips &amp; bands</p>
+                <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:10px;">
+                    <x-vs.state state="established" />
+                    <x-vs.state state="satisfied" />
+                    <x-vs.state state="asserted" />
+                    <x-vs.state state="viable" />
+                    <x-vs.state state="disputed" />
+                    <x-vs.state state="open" />
+                    <x-vs.state state="refuted" />
+                    <x-vs.state state="held" />
+                    <x-vs.state state="checkpoint" />
+                </div>
+                <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+                    <x-vs.band level="strong" />
+                    <x-vs.band level="viable" />
+                    <x-vs.band level="gray" />
+                    <x-vs.band level="failing" />
+                </div>
+
+                <p style="color:var(--mut);font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;margin:18px 0 8px;">Stage rail &amp; protocol box</p>
+                <x-vs.card>
+                    <x-vs.stage-rail :stages="['Intake', 'Fact cartography', 'Assessment', 'Computation', 'Draft']" :current="2" />
+                    <div style="margin-top:12px;">
+                        <x-vs.protocol name="ASSESSMENT" tools="brain queries · CourtListener · assessment writer" withheld="drafting · outline" />
+                    </div>
+                </x-vs.card>
+
+                <p style="color:var(--mut);font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;margin:18px 0 8px;">Checkpoint cards</p>
+                <div style="display:grid;gap:12px;">
+                    <x-vs.checkpoint>
+                        The third claim sits in the gray zone. Hold it, or file all three?
+                        <x-slot:actions>
+                            <x-vs.button variant="primary">Hold pending discovery</x-vs.button>
+                            <x-vs.button variant="secondary">File all three</x-vs.button>
+                        </x-slot:actions>
+                    </x-vs.checkpoint>
+                    <x-vs.checkpoint state="resolved" title="Checkpoint — decision recorded">
+                        Held pending discovery, recorded with your name on it.
+                    </x-vs.checkpoint>
+                </div>
+
+                <p style="color:var(--mut);font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;margin:18px 0 8px;">Composer</p>
+                <div style="display:grid;gap:12px;">
+                    <x-vs.composer />
+                    <x-vs.composer value="Run the attack simulation against us." />
+                    <x-vs.composer state="sending" value="Run the attack simulation against us." />
+                    <x-vs.composer state="disabled" />
+                </div>
+
+                <p style="color:var(--mut);font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;margin:18px 0 8px;">Evidence rows &amp; counts</p>
+                <div style="display:grid;gap:10px;margin-bottom:12px;">
+                    <x-vs.evidence-row ext="TXT" title="Text thread — 23 screenshots" meta="Demand and response captured" anchor="p. 4" :tags="[['label' => 'willfulness', 'tone' => 'warn'], 'extracted ✓']" />
+                    <x-vs.evidence-row ext="PDF" title="Engagement letter — signed copy" meta="Intake packet, item 2" anchor="p. 12" flagged />
+                </div>
+                <div style="display:flex;gap:10px;flex-wrap:wrap;">
+                    <x-vs.count value="34" label="facts" />
+                    <x-vs.count value="3" label="open gaps" />
+                    <x-vs.count value="142" label="pages anchored" />
+                </div>
+            </div>
         </section>
 
         {{-- Shell notes --}}

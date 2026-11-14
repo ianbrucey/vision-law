@@ -108,6 +108,7 @@
     --acc-2: #2a7fff;
     --acc-soft: rgba(46,196,214,.13);
     --acc-line: rgba(46,196,214,.45);
+    --acc-ink: #032630;
     --warn: #e8a13a;
     --warn-soft: rgba(232,161,58,.10);
     --warn-line: rgba(232,161,58,.55);
@@ -137,6 +138,7 @@
     --acc-2: #4f7cff;
     --acc-soft: rgba(124,108,255,.14);
     --acc-line: rgba(124,108,255,.45);
+    --acc-ink: #fff;
     --warn: #e8a13a;
     --warn-soft: rgba(232,161,58,.10);
     --warn-line: rgba(232,161,58,.55);
@@ -166,6 +168,7 @@
     --acc-2: #d9a441;
     --acc-soft: rgba(143,185,150,.14);
     --acc-line: rgba(143,185,150,.48);
+    --acc-ink: #0b0f0a;
     --warn: #d9a441;
     --warn-soft: rgba(217,164,65,.11);
     --warn-line: rgba(217,164,65,.55);
@@ -195,6 +198,7 @@
     --acc-2: #cbd5e1;
     --acc-soft: rgba(142,154,175,.16);
     --acc-line: rgba(142,154,175,.5);
+    --acc-ink: #0b0f0a;
     --warn: #eab308;
     --warn-soft: rgba(234,179,8,.10);
     --warn-line: rgba(234,179,8,.5);
@@ -224,6 +228,7 @@
     --acc-2: #2a7fff;
     --acc-soft: rgba(46,196,214,.13);
     --acc-line: rgba(46,196,214,.45);
+    --acc-ink: #032630;
     --warn: #e8a13a;
     --warn-soft: rgba(232,161,58,.10);
     --warn-line: rgba(232,161,58,.55);
@@ -253,6 +258,7 @@
     --acc-2: #e8a13a;
     --acc-soft: rgba(255,122,69,.13);
     --acc-line: rgba(255,122,69,.45);
+    --acc-ink: #fff;
     --warn: #ffb03a;
     --warn-soft: rgba(255,176,58,.11);
     --warn-line: rgba(255,176,58,.55);
@@ -282,6 +288,7 @@
     --acc-2: #2f6bff;
     --acc-soft: rgba(109,92,255,.10);
     --acc-line: rgba(109,92,255,.4);
+    --acc-ink: #fff;
     --warn: #b7791f;
     --warn-soft: rgba(183,121,31,.10);
     --warn-line: rgba(183,121,31,.5);
@@ -311,6 +318,7 @@
     --acc-2: #d4af37;
     --acc-soft: rgba(74,144,240,.15);
     --acc-line: rgba(74,144,240,.5);
+    --acc-ink: #fff;
     --warn: #d4af37;
     --warn-soft: rgba(212,175,55,.12);
     --warn-line: rgba(212,175,55,.55);
@@ -340,6 +348,7 @@
     --acc-2: #a9c0da;
     --acc-soft: rgba(132,166,204,.16);
     --acc-line: rgba(132,166,204,.55);
+    --acc-ink: #1e242e;
     --warn: #c9a86a;
     --warn-soft: rgba(201,168,106,.13);
     --warn-line: rgba(201,168,106,.55);
@@ -369,6 +378,7 @@
     --acc-2: #9c7c4c;
     --acc-soft: rgba(95,122,140,.13);
     --acc-line: rgba(95,122,140,.45);
+    --acc-ink: #fff;
     --warn: #92702a;
     --warn-soft: rgba(146,112,42,.12);
     --warn-line: rgba(146,112,42,.5);
@@ -398,6 +408,7 @@
     --acc-2: #d9b380;
     --acc-soft: rgba(203,134,99,.16);
     --acc-line: rgba(203,134,99,.55);
+    --acc-ink: #2b1d13;
     --warn: #d6ab54;
     --warn-soft: rgba(214,171,84,.13);
     --warn-line: rgba(214,171,84,.55);
@@ -427,6 +438,7 @@
     --acc-2: #cbbd8a;
     --acc-soft: rgba(169,180,127,.16);
     --acc-line: rgba(169,180,127,.55);
+    --acc-ink: #23281a;
     --warn: #cfa856;
     --warn-soft: rgba(207,168,86,.13);
     --warn-line: rgba(207,168,86,.55);
@@ -456,6 +468,7 @@
     --acc-2: #c4a97e;
     --acc-soft: rgba(172,151,196,.16);
     --acc-line: rgba(172,151,196,.55);
+    --acc-ink: #262033;
     --warn: #c9a86a;
     --warn-soft: rgba(201,168,106,.13);
     --warn-line: rgba(201,168,106,.55);
@@ -485,6 +498,7 @@
     --acc-2: #7fb8a8;
     --acc-soft: rgba(95,176,194,.13);
     --acc-line: rgba(95,176,194,.42);
+    --acc-ink: #06222b;
     --warn: #c9a86a;
     --warn-soft: rgba(201,168,106,.10);
     --warn-line: rgba(201,168,106,.48);
@@ -515,6 +529,7 @@
     --acc-2: #7aa8c4;
     --acc-soft: rgba(107,184,166,.13);
     --acc-line: rgba(107,184,166,.42);
+    --acc-ink: #0a2420;
     --warn: #c9a86a;
     --warn-soft: rgba(201,168,106,.10);
     --warn-line: rgba(201,168,106,.48);
@@ -545,6 +560,7 @@
     --acc-2: #a8b89a;
     --acc-soft: rgba(154,184,160,.13);
     --acc-line: rgba(154,184,160,.44);
+    --acc-ink: #18251b;
     --warn: #c2a66b;
     --warn-soft: rgba(194,166,107,.10);
     --warn-line: rgba(194,166,107,.5);
@@ -575,6 +591,7 @@
     --acc-2: #7a9a84;
     --acc-soft: rgba(95,134,150,.11);
     --acc-line: rgba(95,134,150,.4);
+    --acc-ink: #fff;
     --warn: #9a7d3a;
     --warn-soft: rgba(154,125,58,.10);
     --warn-line: rgba(154,125,58,.45);
@@ -605,6 +622,7 @@
     --acc-2: #9ab0a0;
     --acc-soft: rgba(138,168,181,.13);
     --acc-line: rgba(138,168,181,.44);
+    --acc-ink: #1a262b;
     --warn: #c2a66b;
     --warn-soft: rgba(194,166,107,.10);
     --warn-line: rgba(194,166,107,.5);
@@ -635,6 +653,7 @@
     --acc-2: #8fb0a4;
     --acc-soft: rgba(138,160,184,.13);
     --acc-line: rgba(138,160,184,.44);
+    --acc-ink: #1c2533;
     --warn: #c2a66b;
     --warn-soft: rgba(194,166,107,.10);
     --warn-line: rgba(194,166,107,.5);
@@ -665,6 +684,7 @@
     --acc-2: #c4a86a;
     --acc-soft: rgba(122,160,194,.13);
     --acc-line: rgba(122,160,194,.44);
+    --acc-ink: #16202e;
     --warn: #c9a86a;
     --warn-soft: rgba(201,168,106,.10);
     --warn-line: rgba(201,168,106,.48);
@@ -695,6 +715,7 @@
     --acc-2: #8aa0b8;
     --acc-soft: rgba(196,138,122,.13);
     --acc-line: rgba(196,138,122,.44);
+    --acc-ink: #22120e;
     --warn: #c9a86a;
     --warn-soft: rgba(201,168,106,.10);
     --warn-line: rgba(201,168,106,.48);
@@ -725,6 +746,7 @@
     --acc-2: #a67c52;
     --acc-soft: rgba(93,122,154,.11);
     --acc-line: rgba(93,122,154,.4);
+    --acc-ink: #fff;
     --warn: #9a7d3a;
     --warn-soft: rgba(154,125,58,.10);
     --warn-line: rgba(154,125,58,.45);
@@ -755,6 +777,7 @@
     --acc-2: #9ab0a0;
     --acc-soft: rgba(194,160,122,.13);
     --acc-line: rgba(194,160,122,.44);
+    --acc-ink: #241a10;
     --warn: #c9a86a;
     --warn-soft: rgba(201,168,106,.10);
     --warn-line: rgba(201,168,106,.48);
@@ -785,6 +808,7 @@
     --acc-2: #8aa8b5;
     --acc-soft: rgba(201,154,122,.13);
     --acc-line: rgba(201,154,122,.44);
+    --acc-ink: #2b1a10;
     --warn: #c9a86a;
     --warn-soft: rgba(201,168,106,.10);
     --warn-line: rgba(201,168,106,.48);
@@ -815,6 +839,7 @@
     --acc-2: #6d8a7a;
     --acc-soft: rgba(138,109,82,.11);
     --acc-line: rgba(138,109,82,.4);
+    --acc-ink: #fff;
     --warn: #8f7030;
     --warn-soft: rgba(143,112,48,.10);
     --warn-line: rgba(143,112,48,.45);
@@ -845,6 +870,7 @@
     --acc-2: #c8504a;
     --acc-soft: rgba(74,134,232,.15);
     --acc-line: rgba(74,134,232,.48);
+    --acc-ink: #fff;
     --warn: #e07a6a;
     --warn-soft: rgba(224,122,106,.12);
     --warn-line: rgba(224,122,106,.55);
@@ -879,6 +905,529 @@
         transition: none !important;
         scroll-behavior: auto !important;
     }
+}
+
+/*
+ * Vision Systems components (spec 013, Ticket 2 — 03-contract.md §Component
+ * contract; design/component-library.html §§1–12). Every color below is a
+ * token reference (var(--…), or color-mix() of a token where the token table
+ * carries no line-strength variant) — never a raw value. The one addition
+ * to the token layer: --acc-ink, the text color on an --acc surface,
+ * transcribed from the per-theme .btn.primary overrides in tokens.md
+ * (the Ticket 1 leftover — themes whose source defines no override carry
+ * the library default, white). The same token serves the future
+ * .statusbar surface those overrides also name.
+ */
+
+/* Card — the generic surface (component-library.html .card). */
+.vs-card {
+    background: var(--glass);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    padding: 14px;
+    backdrop-filter: blur(8px);
+    color: var(--txt);
+}
+.vs-card__title {
+    font-size: 15px;
+    font-weight: 700;
+    margin-bottom: 8px;
+}
+
+/* Button — variants primary / secondary / danger / ghost (§2). */
+.vs-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    border: 1px solid var(--line);
+    background: var(--glass-2);
+    color: var(--txt);
+    padding: 9px 15px;
+    border-radius: calc(var(--radius-sm) + 3px);
+    font: inherit;
+    font-weight: 600;
+    font-size: 13.5px;
+    cursor: pointer;
+    text-decoration: none;
+    transition:
+        background-color var(--dur-1) var(--ease),
+        border-color var(--dur-1) var(--ease),
+        color var(--dur-1) var(--ease);
+}
+.vs-btn:hover {
+    border-color: var(--line-strong);
+}
+.vs-btn:focus-visible {
+    outline: 2px solid var(--acc);
+    outline-offset: 2px;
+}
+.vs-btn:disabled,
+.vs-btn[aria-disabled="true"] {
+    opacity: .45;
+    cursor: not-allowed;
+}
+.vs-btn--primary {
+    background: var(--acc);
+    border-color: var(--acc);
+    color: var(--acc-ink);
+}
+.vs-btn--primary:hover {
+    background: var(--acc-2);
+    border-color: var(--acc-2);
+}
+.vs-btn--secondary {
+    background: var(--glass-2);
+}
+.vs-btn--danger {
+    background: var(--bad-soft);
+    border-color: color-mix(in srgb, var(--bad) 50%, transparent);
+    color: var(--bad);
+}
+.vs-btn--danger:hover {
+    border-color: var(--bad);
+}
+.vs-btn--ghost {
+    background: transparent;
+    border-color: transparent;
+}
+.vs-btn--ghost:hover {
+    background: var(--glass);
+    border-color: transparent;
+}
+
+/* Pill — tones map to signal tokens only (§3). */
+.vs-pill {
+    display: inline-block;
+    font-size: 10.5px;
+    font-weight: 800;
+    letter-spacing: .05em;
+    padding: 3px 10px;
+    border-radius: 999px;
+    border: 1px solid transparent;
+    color: var(--txt);
+    transition:
+        background-color var(--dur-1) var(--ease),
+        border-color var(--dur-1) var(--ease),
+        color var(--dur-1) var(--ease);
+}
+.vs-pill--acc {
+    background: var(--acc);
+    border-color: var(--acc);
+    color: var(--acc-ink);
+}
+.vs-pill--ok {
+    background: var(--ok-soft);
+    border-color: color-mix(in srgb, var(--ok) 45%, transparent);
+    color: var(--ok);
+}
+.vs-pill--warn {
+    background: var(--warn-soft);
+    border-color: var(--warn-line);
+    color: var(--warn);
+}
+.vs-pill--bad {
+    background: var(--bad-soft);
+    border-color: color-mix(in srgb, var(--bad) 45%, transparent);
+    color: var(--bad);
+}
+.vs-pill--cyan {
+    background: var(--cyan-soft);
+    border-color: color-mix(in srgb, var(--cyan) 45%, transparent);
+    color: var(--cyan);
+}
+.vs-pill--ghost {
+    border-color: var(--line);
+    color: var(--mut);
+}
+
+/* Tab — navigation; selected = --acc (§4). */
+.vs-tab {
+    display: inline-block;
+    border: 1px solid var(--line);
+    background: var(--glass);
+    color: var(--mut);
+    padding: 7px 14px;
+    border-radius: 999px;
+    font: inherit;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    text-decoration: none;
+    transition:
+        background-color var(--dur-1) var(--ease),
+        border-color var(--dur-1) var(--ease),
+        color var(--dur-1) var(--ease);
+}
+.vs-tab:hover {
+    color: var(--txt);
+    border-color: var(--line-strong);
+}
+.vs-tab:focus-visible {
+    outline: 2px solid var(--acc);
+    outline-offset: 2px;
+}
+.vs-tab--on {
+    background: var(--acc);
+    border-color: var(--acc);
+    color: var(--acc-ink);
+}
+.vs-tab--on:hover {
+    color: var(--acc-ink);
+    border-color: var(--acc);
+}
+
+/* State chip — the style guide's state language, never renamed (§3, §5). */
+.vs-state {
+    display: inline-block;
+    font-size: 10px;
+    font-weight: 800;
+    letter-spacing: .04em;
+    padding: 2px 8px;
+    border-radius: 999px;
+    border: 1px solid transparent;
+    color: var(--txt);
+}
+.vs-state--ok {
+    background: var(--ok-soft);
+    color: var(--ok);
+}
+.vs-state--cyan {
+    background: var(--cyan-soft);
+    color: var(--cyan);
+}
+.vs-state--warn {
+    background: var(--warn-soft);
+    color: var(--warn);
+}
+.vs-state--bad {
+    background: var(--bad-soft);
+    color: var(--bad);
+}
+.vs-state--warn-outline {
+    background: transparent;
+    border-color: var(--warn-line);
+    color: var(--warn);
+}
+.vs-state--neutral {
+    background: var(--glass-2);
+    color: var(--mut);
+}
+
+/* Band — characterization levels (§3). */
+.vs-band {
+    display: inline-block;
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: .06em;
+    padding: 3px 9px;
+    border-radius: 999px;
+    border: 1px solid transparent;
+    color: var(--txt);
+}
+.vs-band--strong {
+    background: var(--ok-soft);
+    border-color: color-mix(in srgb, var(--ok) 40%, transparent);
+    color: var(--ok);
+}
+.vs-band--viable {
+    background: var(--cyan-soft);
+    border-color: color-mix(in srgb, var(--cyan) 40%, transparent);
+    color: var(--cyan);
+}
+.vs-band--gray {
+    background: var(--warn-soft);
+    border-color: var(--warn-line);
+    color: var(--warn);
+}
+.vs-band--failing {
+    background: var(--bad-soft);
+    border-color: color-mix(in srgb, var(--bad) 45%, transparent);
+    color: var(--bad);
+}
+
+/* Stage rail — done / now / upcoming (§5). */
+.vs-rail {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+.vs-stage {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    padding: 5px 8px;
+    border-radius: var(--radius-sm);
+    font-size: 13px;
+    color: var(--mut);
+}
+.vs-stage__dot {
+    width: 19px;
+    height: 19px;
+    border-radius: 50%;
+    border: 1.6px solid var(--line);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 10px;
+    flex: none;
+}
+.vs-stage--done {
+    color: var(--txt);
+}
+.vs-stage--done .vs-stage__dot {
+    border-color: var(--ok);
+    color: var(--ok);
+}
+.vs-stage--now {
+    background: linear-gradient(90deg, var(--acc-soft), transparent);
+    color: var(--txt);
+    font-weight: 600;
+}
+.vs-stage--now .vs-stage__dot {
+    border-color: var(--acc);
+    background: var(--acc);
+    color: var(--acc-ink);
+    box-shadow: 0 0 0 4px var(--acc-soft);
+}
+
+/* Protocol box — agent-owned surface, dashed --acc signature (§5). */
+.vs-protocol {
+    border: 1px dashed var(--acc-line);
+    border-radius: calc(var(--radius-sm) + 4px);
+    padding: 10px;
+    background: var(--acc-soft);
+    font-size: 13px;
+    color: var(--txt);
+}
+.vs-protocol__tools {
+    font-size: 12px;
+    color: var(--mut);
+    margin-top: 4px;
+}
+
+/* Checkpoint card — human-decision surface, --warn family (§8). */
+.vs-checkpoint {
+    border: 1.5px solid var(--warn-line);
+    background: var(--warn-soft);
+    border-radius: var(--radius);
+    padding: 12px;
+    color: var(--txt);
+}
+.vs-checkpoint__head {
+    font-weight: 800;
+    font-size: 12px;
+    letter-spacing: .07em;
+    color: var(--warn);
+    text-transform: uppercase;
+    margin-bottom: 6px;
+}
+.vs-checkpoint__actions {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin-top: 10px;
+}
+.vs-checkpoint--resolved {
+    border-color: var(--line-strong);
+    background: var(--glass);
+}
+.vs-checkpoint--resolved .vs-checkpoint__head {
+    color: var(--ok);
+}
+
+/* Composer — full-width field + action strip; attach and voice are
+   first-class citizens; send is the one primary action (§8). */
+.vs-composer {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+.vs-composer__field {
+    flex: 1;
+    background: var(--glass);
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    padding: 11px 15px;
+    color: var(--txt);
+    font: inherit;
+    font-size: 13.5px;
+    resize: none;
+    transition: border-color var(--dur-1) var(--ease);
+}
+.vs-composer__field::placeholder {
+    color: var(--mut);
+}
+.vs-composer__field:focus-visible {
+    outline: 2px solid var(--acc);
+    outline-offset: 1px;
+}
+.vs-composer__field:disabled {
+    opacity: .55;
+    cursor: not-allowed;
+}
+.vs-iconbtn {
+    width: 42px;
+    height: 42px;
+    border-radius: 50%;
+    border: 1px solid var(--line);
+    background: var(--glass);
+    color: var(--mut);
+    font-size: 16px;
+    cursor: pointer;
+    flex: none;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    transition:
+        border-color var(--dur-1) var(--ease),
+        color var(--dur-1) var(--ease);
+}
+.vs-iconbtn:hover {
+    border-color: var(--line-strong);
+    color: var(--txt);
+}
+.vs-iconbtn:focus-visible {
+    outline: 2px solid var(--acc);
+    outline-offset: 2px;
+}
+.vs-iconbtn:disabled {
+    opacity: .45;
+    cursor: not-allowed;
+}
+.vs-iconbtn--acc {
+    color: var(--acc);
+}
+.vs-iconbtn--acc:hover {
+    color: var(--acc);
+}
+.vs-fileinput {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    clip-path: inset(50%);
+    white-space: nowrap;
+}
+.vs-send {
+    width: 42px;
+    height: 42px;
+    border-radius: 50%;
+    border: none;
+    background: var(--acc);
+    color: var(--acc-ink);
+    font-size: 16px;
+    cursor: pointer;
+    flex: none;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    transition: background-color var(--dur-1) var(--ease);
+}
+.vs-send:hover {
+    background: var(--acc-2);
+}
+.vs-send:focus-visible {
+    outline: 2px solid var(--acc);
+    outline-offset: 2px;
+}
+.vs-send:disabled {
+    opacity: .45;
+    cursor: not-allowed;
+}
+.vs-composer--sending .vs-send {
+    animation: vs-send-pulse var(--dur-2) var(--ease) infinite alternate;
+}
+@keyframes vs-send-pulse {
+    from { opacity: .45; }
+    to { opacity: 1; }
+}
+
+/* Evidence row — icon, title, meta, page-anchor chip, tags (§9). */
+.vs-evidence {
+    display: flex;
+    gap: 11px;
+    padding: 10px;
+    border: 1px solid var(--line);
+    border-radius: calc(var(--radius-sm) + 4px);
+    background: var(--glass-3);
+    align-items: flex-start;
+    color: var(--txt);
+}
+.vs-evidence--flagged {
+    border-color: var(--warn-line);
+}
+.vs-evidence__icon {
+    width: 34px;
+    height: 38px;
+    border-radius: var(--radius-sm);
+    background: var(--glass-2);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 10px;
+    font-weight: 800;
+    color: var(--acc-2);
+    border: 1px solid var(--line);
+    flex: none;
+}
+.vs-evidence__main {
+    flex: 1;
+    min-width: 0;
+}
+.vs-evidence__title {
+    font-size: 13.5px;
+    font-weight: 700;
+}
+.vs-evidence__meta {
+    color: var(--mut);
+    font-size: 12px;
+}
+.vs-evidence__anchor {
+    font-size: 10.5px;
+    font-weight: 700;
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    padding: 1px 8px;
+    color: var(--mut);
+    flex: none;
+}
+.vs-evidence__tags {
+    display: flex;
+    gap: 5px;
+    flex-wrap: wrap;
+    margin-top: 5px;
+}
+.vs-tag {
+    font-size: 10.5px;
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    padding: 1px 8px;
+    color: var(--mut);
+}
+.vs-tag--warn {
+    color: var(--warn);
+    border-color: var(--warn-line);
+}
+
+/* Count tile — big value over a micro-label (§6). */
+.vs-count {
+    background: var(--glass-2);
+    border: 1px solid var(--line);
+    border-radius: calc(var(--radius-sm) + 3px);
+    padding: 8px 10px;
+    min-width: 96px;
+    color: var(--txt);
+}
+.vs-count__value {
+    font-size: 17px;
+    font-weight: 700;
+    display: block;
+}
+.vs-count__label {
+    font-size: 11px;
+    color: var(--mut);
 }
 
 @layer base {

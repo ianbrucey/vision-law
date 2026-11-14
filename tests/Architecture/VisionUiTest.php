@@ -46,6 +46,15 @@ use Tests\TestCase;
  *   exactly what the amended rule forbids); the token-set completeness half
  *   of the amended rule is enforced by
  *   tests/Architecture/VisionSystemsUiTest.php (verdict C-02).
+ * - Spec 013 Ticket 2 (03-contract.md §Component contract): the Vision
+ *   Systems family (resources/views/components/vs/, <x-vs.*>) is a second
+ *   component door beside <x-ui.*>. Doors 2 and 3 recognize it the same
+ *   way they recognize components/ui/: raw <button> / form controls are
+ *   lawful inside the family's own views (that is what a component door
+ *   is), and <x-vs.button> is a sanctioned button door in consuming
+ *   views. The doors' reach over every non-component view is unchanged —
+ *   the negative fixtures below still trip. The docs/UI_Standards.md
+ *   amendment covering both families lands at Freeze, per 03-contract.md.
  */
 class VisionUiTest extends TestCase
 {
@@ -126,31 +135,40 @@ class VisionUiTest extends TestCase
             || str_starts_with($relative, 'matters/workspace/');
     }
 
-    /** Door 2 — buttons only via <x-ui.button> (mail templates exempt). */
+    /**
+     * Door 2 — buttons only via a component door: <x-ui.button>, or
+     * <x-vs.button> (the Vision Systems door, spec 013 Ticket 2). Mail
+     * templates exempt; both component families' own views are exempt
+     * (they are the doors).
+     */
     private function door2Buttons(string $root): array
     {
         return $this->scan($root, function (string $relative, string $line): bool {
-            if (str_starts_with($relative, 'components/ui/') || str_starts_with($relative, 'mail/')) {
+            if (str_starts_with($relative, 'components/ui/') || str_starts_with($relative, 'components/vs/') || str_starts_with($relative, 'mail/')) {
                 return false;
             }
             if ($this->isGaWorkspace($relative)) {
                 return false;
             }
 
-            // Raw <button> tag, or any non-x-ui.button component whose name
-            // ends in "button" (e.g. <x-button>, <x-ui-button>).
+            // Raw <button> tag, or any component whose name ends in
+            // "button" other than a sanctioned door (x-ui.button,
+            // x-vs.button) — e.g. <x-button>, <x-ui-button>.
             return (bool) preg_match('/<button[\s>]/i', $line)
-                || (bool) preg_match('/<x-(?!ui\.button\b)[A-Za-z0-9._-]*button[\s>]/i', $line);
+                || (bool) preg_match('/<x-(?!(?:ui|vs)\.button\b)[A-Za-z0-9._-]*button[\s>]/i', $line);
         });
     }
 
     /**
-     * Door 3 — form controls only via the four wrappers (hidden inputs exempt).
+     * Door 3 — form controls only via the wrappers (hidden inputs exempt).
+     * The wrappers are the four <x-ui.*> form components and the Vision
+     * Systems composer (spec 013 Ticket 2); both families' own views are
+     * exempt (they are the doors).
      */
     private function door3Controls(string $root): array
     {
         return $this->scan($root, function (string $relative, string $line): bool {
-            if (str_starts_with($relative, 'components/ui/')) {
+            if (str_starts_with($relative, 'components/ui/') || str_starts_with($relative, 'components/vs/')) {
                 return false;
             }
             if ($this->isGaWorkspace($relative)) {
