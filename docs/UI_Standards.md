@@ -192,9 +192,13 @@ with the first UI feature; `tests/Architecture/` does not exist yet):
 5. **Modals only via `<x-ui.modal>`** — hand-rolled dialogs fail.
 6. **`wire:poll` only inside `components/ui/`** — create a component before
    polling anywhere.
-7. **Light-only v1** — no `dark:` variants, no `class="dark"` in any view.
-   (003-D01: the landing's dark treatment uses dedicated `--vl-dark-*` /
-   `--vl-neon*` tokens, not dark-mode variants — this door is unchanged.)
+7. **Theme token sets only** — every surface renders from a complete theme
+   token set named in the contract (25 sets; Ocean Deep the default;
+   user-switchable): dark and light themes alike come from tokens, never
+   from per-view `dark:` variants or a `class="dark"` toggle.
+   (013-D08, approved by Ian 2026-11-14: spec 013's token contract governs;
+   the landing's `--vl-dark-*` / `--vl-neon*` tokens retire with that
+   rebuild.)
 8. **Leak sentinels** — restricted strings named in a feature's
    `00-brief.md` (client PII, privilege markers, secrets) must never appear
    in rendered views; scans live in the same test file.

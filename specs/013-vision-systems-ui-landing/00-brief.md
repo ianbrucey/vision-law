@@ -1,6 +1,6 @@
 # 013 — Vision Systems UI refactor & generic landing page — Strategic brief
 
-**Status:** DRAFT (→ IN REVIEW → APPROVED)
+**Status:** APPROVED (Approved by Ian, 2026-11-14 — brief and door-7 amendment 013-D08 approved together)
 **Author:** Zuri (orchestrator)
 **Date:** 2026-11-14
 
