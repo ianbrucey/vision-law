@@ -38,6 +38,24 @@ Note: Ocean Deep (`ocean`) does NOT receive the calm reading rules; its key does
 
 Matte family note (source comment, verbatim): "Matte family: solid flat surfaces — wash equals bg so there is no gradient glow, glass tokens are opaque, shadows stay shallow." There is NO backdrop-filter / no-blur override rule for matte themes anywhere in the source; flatness is implemented entirely in the token values (`--wash` equals `--bg`, opaque `--glass` hex values, shallower `--shadow`). Do not add a no-blur rule and call it a transcription.
 
+## Structural tokens (013-D13)
+
+The decision mockup never defined values for three tokens the contract requires. The values below are **new design decisions**, recorded in `decisions.md` as 013-D13 (Ian, 2026-11-14). They are NOT transcribed from the decision mockup and must not be cited as source values. Anchors: `--radius-sm` is the inner radius paired with the source `--radius: 14px`; the duration scale is anchored on the source's single `--dur: .45s`, adopted as `--dur-2`; the `--reading-lh` override value 1.72 matches the source's calm/heritage family selector rules above.
+
+```css
+:root{
+  --radius-sm:8px;
+  --dur-1:.18s; /* micro: hover, chip, tab */
+  --dur-2:.45s; /* panels, sheets, drawers */
+  --dur-3:.65s; /* entrances, theme cross-fades */
+  --reading-lh:1.6; /* base document/body line-height, all themes */
+}
+/* calm- and usa-/earth- prefixed themes override the reading line-height: */
+html[data-theme^="calm-"], html[data-theme^="usa-"], html[data-theme^="earth-"]{
+  --reading-lh:1.72;
+}
+```
+
 ---
 
 ## Original themes
