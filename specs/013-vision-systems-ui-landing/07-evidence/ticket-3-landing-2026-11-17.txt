@@ -1,0 +1,139 @@
+Spec 013 — Ticket 3 (landing slice) evidence
+Date: 2026-11-17
+Branch: spec/013-vision-systems-ui
+Base HEAD at start: 9398f11 (013-D15 fixture fixes)
+
+ENVIRONMENT (re-verified this session, per TOOLS.md)
+  php -v: PHP 8.4.27
+  Postgres: accepting connections on 127.0.0.1:5435 (role vision_law,
+    database vision_law_test per phpunit.xml; tests only against the
+    local test DB)
+  Chrome: Google Chrome 157.0.8103.78 at /usr/bin/google-chrome
+  Node v24.22.1 / npm 10.9.4
+  Test runs used disk-backed TMPDIR ~/workspace/spec013/tmp.
+
+WHAT WAS BUILT
+  - resources/views/public/landing.blade.php rewritten: loads
+    specs/013-vision-systems-ui-landing/04-fixtures.json once (the only
+    content source) and composes the partials in contract order.
+  - Partials: nav + hero rewritten; platform, packs, trust, cta, footer
+    created (resources/views/public/partials/). The remaining old 003
+    partials (features, audit, security, testimonial, cta) are no
+    longer referenced by the landing and retire at the slice freeze.
+  - resources/views/layouts/public.blade.php: opt-in `themed` prop
+    (default off — auth/share/invitation pages render unchanged). When
+    on: <html lang="en" data-vs-theme="ocean-deep">, a pre-paint script
+    restores a locally persisted theme (localStorage 'vs-theme',
+    client-side only, 013-O06), body takes the token surface
+    (.vs-body), and an end-of-body script wires the switcher + the
+    entrance observer. (Prop is single-word on purpose: this stack does
+    not camelize kebab-case component attributes into @props.)
+  - New component resources/views/components/vs/theme-switcher.blade.php:
+    the vs family's select door — a real <select> with a visible
+    "Theme" label (architecture door 3 allows raw form controls only
+    inside the component families). Options = the 20 non-light fixture
+    sets in fixture order with fixture display names; the 5 light sets
+    are excluded (013-O02); no family labels (013-O04).
+  - resources/css/app.css: switcher styles + a landing scaffolding
+    section (.vsl-* classes; colors are token references / color-mix
+    of tokens only). Page max-width 1120px; hero two-column at
+    >=820px, stacked below; switcher wraps under the brand row at
+    phone widths; entrance motion gated behind html.vs-js with a
+    reduced-motion override.
+  - Hero vignette: <x-vs.card> with the fixtures' sample_label
+    ("Illustration") as a pill at its head, the pipeline stage rail,
+    the three sample evidence rows, and the three sample count tiles
+    (013-D14 F3).
+  - Routes: no change needed — routes/web.php already returns
+    view('public.landing') for GET /.
+  - The nav preserves spec 010 C-07 exactly: guest sees Sign in +
+    Request access; signed-in sees Open app + the Sign out form and
+    no Sign in (AppHomeTest, 9 passed).
+
+VERDICT TESTS
+  tests/Feature/Public/LandingVisionSystemsTest.php (new):
+    test_landing_is_generic_vision_systems_with_vision_law_first_pack ... PASS (C-01)
+    test_landing_default_theme_is_ocean_deep_and_switcher_lists_only_non_light_sets ... PASS (C-02 rendered half)
+    test_no_meta_text_on_rendered_surfaces ... PASS (C-07, landing surface)
+    test_sample_label_renders_with_the_vignette_sample_data ... PASS (013-D14 F3)
+    test_landing_sections_render_in_contract_order ... PASS
+    => 5 passed (124 assertions)
+  tests/Architecture/VisionSystemsUiTest.php:
+    test_landing_built_only_from_vs_components ... PASS (C-05, added)
+
+GATES
+  Architecture suite: 33 passed (1509 assertions)
+  LandingVisionSystemsTest: 5 passed (124 assertions)
+  AppHomeTest (010 C-07): 9 passed (168 assertions)
+  Pint (vendor/bin/pint --test): PASS, 369 files
+  PHPStan level 7 (vendor/bin/phpstan analyse): [OK] No errors
+  npm run build: PASS (built in 2.55s)
+  Full suite (php artisan test): 5 failed, 4 skipped, 287 passed
+    (8922 assertions). The 4 skips are the pre-existing mobile-test
+    skips. Failures:
+    - The 013-D12 named three (pre-existing calendaring, unchanged):
+      CalendaringAgendaTest > home deadlines module shows only
+        authorized upcoming items
+      CalendaringRemindersTest > reminder delivery resolves recipients
+        and ledgers attempts
+      CalendaringRemindersTest > reminder pipeline is idempotent under
+        failure
+    - TWO NEW FAILURES — spec 003's verdict file, see CONFLICT below:
+      PublicSiteAuthTest > landing renders with all mockup sections
+      PublicSiteAuthTest > logo assets served
+    (PublicSiteAuthTest overall: 7 passed / 2 failed; its C-04
+    no-user-data test and all auth-flow tests pass.)
+
+RENDERED-PAGE EYEBALL (local dev server against the test DB, curl)
+  GET / -> 200, 15,489 bytes.
+  <html lang="en" data-vs-theme="ocean-deep">; body class "vs-body".
+  Switcher: exactly 20 <option>s — aurora, earth-grove, midnight,
+  ocean-deep (selected), ember, regal, matte-slate, matte-clay,
+  matte-olive, matte-dusk, calm-deep-ocean, lagoon, sage-mist,
+  stone-shore, twilight-drift, liberty-dusk, barn-stone, walnut,
+  canyon-mesa, americana-rwb — fixture display names; no light slugs.
+  Sections in order: nav, hero, #platform, #packs, #trust, #cta,
+  footer. "Illustration" label present ahead of the sample counts
+  (142 pages anchored / 3 facts cited / 1 gap flagged) and the three
+  sample evidence rows. Roadmap framing present ("On the roadmap:",
+  "an agent on the roadmap"); all four pre-fix strings absent; all
+  fixtures forbidden_strings absent; "SSO & SCIM ready" and the old
+  SYNTHETIC strings absent. Guest nav: Sign in present, Open app
+  absent. GET /login renders unthemed (no data-vs-theme, no switcher).
+
+CONFLICT — NEEDS A RULING (not fixed here; no assertion was weakened,
+skipped, or deleted)
+  06-plan.md Ticket 3 acceptance asks for "Spec 003 + 010
+  public-surface tests green, unmodified". Two tests in spec 003's
+  verdict file (tests/Feature/PublicSiteAuthTest.php) assert the OLD
+  landing's content and cannot pass on any landing that satisfies
+  spec 013's own claims:
+    - test_landing_renders_with_all_mockup_sections asserts, among
+      other old copy, 'SYNTHETIC PLACEHOLDER — NOT A REAL QUOTE',
+      'SYNTHETIC DATA ONLY', 'SSO & SCIM ready', and
+      '© 2026 Vision Law. All rights reserved.' — strings C-07 and the
+      fixtures' forbidden_strings ban from the rendered page.
+    - test_logo_assets_served asserts GET / contains
+      '/images/vision-wordmark.png' (the retired Vision Law wordmark).
+  Nothing in decisions.md / 01-archaeology.md / 00-brief.md addresses
+  these two tests. Proposed remedy (for Zuri/Ian to record, e.g. as
+  013-D16): supersede 003's two landing-content verdicts under spec
+  013, retiring those tests in favor of LandingVisionSystemsTest —
+  the same pattern spec 010 used (010-D03) for its PublicSiteAuthTest
+  conflict. Until that decision exists, the full suite carries these
+  two failures alongside the D12 three.
+
+JUDGMENT CALLS FLAGGED FOR VERIFICATION
+  1. Theme switcher as a 13th vs component (see above): the contract
+     requires a real <select> in the nav; door 3 forbids raw selects
+     in consuming views; the family is the lawful door (composer
+     precedent). C-03's inventory assertion is >=12 files, so the
+     addition is compatible; its token scan covers the new file.
+  2. Vignette/palette omissions: the protocol box, checkpoint card,
+     composer, and band do not appear on the landing. Their 05
+     mockup microcopy is not in the fixtures (it predates the D14(a)
+     framing fixes), and inventing replacement copy would recreate
+     the F1 class of problem; the contract's per-section component
+     lists were read as palettes, not mandates. The hero vignette
+     carries the fixtures' sample data (stage rail, evidence rows,
+     count tiles, illustration label) as the parent task specifies.

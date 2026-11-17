@@ -18,6 +18,13 @@ use Tests\TestCase;
  * - C-04: the motion tokens are defined once and a
  *   `prefers-reduced-motion` block neutralizes the motion layer.
  *
+ * Ticket 3 adds:
+ * - C-05: the landing composes only from <x-vs.*> components (a scan of
+ *   the landing view, its partials, and the public layout). The
+ *   landing's rendered verdicts (C-01, C-02 rendered half, C-07, and
+ *   the 013-D14 F3 illustration label) live in
+ *   tests/Feature/Public/LandingVisionSystemsTest.php.
+ *
  * Token values are transcribed from
  * specs/013-vision-systems-ui-landing/tokens.md (the C-02 implementation
  * authority); slugs are the contract identifiers of 03-contract.md.
@@ -159,6 +166,62 @@ class VisionSystemsUiTest extends TestCase
         $block = substr($squashed, $mediaAt, 400);
         $this->assertStringContainsString('transition:none!important', $block, 'The reduced-motion block must switch transitions off.');
         $this->assertStringContainsString('animation:none!important', $block, 'The reduced-motion block must switch animations off.');
+    }
+
+    // ------------------------------------------------------------------
+    // C-05 — the landing is built only from <x-vs.*> components (Ticket 3)
+    // ------------------------------------------------------------------
+
+    public function test_landing_built_only_from_vs_components(): void
+    {
+        // The landing view, its partials, and the shared public layout
+        // are scanned (00-brief.md C-05; 03-contract.md §Landing page
+        // section contract): no class token from a component's own
+        // class family may appear in a class attribute — that is
+        // duplicated component markup, the same line C-03 draws inside
+        // the family — colors stay token references, and the views must
+        // actually compose from <x-vs.*> tags. Layout scaffolding
+        // (structure, grids, typography) uses the landing's own vsl-
+        // prefixed classes, which are not component classes.
+        $files = array_merge(
+            [
+                resource_path('views/public/landing.blade.php'),
+                resource_path('views/layouts/public.blade.php'),
+            ],
+            glob(resource_path('views/public/partials/*.blade.php')) ?: []
+        );
+        $this->assertGreaterThanOrEqual(3, count($files));
+
+        $componentClass = '/^vs-(btn|pill|tab|state|band|stage|rail|protocol|checkpoint|composer|ev|count|card|tag|iconbtn|send|fileinput)(__|--)?/';
+        $usesComponents = false;
+
+        foreach ($files as $file) {
+            $source = (string) file_get_contents($file);
+            $name = basename($file);
+
+            if (str_contains($source, '<x-vs.')) {
+                $usesComponents = true;
+            }
+
+            preg_match_all('/class="([^"]*)"/', $source, $classAttrs);
+            foreach ($classAttrs[1] as $classAttr) {
+                foreach (preg_split('/\s+/', trim($classAttr)) ?: [] as $token) {
+                    $this->assertDoesNotMatchRegularExpression(
+                        $componentClass,
+                        $token,
+                        "{$name} duplicates a vs component class in markup: {$token}"
+                    );
+                }
+            }
+
+            $this->assertDoesNotMatchRegularExpression(
+                '/#[0-9a-fA-F]{3,8}\b|rgba?\(|hsla?\(/',
+                $source,
+                "{$name} contains a raw color value"
+            );
+        }
+
+        $this->assertTrue($usesComponents, 'The landing must compose from <x-vs.*> components.');
     }
 
     // ------------------------------------------------------------------

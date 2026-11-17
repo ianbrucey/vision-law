@@ -1430,6 +1430,371 @@
     color: var(--mut);
 }
 
+/* Theme switcher — the family's select door (03-contract.md §Theme
+   structure; 05-ui.md §Theme behavior): a real <select>, token-styled. */
+.vs-switcher {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+.vs-switcher__label {
+    font-size: 10.5px;
+    font-weight: 800;
+    letter-spacing: .09em;
+    text-transform: uppercase;
+    color: var(--mut);
+}
+.vs-switcher__select {
+    font: inherit;
+    font-size: 13.5px;
+    font-weight: 600;
+    color: var(--txt);
+    background: var(--glass);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+    padding: 8px 10px;
+    cursor: pointer;
+    transition:
+        border-color var(--dur-1) var(--ease),
+        background-color var(--dur-1) var(--ease);
+}
+.vs-switcher__select:hover {
+    border-color: var(--line-strong);
+}
+.vs-switcher__select:focus-visible {
+    outline: 2px solid var(--acc);
+    outline-offset: 2px;
+}
+
+/*
+ * Vision Systems landing (spec 013, Ticket 3 — 03-contract.md §Landing
+ * page section contract; 05-ui.md §Layout). Page scaffolding for
+ * resources/views/public/*: the themed surface, layout, typography, and
+ * grids around the <x-vs.*> components the page composes. Colors are
+ * token references only; component styling stays in the layer above.
+ */
+
+/* The themed public surface (layouts/public with vsTheme): the theme's
+   aurora wash over --bg; text, font, and reading rhythm from the set. */
+.vs-body {
+    background-color: var(--bg);
+    background-image: radial-gradient(1100px 550px at 75% -5%, color-mix(in srgb, var(--wash) 65%, transparent), transparent 70%);
+    color: var(--txt);
+    font-family: var(--font);
+    line-height: var(--reading-lh);
+    min-height: 100vh;
+    transition:
+        background-color var(--dur-3) var(--ease),
+        color var(--dur-3) var(--ease);
+}
+
+.vsl-wrap {
+    max-width: 1120px;
+    margin: 0 auto;
+    padding: 0 24px;
+}
+
+/* Nav — sticky bar; at phone widths the actions wrap under the brand
+   row so the switcher stays reachable, never behind a menu (05-ui.md). */
+.vsl-header {
+    position: sticky;
+    top: 0;
+    z-index: 20;
+    border-bottom: 1px solid var(--line);
+    background: color-mix(in srgb, var(--bg) 84%, transparent);
+    backdrop-filter: blur(10px);
+}
+[data-vs-theme^="matte"] .vsl-header {
+    backdrop-filter: none;
+}
+.vsl-nav {
+    max-width: 1120px;
+    margin: 0 auto;
+    padding: 12px 24px;
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    flex-wrap: wrap;
+}
+.vsl-brand {
+    font-size: 19px;
+    font-weight: 800;
+    letter-spacing: .01em;
+    color: var(--txt);
+    text-decoration: none;
+    white-space: nowrap;
+}
+.vsl-nav-links {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+}
+.vsl-nav-links a,
+.vsl-signin {
+    color: var(--mut);
+    text-decoration: none;
+    font-size: 14.5px;
+    font-weight: 600;
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
+}
+.vsl-nav-links a:hover,
+.vsl-signin:hover {
+    color: var(--txt);
+}
+.vsl-brand:focus-visible,
+.vsl-nav-links a:focus-visible,
+.vsl-signin:focus-visible,
+.vsl-footer-a:focus-visible {
+    outline: 2px solid var(--acc);
+    outline-offset: 2px;
+}
+.vsl-nav-actions {
+    margin-left: auto;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    flex-wrap: wrap;
+}
+.vsl-signout-form {
+    display: inline-flex;
+    margin: 0;
+}
+
+/* Hero — copy left, component vignette right at >=820px (05-ui.md). */
+.vsl-hero {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 34px;
+    align-items: center;
+    padding: 54px 0 30px;
+}
+@media (min-width: 820px) {
+    .vsl-hero {
+        grid-template-columns: 1.05fr .95fr;
+    }
+}
+.vsl-eyebrow {
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: .14em;
+    text-transform: uppercase;
+    color: var(--acc);
+    margin: 0 0 12px;
+}
+.vsl-h1 {
+    font-size: 40px;
+    line-height: 1.12;
+    letter-spacing: -.01em;
+    font-weight: 800;
+    margin: 0;
+}
+.vsl-h2 {
+    font-size: 27px;
+    line-height: 1.2;
+    font-weight: 750;
+    margin: 0;
+}
+.vsl-lede {
+    color: var(--mut);
+    font-size: 16.5px;
+    max-width: 56ch;
+    margin: 14px 0 0;
+}
+.vsl-cta-row {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+    margin-top: 22px;
+}
+.vsl-note {
+    margin: 18px 0 0;
+    color: var(--mut);
+    font-size: 13.5px;
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+.vsl-note-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--ok);
+    box-shadow: 0 0 10px var(--ok);
+    flex: none;
+}
+
+/* The hero vignette — the fixtures' sample evidence rows, counts, and
+   illustration label composed from components (F3: the label renders
+   with the sample data, never as bare numbers). */
+.vsl-vignette {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+.vsl-vignette-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+.vsl-counts {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
+}
+@media (max-width: 480px) {
+    .vsl-counts {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* Sections + grids (the approved layout's breakpoints). */
+.vsl-section {
+    padding: 44px 0 6px;
+}
+.vsl-steps,
+.vsl-packs {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 14px;
+    margin-top: 18px;
+}
+.vsl-trust {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 14px;
+    margin-top: 18px;
+}
+@media (max-width: 900px) {
+    .vsl-steps,
+    .vsl-packs {
+        grid-template-columns: 1fr 1fr;
+    }
+}
+@media (max-width: 640px) {
+    .vsl-h1 {
+        font-size: 31px;
+    }
+    .vsl-h2 {
+        font-size: 22px;
+    }
+    .vsl-section {
+        padding-top: 34px;
+    }
+    .vsl-steps,
+    .vsl-packs,
+    .vsl-trust {
+        grid-template-columns: 1fr;
+    }
+}
+.vsl-step-n {
+    font-size: 15px;
+    font-weight: 800;
+    letter-spacing: .08em;
+    color: var(--acc);
+}
+.vsl-step-title {
+    font-size: 16.5px;
+    font-weight: 700;
+    color: var(--txt);
+    margin: 6px 0;
+}
+.vsl-step-body {
+    color: var(--mut);
+    font-size: 14px;
+    margin: 0;
+}
+.vsl-pack-status {
+    margin-top: 12px;
+}
+
+/* CTA band. */
+.vsl-cta {
+    text-align: center;
+    padding: 30px 18px;
+}
+.vsl-cta .vsl-lede {
+    margin-left: auto;
+    margin-right: auto;
+}
+.vsl-cta .vs-btn {
+    margin-top: 18px;
+}
+
+/* Footer. */
+.vsl-footer {
+    border-top: 1px solid var(--line);
+    margin-top: 54px;
+    padding: 26px 0 40px;
+}
+.vsl-footer-grid {
+    max-width: 1120px;
+    margin: 0 auto;
+    padding: 0 24px;
+    display: grid;
+    grid-template-columns: 1.4fr 1fr 1fr 1fr 1fr;
+    gap: 18px;
+}
+@media (max-width: 900px) {
+    .vsl-footer-grid {
+        grid-template-columns: 1fr 1fr;
+    }
+}
+@media (max-width: 640px) {
+    .vsl-footer-grid {
+        grid-template-columns: 1fr;
+    }
+}
+.vsl-footer-h {
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+    color: var(--mut);
+    margin: 0 0 9px;
+}
+.vsl-footer-a {
+    display: block;
+    color: var(--mut);
+    font-size: 13.5px;
+    text-decoration: none;
+    padding: 2.5px 0;
+}
+.vsl-footer-a:hover {
+    color: var(--txt);
+}
+.vsl-footer-line {
+    max-width: 1120px;
+    margin: 22px auto 0;
+    padding: 0 24px;
+    color: var(--mut);
+    font-size: 13px;
+}
+
+/* Entrance motion (05-ui.md §Motion rules): sections rise ~14px and
+   fade in on the shared tokens, staggered lightly. The hidden state
+   applies only when the themed layout's script has run (html.vs-js),
+   so the page is complete and static without JavaScript; the
+   IntersectionObserver in the layout adds .vsl-in as sections arrive. */
+.vs-js .vsl-rise {
+    opacity: 0;
+    transform: translateY(14px);
+}
+.vs-js .vsl-rise.vsl-in {
+    opacity: 1;
+    transform: none;
+    transition:
+        opacity var(--dur-3) var(--ease),
+        transform var(--dur-3) var(--ease);
+}
+@media (prefers-reduced-motion: reduce) {
+    .vs-js .vsl-rise {
+        opacity: 1;
+        transform: none;
+    }
+}
+
 @layer base {
     html {
         font-size: 16px;
