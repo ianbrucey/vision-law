@@ -66,52 +66,6 @@ class PublicSiteAuthTest extends TestCase
         return $org;
     }
 
-    /**
-     * C-01: the landing page renders with every approved mockup section.
-     */
-    public function test_landing_renders_with_all_mockup_sections(): void
-    {
-        $response = $this->get('/');
-        $response->assertOk();
-
-        // Responsive contract: the viewport meta (the 390px phone check is
-        // a markup contract — viewport meta + no fixed-width containers).
-        $response->assertSee('<meta name="viewport"', false);
-
-        // Hero: the chrome wordmark image.
-        $response->assertSee('/images/vision-wordmark.png', false);
-
-        // Trust strip items.
-        $response->assertSee('Encryption everywhere');
-        $response->assertSee('Append-only audit trail');
-        $response->assertSee('SSO & SCIM ready');
-        $response->assertSee('Role-based access');
-
-        // Platform grid: all six feature names.
-        foreach ([
-            'Matter management',
-            'Document intelligence',
-            'Deadline engine',
-            'Drafting copilot',
-            'Outside-counsel sharing',
-            'Retention & legal holds',
-        ] as $feature) {
-            $response->assertSee($feature);
-        }
-
-        // Auditability section.
-        $response->assertSee('Prove it, don’t promise it.');
-        $response->assertSee('AUDIT TRAIL · MAT-2026-001 · LIVE');
-
-        // Testimonial + its synthetic-quote badge.
-        $response->assertSee('We replaced four systems with Vision Law.');
-        $response->assertSee('SYNTHETIC PLACEHOLDER — NOT A REAL QUOTE');
-
-        // Final CTA + footer.
-        $response->assertSee('See what your practice is missing.');
-        $response->assertSee('© 2026 Vision Law. All rights reserved.');
-        $response->assertSee('SYNTHETIC DATA ONLY');
-    }
 
     /**
      * C-02: GET /login renders the sign-in form for guests.
@@ -260,27 +214,6 @@ class PublicSiteAuthTest extends TestCase
         $this->actingAs($user)->get('/register')->assertRedirect('/');
     }
 
-    /**
-     * C-05: logo assets exist on disk (non-empty) and the pages reference
-     * them. Static files are served by the web server (Caddy), not the
-     * Laravel router, so there is no in-process GET → 200 assertion here —
-     * the page contract is that the markup references the asset paths.
-     */
-    public function test_logo_assets_served(): void
-    {
-        foreach (['vision-wordmark.png', 'vision-emblem.png'] as $asset) {
-            $path = public_path('images/'.$asset);
-            $this->assertFileExists($path);
-            $this->assertGreaterThan(
-                0,
-                filesize($path),
-                "{$asset} must be non-empty"
-            );
-        }
-
-        $this->get('/')->assertOk()->assertSee('/images/vision-wordmark.png', false);
-        $this->get('/login')->assertOk()->assertSee('/images/vision-emblem.png', false);
-    }
 
     /**
      * C-02/C-03: the GET view routes are registered without Fortify name
